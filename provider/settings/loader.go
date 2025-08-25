@@ -59,6 +59,11 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 			return fmt.Errorf("agent ID cannot be empty in %s", path)
 		}
 
+		// Validate the agent role
+		if err := settingsData.Agent.Role.Validate(); err != nil {
+			return fmt.Errorf("invalid agent role in %s: %w", path, err)
+		}
+
 		if _, exists := settings[settingsData.AgentID]; exists {
 			return fmt.Errorf("duplicate agent id in settings %s: settings with agent id %s already exists", path, settingsData.AgentID)
 		}

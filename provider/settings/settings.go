@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/denkhaus/agents/provider/prompt"
+	"github.com/denkhaus/agents/provider/workspace"
 	"github.com/denkhaus/agents/shared"
 
 	shelltoolset "github.com/denkhaus/agents/tools/shell"
 	"github.com/denkhaus/agents/utils"
-	"github.com/denkhaus/agents/workspace"
 
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -66,7 +66,7 @@ func (p *agentSettingsImpl) GetModel() (model.Model, error) {
 func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
 	workspacePath, err := p.workspace.GetWorkspacePath()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
+		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 	// Create file operation tools.
 	fileToolSet, err := file.NewToolSet(
@@ -91,14 +91,14 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 
 	toolSets, err := p.getToolSets()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get toolsets for [%s]-[%s]", p.Agent.Role, p.AgentID)
+		return nil, fmt.Errorf("failed to get toolsets for [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 
 	options = append(options, llmagent.WithToolSets(toolSets))
 
 	generationConfig, err := p.getGenerationConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get generation config for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
+		return nil, fmt.Errorf("failed to get generation config for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 
 	toolInfo := utils.GetToolInfoFromSets(ctx, toolSets)
@@ -109,7 +109,7 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 
 	instruction, err := p.prompt.GetInstruction(promptContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get instruction prompt for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
+		return nil, fmt.Errorf("failed to get instruction prompt for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 
 	options = append(options, llmagent.WithInstruction(instruction))

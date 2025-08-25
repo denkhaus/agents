@@ -1,24 +1,25 @@
 package workspace
 
 import (
-	"errors"
-
-	"github.com/denkhaus/agents/workspace"
 	"github.com/google/uuid"
-	"github.com/samber/do"
 )
 
-type Provider interface {
-	GetWorkspace(agentID uuid.UUID) (workspace.Workspace, error)
+type Workspace interface {
+	GetWorkspacePath() (string, error)
 }
 
-type workspaceProviderImpl struct {
+type workspaceImpl struct {
+	agentID uuid.UUID
+	path    string
 }
 
-func New(i *do.Injector) (Provider, error) {
-	return &workspaceProviderImpl{}, nil
+func NewWorkspace(agentID uuid.UUID, path string) (Workspace, error) {
+	return &workspaceImpl{
+		agentID: agentID,
+		path:    path,
+	}, nil
 }
 
-func (p *workspaceProviderImpl) GetWorkspace(agentID uuid.UUID) (workspace.Workspace, error) {
-	return nil, errors.New("not yet implemented")
+func (p *workspaceImpl) GetWorkspacePath() (string, error) {
+	return p.path, nil
 }
