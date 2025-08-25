@@ -6,7 +6,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
-	github.com/lestrrat-go/jwx/v2 v2.1.4
+	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/openai/openai-go v1.12.0
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/samber/do v1.6.0
@@ -23,7 +23,7 @@ require (
 	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250822091206-02470fa4ece0
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3
-	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250822091206-02470fa4ece0
+	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250825120349-cac330182fde
 	trpc.group/trpc-go/trpc-agent-go/session/redis v0.0.4
 	trpc.group/trpc-go/trpc-mcp-go v0.0.2
 )
@@ -61,7 +61,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 // indirect
-	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.3 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect

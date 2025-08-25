@@ -7,6 +7,10 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+type Provider interface {
+	GetPrompt(agentID uuid.UUID, data interface{}) (Prompt, error)
+}
+
 // PromptManager defines the interface for managing and rendering prompts.
 type PromptManager interface {
 	GetPrompt(agentID uuid.UUID) (Prompt, error)

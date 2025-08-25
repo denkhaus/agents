@@ -12,7 +12,7 @@ import (
 )
 
 type Provider interface {
-	GetAgent(ctx context.Context, agentID uuid.UUID) (agent.Agent, error)
+	GetAgent(ctx context.Context, agentID uuid.UUID) (agent.Agent, bool, error)
 }
 
 type agentProviderImpl struct {
@@ -26,22 +26,22 @@ func New(i *do.Injector) (Provider, error) {
 	}, nil
 }
 
-func (p *agentProviderImpl) GetAgent(ctx context.Context, agentID uuid.UUID) (agent.Agent, error) {
+func (p *agentProviderImpl) GetAgent(ctx context.Context, agentID uuid.UUID) (agent.Agent, bool, error) {
 
 	agentConfig, err := p.settingsProvider.GetAgentConfiguration(agentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get agent settings for agent %s", agentID)
+		return nil, false, fmt.Errorf("failed to get agent settings for agent %s", agentID)
 	}
 
 	options, err := agentConfig.GetOptions(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get options for agent %s", agentID)
+		return nil, false, fmt.Errorf("failed to get options for agent %s", agentID)
 	}
 
 	newAgent := llmagent.New(
 		agentConfig.GetAgentName(), options...,
 	)
 
-	return newAgent, nil
+	return newAgent, agentConfig.IsStreamingEnabled(), nil
 
 }

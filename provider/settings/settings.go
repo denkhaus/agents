@@ -31,8 +31,20 @@ func NewConfiguration(workspace workspace.Workspace, prompt prompt.Prompt) (Agen
 	}, nil
 }
 
+func NewConfigurationWithSettings(workspace workspace.Workspace, prompt prompt.Prompt, settings *Settings) (AgentConfiguration, error) {
+	return &agentSettingsImpl{
+		Settings:  *settings,
+		workspace: workspace,
+		prompt:    prompt,
+	}, nil
+}
+
 func (p *agentSettingsImpl) GetAgentName() string {
 	return p.Agent.Name
+}
+
+func (p *agentSettingsImpl) IsStreamingEnabled() bool {
+	return p.Agent.StreamingEnabled
 }
 
 func (p *agentSettingsImpl) getGenerationConfig() (model.GenerationConfig, error) {
@@ -54,7 +66,7 @@ func (p *agentSettingsImpl) GetModel() (model.Model, error) {
 func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
 	workspacePath, err := p.workspace.GetWorkspacePath()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]-[%s]", p.Agent.Role, p.Agent.ID)
+		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
 	}
 	// Create file operation tools.
 	fileToolSet, err := file.NewToolSet(
@@ -79,14 +91,14 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 
 	toolSets, err := p.getToolSets()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get toolsets for [%s]-[%s]", p.Agent.Role, p.Agent.ID)
+		return nil, fmt.Errorf("failed to get toolsets for [%s]-[%s]", p.Agent.Role, p.AgentID)
 	}
 
 	options = append(options, llmagent.WithToolSets(toolSets))
 
 	generationConfig, err := p.getGenerationConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get generation config for agent [%s]-[%s]", p.Agent.Role, p.Agent.ID)
+		return nil, fmt.Errorf("failed to get generation config for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
 	}
 
 	toolInfo := utils.GetToolInfoFromSets(ctx, toolSets)
@@ -97,7 +109,7 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 
 	instruction, err := p.prompt.GetInstruction(promptContext)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get instruction prompt for agent [%s]-[%s]", p.Agent.Role, p.Agent.ID)
+		return nil, fmt.Errorf("failed to get instruction prompt for agent [%s]-[%s]", p.Agent.Role, p.AgentID)
 	}
 
 	options = append(options, llmagent.WithInstruction(instruction))

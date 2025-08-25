@@ -138,6 +138,7 @@ github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 h1:QwWKgMY28TAXaDl+
 github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728/go.mod h1:1fEHWurg7pvf5SG6XNE5Q8UZmOwex51Mkx3SLhrW5B4=
 github.com/lestrrat-go/blackmagic v1.0.2 h1:Cg2gVSc9h7sz9NOByczrbUvLopQmXrfFx//N+AkAr5k=
 github.com/lestrrat-go/blackmagic v1.0.2/go.mod h1:UrEqBzIR2U6CnzVyUtfM6oZNMt/7O7Vohk2J0OGSAtU=
+github.com/lestrrat-go/blackmagic v1.0.3/go.mod h1:6AWFyKNNj0zEXQYfTMPfZrAXUWUfTIZ5ECEUEJaijtw=
 github.com/lestrrat-go/httpcc v1.0.1 h1:ydWCStUeJLkpYyjLDHihupbn2tYmZ7m22BGkcvZZrIE=
 github.com/lestrrat-go/httpcc v1.0.1/go.mod h1:qiltp3Mt56+55GPVCbTdM9MlqhvzyuL6W/NMDA8vA5E=
 github.com/lestrrat-go/httprc v1.0.6 h1:qgmgIRhpvBqexMJjA/PmwSvhNk679oqD1RbovdCGW8k=
@@ -146,6 +147,8 @@ github.com/lestrrat-go/iter v1.0.2 h1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzlt
 github.com/lestrrat-go/iter v1.0.2/go.mod h1:Momfcq3AnRlRjI5b5O8/G5/BvpzrhoFTZcn06fEOPt4=
 github.com/lestrrat-go/jwx/v2 v2.1.4 h1:uBCMmJX8oRZStmKuMMOFb0Yh9xmEMgNJLgjuKKt4/qc=
 github.com/lestrrat-go/jwx/v2 v2.1.4/go.mod h1:nWRbDFR1ALG2Z6GJbBXzfQaYyvn751KuuyySN2yR6is=
+github.com/lestrrat-go/jwx/v2 v2.1.6 h1:hxM1gfDILk/l5ylers6BX/Eq1m/pnxe9NBwW6lVfecA=
+github.com/lestrrat-go/jwx/v2 v2.1.6/go.mod h1:Y722kU5r/8mV7fYDifjug0r8FK8mZdw0K0GpJw/l8pU=
 github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
@@ -385,6 +388,8 @@ trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3 h1:xGG7k3
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3/go.mod h1:JqiD71KCWjZ/cYgIKge88H0LECY+YyiyEnGWbJjnAAE=
 trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250822091206-02470fa4ece0 h1:m/emykXSXX5p0N0+agiApVu/w7cQNMQZooOWxpJwTcE=
 trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250822091206-02470fa4ece0/go.mod h1:rdBybTpKpHJW5zhvrnjUk+4VzSp7sIDxs325V5P73Jw=
+trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250825120349-cac330182fde h1:zYi0q2qBUOJydffIWIEmMcS5uZZUXRoaBzWlgNMaRtU=
+trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250825120349-cac330182fde/go.mod h1:rdBybTpKpHJW5zhvrnjUk+4VzSp7sIDxs325V5P73Jw=
 trpc.group/trpc-go/trpc-agent-go/session/redis v0.0.4 h1:XDLyxtHwEO+nwZsx1Qf40wwBQwNXZTeu2BGVTXkbNFY=
 trpc.group/trpc-go/trpc-agent-go/session/redis v0.0.4/go.mod h1:uG7PpVbChxMXJJ66l0LCN1cXtEnrnn/L4yA1PLSWzAw=
 trpc.group/trpc-go/trpc-agent-go/storage/redis v0.0.2-0.20250807061029-66942a6b44d9 h1:kclNJ1lhi69LwZ7hiKIV9UMGLxU5L5Uislt6B3+iDJU=

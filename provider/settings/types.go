@@ -3,10 +3,14 @@ package settings
 import (
 	"context"
 
-	"github.com/denkhaus/agents/agents"
+	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 )
+
+type Provider interface {
+	GetAgentConfiguration(agentID uuid.UUID) (AgentConfiguration, error)
+}
 
 type ModelSettings struct {
 	ChannelBufferSize int    `yaml:"channel_buffer_size"`
@@ -18,17 +22,18 @@ type AgentSettings struct {
 	Temperature       float64          `yaml:"temperature"`
 	ChannelBufferSize int              `yaml:"channel_buffer_size"`
 	MaxTokens         int              `yaml:"max_tokens"`
-	Role              agents.AgentRole `yaml:"role"`
+	Role              shared.AgentRole `yaml:"role"`
 	Name              string           `yaml:"name"`
-	ID                uuid.UUID        `yaml:"id"`
 }
 
 type Settings struct {
-	Model ModelSettings `yaml:"model"`
-	Agent AgentSettings `yaml:"agent"`
+	AgentID uuid.UUID     `yaml:"agent_id"`
+	Model   ModelSettings `yaml:"model"`
+	Agent   AgentSettings `yaml:"agent"`
 }
 
 type AgentConfiguration interface {
 	GetAgentName() string
+	IsStreamingEnabled() bool
 	GetOptions(ctx context.Context) ([]llmagent.Option, error)
 }

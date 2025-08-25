@@ -1,0 +1,11 @@
+agent_id: "550e8400-e29b-41d4-a716-446655440002"
+model:
+  channel_buffer_size: 512
+  model_name: "deepseek-chat"
+agent:
+  streaming_enabled: true
+  temperature: 0.2
+  channel_buffer_size: 100
+  max_tokens: 2000
+  role: "debugger"
+  name: "Debug Expert"

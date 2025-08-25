@@ -7,10 +7,6 @@ import (
 	"github.com/samber/do"
 )
 
-type Provider interface {
-	GetPrompt(agentID uuid.UUID, data interface{}) (Prompt, error)
-}
-
 type promptProviderImpl struct {
 	manager PromptManager
 }
