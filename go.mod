@@ -9,12 +9,15 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.1.4
 	github.com/openai/openai-go v1.12.0
 	github.com/redis/go-redis/v9 v9.12.1
+	github.com/samber/do v1.6.0
 	github.com/samber/mo v1.15.0
+	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/metric v1.37.0
 	go.opentelemetry.io/otel/trace v1.37.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.30.0
+	gopkg.in/yaml.v2 v2.4.0
 	trpc.group/trpc-go/trpc-a2a-go v0.2.3
 	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250815012345-e0bccf0ef012
 	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250822091206-02470fa4ece0
@@ -83,6 +86,8 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/vcaesar/cedar v0.20.2 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/yuin/goldmark v1.7.12 // indirect
 	go.opencensus.io v0.24.0 // indirect

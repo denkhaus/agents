@@ -730,6 +730,23 @@ func TestChangeDirectory(t *testing.T) {
 			targetDir:   "../../..",
 			expectError: false, // Command runs but fails with security error
 		},
+		{
+			name:            "home directory (~)",
+			targetDir:       "~",
+			expectError:     false,
+			expectedWorkDir: tempDir, // Should go to base directory
+		},
+		{
+			name:            "home subdirectory (~/subdir1)",
+			targetDir:       "~/subdir1",
+			expectError:     false,
+			expectedWorkDir: subDir1, // Should go to base/subdir1
+		},
+		{
+			name:        "home with path traversal (~/../../etc)",
+			targetDir:   "~/../../etc",
+			expectError: false, // Command runs but fails with security error
+		},
 	}
 
 	for _, tt := range tests {
@@ -931,6 +948,11 @@ func TestChangeDirectorySecurityValidation(t *testing.T) {
 		{
 			name:        "multiple path traversal blocked",
 			targetDir:   "../../..",
+			expectError: false, // Command runs but fails with security error
+		},
+		{
+			name:        "home with path traversal blocked",
+			targetDir:   "~/../../etc",
 			expectError: false, // Command runs but fails with security error
 		},
 	}

@@ -93,18 +93,27 @@ func (t *shellToolSet) isDefaultSafeCommand(command string) bool {
 
 // validateArgument checks if an argument contains dangerous patterns
 func (t *shellToolSet) validateArgument(arg string) error {
+	// Check for absolute paths and validate they are within workspace
+	if filepath.IsAbs(arg) {
+		if err := t.validateAbsolutePathWithinWorkspace(arg); err != nil {
+			return err
+		}
+	}
+
 	// Check for dangerous patterns
 	dangerousPatterns := []string{
-		`\$\(.*\)`, // Command substitution $(...)
-		"`.*`",     // Command substitution `...`
-		`&&`,       // Command chaining
-		`\|\|`,     // Command chaining
-		`;`,        // Command separator
-		`\|`,       // Pipe (can be dangerous in some contexts)
-		`>`,        // Redirection
-		`<`,        // Redirection
-		`>>`,       // Append redirection
-		`&`,        // Background execution
+		`\$\(.*\)`,                 // Command substitution $(...)
+		"`.*`",                     // Command substitution `...`
+		`&&`,                       // Command chaining
+		`\|\|`,                     // Command chaining
+		`;`,                        // Command separator
+		`\|`,                       // Pipe (can be dangerous in some contexts)
+		`>`,                        // Redirection
+		`<`,                        // Redirection
+		`>>`,                       // Append redirection
+		`&`,                        // Background execution
+		`\$\{.*\}`,                 // Variable expansion ${...}
+		`\$[A-Za-z_][A-Za-z0-9_]*`, // Environment variable expansion $VAR
 	}
 
 	for _, pattern := range dangerousPatterns {
@@ -122,6 +131,31 @@ func (t *shellToolSet) validateArgument(arg string) error {
 		return fmt.Errorf("path traversal detected")
 	}
 
+	return nil
+}
+
+// validateAbsolutePathWithinWorkspace checks if an absolute path is within the workspace
+func (t *shellToolSet) validateAbsolutePathWithinWorkspace(absPath string) error {
+	// Clean the path
+	cleanPath := filepath.Clean(absPath)
+	
+	// Get absolute path of base directory
+	absBaseDir, err := filepath.Abs(t.baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute base directory: %w", err)
+	}
+	
+	// Check if the absolute path is within the base directory
+	relPath, err := filepath.Rel(absBaseDir, cleanPath)
+	if err != nil {
+		return fmt.Errorf("absolute path outside workspace: %s", absPath)
+	}
+	
+	// If the relative path starts with "..", it's outside the base directory
+	if strings.HasPrefix(relPath, "..") {
+		return fmt.Errorf("absolute path outside workspace boundary: %s", absPath)
+	}
+	
 	return nil
 }
 
@@ -296,7 +330,7 @@ func (t *shellToolSet) handleChangeDirectory(_ context.Context, input ShellToolI
 	// Get target directory from arguments
 	var targetDir string
 	if len(input.Arguments) == 0 {
-		// No arguments means go to base directory
+		// No arguments means go to base directory (our "home" in the sandbox)
 		targetDir = "."
 	} else if len(input.Arguments) == 1 {
 		targetDir = input.Arguments[0]
@@ -316,24 +350,36 @@ func (t *shellToolSet) handleChangeDirectory(_ context.Context, input ShellToolI
 	// Resolve target directory relative to current working directory
 	var newWorkDir string
 
-	if targetDir == "." {
-		// Stay in current directory
-		newWorkDir = t.currentWorkDir
-	} else if targetDir == ".." {
-		// Go to parent directory
-		newWorkDir = filepath.Dir(t.currentWorkDir)
-	} else if filepath.IsAbs(targetDir) {
-		// Absolute paths not allowed
-		return &ShellToolOutput{
-			StdOut:   "",
-			StdError: "cd: absolute paths are not allowed",
-			ExitCode: 1,
-			Error:    "cd: absolute paths are not allowed",
-			WorkDir:  t.currentWorkDir,
-		}, nil
-	} else {
-		// Relative path - resolve from current working directory
-		newWorkDir = filepath.Join(t.currentWorkDir, targetDir)
+	// Handle tilde (~) expansion - map to base directory (our sandbox "home")
+	if targetDir == "~" {
+		// Go directly to base directory
+		newWorkDir = t.baseDir
+	} else if strings.HasPrefix(targetDir, "~/") {
+		// Replace ~ with base directory, then append the rest
+		targetDir = targetDir[2:] // Remove "~/"
+		newWorkDir = filepath.Join(t.baseDir, targetDir)
+	}
+
+	if newWorkDir == "" { // Only process if not already set by tilde expansion
+		if targetDir == "." {
+			// Stay in current directory
+			newWorkDir = t.currentWorkDir
+		} else if targetDir == ".." {
+			// Go to parent directory
+			newWorkDir = filepath.Dir(t.currentWorkDir)
+		} else if filepath.IsAbs(targetDir) {
+			// Absolute paths not allowed
+			return &ShellToolOutput{
+				StdOut:   "",
+				StdError: "cd: absolute paths are not allowed",
+				ExitCode: 1,
+				Error:    "cd: absolute paths are not allowed",
+				WorkDir:  t.currentWorkDir,
+			}, nil
+		} else {
+			// Relative path - resolve from current working directory
+			newWorkDir = filepath.Join(t.currentWorkDir, targetDir)
+		}
 	}
 
 	// Clean the path
@@ -366,9 +412,9 @@ func (t *shellToolSet) handleChangeDirectory(_ context.Context, input ShellToolI
 	if err != nil || strings.HasPrefix(relPath, "..") {
 		return &ShellToolOutput{
 			StdOut:   "",
-			StdError: "cd: permission denied - directory is outside allowed base path",
+			StdError: "cd: access denied - cannot navigate outside the allowed workspace boundary",
 			ExitCode: 1,
-			Error:    "cd: permission denied - directory is outside allowed base path",
+			Error:    "cd: access denied - cannot navigate outside the allowed workspace boundary",
 			WorkDir:  t.currentWorkDir,
 		}, nil
 	}
@@ -415,7 +461,7 @@ func (f *shellToolSet) changeDirectoryTool() tool.CallableTool {
 	return function.NewFunctionTool(
 		f.changeDirectory,
 		function.WithName("change_directory"),
-		function.WithDescription("Change the current working directory. Only directories within the base directory are allowed. Supports relative paths, '.', and '..'."),
+		function.WithDescription("Change the current working directory. Only directories within the base directory are allowed. Supports relative paths, '.', '..', and tilde (~) for home directory."),
 	)
 }
 
