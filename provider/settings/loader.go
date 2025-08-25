@@ -51,7 +51,7 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 			Settings
 		}
 
-		if err := yaml.Unmarshal(content, &settingsData); err != nil {
+		if err := yaml.Unmarshal(content, &settingsData.Settings); err != nil {
 			return fmt.Errorf("failed to parse YAML settings in %s: %w", path, err)
 		}
 
@@ -68,7 +68,13 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 			return fmt.Errorf("duplicate agent id in settings %s: settings with agent id %s already exists", path, settingsData.AgentID)
 		}
 
-		settings[settingsData.AgentID] = &settingsData.Settings
+		// Create Settings struct from parsed data
+		settingsStruct := &Settings{
+			Model: settingsData.Model,
+			Agent: settingsData.Agent,
+		}
+
+		settings[settingsData.AgentID] = settingsStruct
 
 		return nil
 	})

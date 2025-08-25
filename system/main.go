@@ -11,6 +11,7 @@ import (
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/provider/chat"
 	"github.com/denkhaus/agents/shared"
+	"github.com/google/uuid"
 	"github.com/samber/do"
 )
 
@@ -55,7 +56,11 @@ func startup(ctx context.Context) error {
 	injector := di.NewContainer()
 	chatProvider := do.MustInvoke[chat.Provider](injector)
 
-	chat, err := chatProvider.GetChat(ctx, shared.AgentIDCoder)
+	chat, err := chatProvider.GetChat(ctx, shared.AgentIDCoder,
+		chat.WithAppName("denkhaus-system-chat"),
+		chat.WithSessionID(uuid.New()),
+		chat.WithUserID(uuid.New()),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to getchat for agent %s", shared.AgentIDCoder)
 	}

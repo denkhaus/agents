@@ -18,6 +18,7 @@ type ModelSettings struct {
 }
 
 type AgentSettings struct {
+	PlanningEnabled   bool             `yaml:"planning_enabled"`
 	StreamingEnabled  bool             `yaml:"streaming_enabled"`
 	Temperature       float64          `yaml:"temperature"`
 	ChannelBufferSize int              `yaml:"channel_buffer_size"`

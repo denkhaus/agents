@@ -4,6 +4,7 @@ model:
   model_name: "deepseek-chat"
 agent:
   streaming_enabled: true
+  planning_enabled: false
   temperature: 0.7
   channel_buffer_size: 100
   max_tokens: 2000

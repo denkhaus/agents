@@ -29,3 +29,6 @@ AVAILABLE TOOLS:
 {{range .tool_info}}
 	- {{.Name}}: {{.Description}}
 {{end}}
+
+When modifying small content
+  - Prefer to use the 'replace_content' tool instead of 'save_file'

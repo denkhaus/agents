@@ -14,26 +14,20 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
+	"trpc.group/trpc-go/trpc-agent-go/planner/react"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/file"
 )
 
 type agentSettingsImpl struct {
-	Settings
+	*Settings
 	workspace workspace.Workspace
 	prompt    prompt.Prompt
 }
 
-func NewConfiguration(workspace workspace.Workspace, prompt prompt.Prompt) (AgentConfiguration, error) {
-	return &agentSettingsImpl{
-		workspace: workspace,
-		prompt:    prompt,
-	}, nil
-}
-
 func NewConfigurationWithSettings(workspace workspace.Workspace, prompt prompt.Prompt, settings *Settings) (AgentConfiguration, error) {
 	return &agentSettingsImpl{
-		Settings:  *settings,
+		Settings:  settings,
 		workspace: workspace,
 		prompt:    prompt,
 	}, nil
@@ -55,7 +49,7 @@ func (p *agentSettingsImpl) getGenerationConfig() (model.GenerationConfig, error
 	}, nil
 }
 
-func (p *agentSettingsImpl) GetModel() (model.Model, error) {
+func (p *agentSettingsImpl) getModel() (model.Model, error) {
 	modelInstance := openai.New(p.Model.Name, openai.WithChannelBufferSize(
 		p.Model.ChannelBufferSize,
 	))
@@ -101,6 +95,8 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 		return nil, fmt.Errorf("failed to get generation config for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 
+	options = append(options, llmagent.WithGenerationConfig(generationConfig))
+
 	toolInfo := utils.GetToolInfoFromSets(ctx, toolSets)
 
 	promptContext := map[string]interface{}{
@@ -113,10 +109,21 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 	}
 
 	options = append(options, llmagent.WithInstruction(instruction))
+
+	model, err := p.getModel()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get model for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
+	}
+
+	options = append(options, llmagent.WithModel(model))
+
+	if p.Agent.PlanningEnabled {
+		reactPlanner := react.New()
+		options = append(options, llmagent.WithPlanner(reactPlanner))
+	}
+
 	options = append(options, llmagent.WithGlobalInstruction(p.prompt.GetGlobalInstruction()))
 	options = append(options, llmagent.WithDescription(p.prompt.GetDescription()))
-
-	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 	options = append(options, llmagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
 
 	return options, nil
