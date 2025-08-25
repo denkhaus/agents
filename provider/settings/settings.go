@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/denkhaus/agents/provider/prompt"
-	"github.com/denkhaus/agents/provider/workspace"
+	"github.com/denkhaus/agents/provider"
 	"github.com/denkhaus/agents/shared"
 
 	shelltoolset "github.com/denkhaus/agents/tools/shell"
 	"github.com/denkhaus/agents/utils"
-
+	"trpc.group/trpc-go/trpc-agent-go/agent"
+	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
+	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
@@ -21,11 +22,15 @@ import (
 
 type agentSettingsImpl struct {
 	*Settings
-	workspace workspace.Workspace
-	prompt    prompt.Prompt
+	workspace provider.Workspace
+	prompt    provider.Prompt
 }
 
-func NewConfigurationWithSettings(workspace workspace.Workspace, prompt prompt.Prompt, settings *Settings) (AgentConfiguration, error) {
+func NewConfiguration(
+	workspace provider.Workspace,
+	prompt provider.Prompt,
+	settings *Settings,
+) (provider.AgentConfiguration, error) {
 	return &agentSettingsImpl{
 		Settings:  settings,
 		workspace: workspace,
@@ -33,8 +38,12 @@ func NewConfigurationWithSettings(workspace workspace.Workspace, prompt prompt.P
 	}, nil
 }
 
-func (p *agentSettingsImpl) GetAgentName() string {
+func (p *agentSettingsImpl) GetName() string {
 	return p.Agent.Name
+}
+
+func (p *agentSettingsImpl) GetType() shared.AgentType {
+	return p.Agent.Type
 }
 
 func (p *agentSettingsImpl) IsStreamingEnabled() bool {
@@ -55,6 +64,24 @@ func (p *agentSettingsImpl) getModel() (model.Model, error) {
 	))
 
 	return modelInstance, nil
+}
+
+func (p *agentSettingsImpl) getSubAgents(
+	ctx context.Context,
+	provider provider.AgentProvider,
+) ([]agent.Agent, error) {
+
+	var subAgents []agent.Agent
+	for _, agentID := range p.Agent.SubAgents {
+		agent, _, err := provider.GetAgent(ctx, agentID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get agent with id %s", agentID)
+		}
+
+		subAgents = append(subAgents, agent)
+	}
+
+	return subAgents, nil
 }
 
 func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
@@ -80,7 +107,7 @@ func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
 	return []tool.ToolSet{fileToolSet, shellToolSet}, nil
 }
 
-func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, error) {
+func (p *agentSettingsImpl) GetDefaultOptions(ctx context.Context, agentProvider provider.AgentProvider) ([]llmagent.Option, error) {
 	options := []llmagent.Option{}
 
 	toolSets, err := p.getToolSets()
@@ -122,9 +149,59 @@ func (p *agentSettingsImpl) GetOptions(ctx context.Context) ([]llmagent.Option, 
 		options = append(options, llmagent.WithPlanner(reactPlanner))
 	}
 
+	subAgents, err := p.getSubAgents(ctx, agentProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subagents for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
+	}
+
+	if len(subAgents) > 0 {
+		options = append(options, llmagent.WithSubAgents(subAgents))
+	}
+
 	options = append(options, llmagent.WithGlobalInstruction(p.prompt.GetGlobalInstruction()))
 	options = append(options, llmagent.WithDescription(p.prompt.GetDescription()))
 	options = append(options, llmagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
+
+	return options, nil
+}
+
+func (p *agentSettingsImpl) GetCycleOptions(
+	ctx context.Context,
+	agentProvider provider.AgentProvider,
+) ([]cycleagent.Option, error) {
+	options := []cycleagent.Option{}
+
+	subAgents, err := p.getSubAgents(ctx, agentProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subagents for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
+	}
+
+	if len(subAgents) > 0 {
+		options = append(options, cycleagent.WithSubAgents(subAgents))
+	}
+
+	options = append(options, cycleagent.WithMaxIterations(p.Agent.MaxIterations))
+	options = append(options, cycleagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
+
+	return options, nil
+}
+
+func (p *agentSettingsImpl) GetChainOptions(
+	ctx context.Context,
+	agentProvider provider.AgentProvider,
+) ([]chainagent.Option, error) {
+	options := []chainagent.Option{}
+
+	subAgents, err := p.getSubAgents(ctx, agentProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subagents for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
+	}
+
+	if len(subAgents) > 0 {
+		options = append(options, chainagent.WithSubAgents(subAgents))
+	}
+
+	options = append(options, chainagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
 
 	return options, nil
 }

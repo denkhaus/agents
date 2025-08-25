@@ -10,7 +10,22 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/runner"
 )
 
+type State struct {
+	fullContent       string
+	toolCallsDetected bool
+	assistantStarted  bool
+	currentAgent      string
+}
+
+func (p *State) Reset() {
+	p.currentAgent = ""
+	p.fullContent = ""
+	p.toolCallsDetected = false
+	p.assistantStarted = false
+}
+
 type chatImpl struct {
+	State
 	Options
 	runner runner.Runner
 }
@@ -39,6 +54,8 @@ func NewChat(options Options) Chat {
 
 // processMessage handles a single message exchange.
 func (c *chatImpl) ProcessMessage(ctx context.Context, userMessage string) error {
+	c.Reset()
+
 	message := model.NewUserMessage(userMessage)
 
 	// Run the agent through the runner.
@@ -55,14 +72,8 @@ func (c *chatImpl) ProcessMessage(ctx context.Context, userMessage string) error
 func (c *chatImpl) processResponse(eventChan <-chan *event.Event) error {
 	fmt.Print("🤖 Assistant: ")
 
-	var (
-		fullContent       string
-		toolCallsDetected bool
-		assistantStarted  bool
-	)
-
 	for event := range eventChan {
-		if err := c.handleEvent(event, &toolCallsDetected, &assistantStarted, &fullContent); err != nil {
+		if err := c.handleEvent(event); err != nil {
 			return err
 		}
 
@@ -78,20 +89,17 @@ func (c *chatImpl) processResponse(eventChan <-chan *event.Event) error {
 }
 
 // handleEvent processes a single event from the event channel.
-func (c *chatImpl) handleEvent(
-	event *event.Event,
-	toolCallsDetected *bool,
-	assistantStarted *bool,
-	fullContent *string,
-) error {
+func (c *chatImpl) handleEvent(event *event.Event) error {
 	// Handle errors.
 	if event.Error != nil {
 		fmt.Printf("\n❌ Error: %s\n", event.Error.Message)
 		return nil
 	}
 
+	c.handleAgentTransition(event)
+
 	// Handle tool calls.
-	if c.handleToolCalls(event, toolCallsDetected, assistantStarted) {
+	if c.handleToolCalls(event) {
 		return nil
 	}
 
@@ -101,22 +109,34 @@ func (c *chatImpl) handleEvent(
 	}
 
 	// Handle content.
-	c.handleContent(event, toolCallsDetected, assistantStarted, fullContent)
+	c.handleContent(event)
 
 	return nil
 }
 
-// handleToolCalls detects and displays tool calls.
-func (c *chatImpl) handleToolCalls(
-	event *event.Event,
-	toolCallsDetected *bool,
-	assistantStarted *bool,
-) bool {
-	if len(event.Choices) > 0 && len(event.Choices[0].Message.ToolCalls) > 0 {
-		*toolCallsDetected = true
-		if *assistantStarted {
+// handleAgentTransition manages agent switching and display.
+func (c *chatImpl) handleAgentTransition(event *event.Event) {
+	if event.Author != c.currentAgent {
+		if c.assistantStarted {
 			fmt.Printf("\n")
 		}
+
+		c.currentAgent = event.Author
+		c.assistantStarted = true
+		c.toolCallsDetected = false
+
+		fmt.Printf("[%s]:\n", c.currentAgent)
+	}
+}
+
+// handleToolCalls detects and displays tool calls.
+func (c *chatImpl) handleToolCalls(event *event.Event) bool {
+	if len(event.Choices) > 0 && len(event.Choices[0].Message.ToolCalls) > 0 {
+		c.toolCallsDetected = true
+		if c.assistantStarted {
+			fmt.Printf("\n")
+		}
+
 		fmt.Printf("🔧 CallableTool calls initiated:\n")
 		for _, toolCall := range event.Choices[0].Message.ToolCalls {
 			fmt.Printf("   • %s (ID: %s)\n", toolCall.Function.Name, toolCall.ID)
@@ -150,18 +170,13 @@ func (c *chatImpl) handleToolResponses(event *event.Event) bool {
 }
 
 // handleContent processes and displays content.
-func (c *chatImpl) handleContent(
-	event *event.Event,
-	toolCallsDetected *bool,
-	assistantStarted *bool,
-	fullContent *string,
-) {
+func (c *chatImpl) handleContent(event *event.Event) {
 	if len(event.Choices) > 0 {
 		choice := event.Choices[0]
 		content := c.extractContent(choice)
 
 		if content != "" {
-			c.displayContent(content, toolCallsDetected, assistantStarted, fullContent)
+			c.displayContent(content)
 		}
 	}
 }
@@ -177,20 +192,16 @@ func (c *chatImpl) extractContent(choice model.Choice) string {
 }
 
 // displayContent prints content to console.
-func (c *chatImpl) displayContent(
-	content string,
-	toolCallsDetected *bool,
-	assistantStarted *bool,
-	fullContent *string,
-) {
-	if !*assistantStarted {
-		if *toolCallsDetected {
-			fmt.Printf("\n🤖 Assistant: ")
+func (c *chatImpl) displayContent(content string) {
+	if !c.assistantStarted {
+		if c.toolCallsDetected {
+			fmt.Printf("\n🤖 Assistant ")
 		}
-		*assistantStarted = true
+		c.assistantStarted = true
 	}
+
 	fmt.Print(content)
-	*fullContent += content
+	c.fullContent += content
 }
 
 // isToolEvent checks if an event is a tool response (not a final response).

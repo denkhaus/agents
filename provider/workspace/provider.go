@@ -3,25 +3,22 @@ package workspace
 import (
 	"fmt"
 
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 )
 
-type Provider interface {
-	GetWorkspace(agentID uuid.UUID) (Workspace, error)
-}
-
 type workspaceProviderImpl struct {
-	workspaces map[uuid.UUID]Workspace
+	workspaces map[uuid.UUID]provider.Workspace
 }
 
-func New(i *do.Injector) (Provider, error) {
+func New(i *do.Injector) (provider.WorkspaceProvider, error) {
 	return &workspaceProviderImpl{
-		workspaces: make(map[uuid.UUID]Workspace),
+		workspaces: make(map[uuid.UUID]provider.Workspace),
 	}, nil
 }
 
-func (p *workspaceProviderImpl) GetWorkspace(agentID uuid.UUID) (Workspace, error) {
+func (p *workspaceProviderImpl) GetWorkspace(agentID uuid.UUID) (provider.Workspace, error) {
 	if w, ok := p.workspaces[agentID]; ok {
 		return w, nil
 	}

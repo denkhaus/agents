@@ -1,19 +1,16 @@
 package workspace
 
 import (
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 )
-
-type Workspace interface {
-	GetWorkspacePath() (string, error)
-}
 
 type workspaceImpl struct {
 	agentID uuid.UUID
 	path    string
 }
 
-func NewWorkspace(agentID uuid.UUID, path string) (Workspace, error) {
+func NewWorkspace(agentID uuid.UUID, path string) (provider.Workspace, error) {
 	return &workspaceImpl{
 		agentID: agentID,
 		path:    path,

@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/denkhaus/agents/provider/agent"
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 )
 
 type chatProviderImpl struct {
-	agentProvider agent.Provider
+	agentProvider provider.AgentProvider
 }
 
-func New(i *do.Injector) (Provider, error) {
-	agentProvider := do.MustInvoke[agent.Provider](i)
+func New(i *do.Injector) (ChatProvider, error) {
+	agentProvider := do.MustInvoke[provider.AgentProvider](i)
 
 	return &chatProviderImpl{
 		agentProvider: agentProvider,

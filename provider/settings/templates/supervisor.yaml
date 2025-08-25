@@ -1,0 +1,15 @@
+agent_id: "550e8400-e29b-41d4-a716-446655440000"
+model:
+  channel_buffer_size: 512
+  model_name: "deepseek-chat"
+agent:
+  sub_agents:
+    - "550e8400-e29b-41d4-a716-446655440001"
+    - "550e8400-e29b-41d4-a716-446655440002"
+  streaming_enabled: true
+  planning_enabled: true
+  temperature: 0.7
+  channel_buffer_size: 100
+  max_tokens: 2000
+  role: "supervisor"
+  name: "Denkhaus ByteMan"

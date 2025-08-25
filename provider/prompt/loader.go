@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v2"
@@ -17,7 +18,7 @@ var promptFS embed.FS
 
 // NewPromptManager creates a new instance of PromptManager.
 // It takes an embed.FS for loading prompt templates.
-func NewPromptManager(fsys embed.FS, rootPath string) (PromptManager, error) {
+func NewPromptManager(fsys embed.FS, rootPath string) (provider.PromptManager, error) {
 	prompts := make(map[uuid.UUID]*promptEntry)
 
 	// Use fs.WalkDir to correctly traverse the embedded directory

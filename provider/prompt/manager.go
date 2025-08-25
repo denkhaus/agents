@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 )
 
@@ -10,11 +11,11 @@ type promptManagerImpl struct {
 }
 
 // NewManager creates a new instance of promptManagerImpl.
-func NewManager(prompts map[uuid.UUID]*promptEntry) PromptManager {
+func NewManager(prompts map[uuid.UUID]*promptEntry) provider.PromptManager {
 	return &promptManagerImpl{prompts: prompts}
 }
 
-func (pm *promptManagerImpl) GetPrompt(agentID uuid.UUID) (Prompt, error) {
+func (pm *promptManagerImpl) GetPrompt(agentID uuid.UUID) (provider.Prompt, error) {
 	entry, ok := pm.prompts[agentID]
 	if !ok {
 		return nil, &PromptError{

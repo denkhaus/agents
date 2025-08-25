@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 )
@@ -57,6 +58,15 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 
 		if settingsData.AgentID == uuid.Nil {
 			return fmt.Errorf("agent ID cannot be empty in %s", path)
+		}
+
+		if settingsData.Agent.Type == "" {
+			settingsData.Agent.Type = shared.AgentTypeDefault
+		}
+
+		// Validate the agent type
+		if err := settingsData.Agent.Type.Validate(); err != nil {
+			return fmt.Errorf("invalid agent type in %s: %w", path, err)
 		}
 
 		// Validate the agent role

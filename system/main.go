@@ -54,7 +54,7 @@ func enterChat(ctx context.Context, chat chat.Chat) error {
 func startup(ctx context.Context) error {
 
 	injector := di.NewContainer()
-	chatProvider := do.MustInvoke[chat.Provider](injector)
+	chatProvider := do.MustInvoke[chat.ChatProvider](injector)
 
 	chat, err := chatProvider.GetChat(ctx, shared.AgentIDCoder,
 		chat.WithAppName("denkhaus-system-chat"),

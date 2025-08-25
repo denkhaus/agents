@@ -7,22 +7,6 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-type Provider interface {
-	GetPrompt(agentID uuid.UUID, data interface{}) (Prompt, error)
-}
-
-// PromptManager defines the interface for managing and rendering prompts.
-type PromptManager interface {
-	GetPrompt(agentID uuid.UUID) (Prompt, error)
-}
-
-type Prompt interface {
-	GetName() string
-	GetDescription() string
-	GetGlobalInstruction() string
-	GetInstruction(data interface{}) (string, error)
-}
-
 // PromptMetadata represents the metadata extracted from the Markdown front matter.
 type PromptMetadata struct {
 	Name              string     `yaml:"name"`

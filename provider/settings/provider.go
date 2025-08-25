@@ -3,21 +3,20 @@ package settings
 import (
 	"fmt"
 
-	"github.com/denkhaus/agents/provider/prompt"
-	"github.com/denkhaus/agents/provider/workspace"
+	"github.com/denkhaus/agents/provider"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 )
 
 type agentSettingsProviderImpl struct {
-	workspaceProvider workspace.Provider
-	promptProvider    prompt.Provider
+	workspaceProvider provider.WorkspaceProvider
+	promptProvider    provider.PromptProvider
 	settingsManager   SettingsManager
 }
 
-func New(i *do.Injector) (Provider, error) {
-	workspaceProvider := do.MustInvoke[workspace.Provider](i)
-	promptProvider := do.MustInvoke[prompt.Provider](i)
+func New(i *do.Injector) (provider.SettingsProvider, error) {
+	workspaceProvider := do.MustInvoke[provider.WorkspaceProvider](i)
+	promptProvider := do.MustInvoke[provider.PromptProvider](i)
 
 	settingsManager, err := NewSettingsManager(SettingsFS, "templates")
 	if err != nil {
@@ -31,7 +30,7 @@ func New(i *do.Injector) (Provider, error) {
 	}, nil
 }
 
-func (p *agentSettingsProviderImpl) GetAgentConfiguration(agentID uuid.UUID) (AgentConfiguration, error) {
+func (p *agentSettingsProviderImpl) GetAgentConfiguration(agentID uuid.UUID) (provider.AgentConfiguration, error) {
 	workspace, err := p.workspaceProvider.GetWorkspace(agentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workspace for agent %s", agentID)
@@ -47,5 +46,5 @@ func (p *agentSettingsProviderImpl) GetAgentConfiguration(agentID uuid.UUID) (Ag
 		return nil, fmt.Errorf("failed to get settings for agent %s", agentID)
 	}
 
-	return NewConfigurationWithSettings(workspace, prompt, settings)
+	return NewConfiguration(workspace, prompt, settings)
 }
