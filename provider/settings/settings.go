@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/provider"
 	"github.com/denkhaus/agents/shared"
+	"go.uber.org/zap"
 
-	shelltoolset "github.com/denkhaus/agents/tools/shell"
 	"github.com/denkhaus/agents/utils"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
@@ -18,7 +19,6 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/planner/react"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
-	"trpc.group/trpc-go/trpc-agent-go/tool/file"
 )
 
 type agentSettingsImpl struct {
@@ -85,27 +85,45 @@ func (p *agentSettingsImpl) getSubAgents(
 	return subAgents, nil
 }
 
-func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
-	workspacePath, err := p.workspace.GetWorkspacePath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
-	}
-	// Create file operation tools.
-	fileToolSet, err := file.NewToolSet(
-		file.WithBaseDir(workspacePath),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create file tool set: %w", err)
+// getToolsFromOptions processes llmagent.Option, extracts tools, and deduplicates them.
+func (p *agentSettingsImpl) getToolsFromOptions(ctx context.Context, options ...llmagent.Option) ([]tool.Tool, error) {
+	var llmOptions llmagent.Options
+
+	// Helper function to add a tool to the map, handling duplicates.
+	addToolToMap := func(toolsMap map[string]tool.Tool, t tool.Tool) {
+		name := t.Declaration().Name
+		if _, exists := toolsMap[name]; exists {
+			logger.Log.Warn("getToolsFromOptions: tool already registered, skipping", zap.String("tool_name", name))
+		} else {
+			toolsMap[name] = t
+		}
 	}
 
-	shellToolSet, err := shelltoolset.NewToolSet(
-		shelltoolset.WithBaseDir(workspacePath),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create shell tool set: %w", err)
+	for _, opt := range options {
+		opt(&llmOptions)
 	}
 
-	return []tool.ToolSet{fileToolSet, shellToolSet}, nil
+	// toolsMap is used to deduplicate tools by their name.
+	toolsMap := make(map[string]tool.Tool)
+
+	for _, t := range llmOptions.Tools {
+		addToolToMap(toolsMap, t)
+	}
+
+	for _, toolSet := range llmOptions.ToolSets {
+		for _, t := range toolSet.Tools(ctx) {
+			addToolToMap(toolsMap, t)
+		}
+	}
+
+	// Convert the map of unique tools back to a slice.
+	// Pre-allocate slice capacity for minor performance optimization.
+	allTools := make([]tool.Tool, 0, len(toolsMap))
+	for _, t := range toolsMap {
+		allTools = append(allTools, t)
+	}
+
+	return allTools, nil
 }
 
 func (p *agentSettingsImpl) GetDefaultOptions(
@@ -117,12 +135,10 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 	options := []llmagent.Option{}
 	options = append(options, opt...)
 
-	toolSets, err := p.getToolSets()
+	tools, err := p.getToolsFromOptions(ctx, options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get toolsets for [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
-
-	options = append(options, llmagent.WithToolSets(toolSets))
 
 	generationConfig, err := p.getGenerationConfig()
 	if err != nil {
@@ -131,8 +147,7 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 
-	toolInfo := utils.GetToolInfoFromSets(ctx, toolSets)
-
+	toolInfo := utils.GetToolInfo(tools...)
 	promptContext := map[string]interface{}{
 		shared.ContextKeyToolInfo: toolInfo,
 	}

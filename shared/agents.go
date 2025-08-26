@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	AgentIDSupervisor = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
-	AgentIDCoder      = uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
-	AgentIDDebugger   = uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
+	AgentIDSupervisor     = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	AgentIDCoder          = uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
+	AgentIDDebugger       = uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
+	AgentIDProjectManager = uuid.MustParse("550e8400-e29b-41d4-a716-446655440003")
 )
 
 type AgentType string
@@ -45,16 +46,17 @@ func (p AgentRole) String() string {
 // Validate checks if the AgentRole is a valid defined role
 func (p AgentRole) Validate() error {
 	switch p {
-	case AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger:
+	case AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager:
 		return nil
 	default:
-		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s",
-			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger)
+		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s",
+			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager)
 	}
 }
 
 const (
-	AgentRoleSupervisor AgentRole = "supervisor"
-	AgentRoleCoder      AgentRole = "coder"
-	AgentRoleDebugger   AgentRole = "debugger"
+	AgentRoleSupervisor     AgentRole = "supervisor"
+	AgentRoleCoder          AgentRole = "coder"
+	AgentRoleDebugger       AgentRole = "debugger"
+	AgentRoleProjectManager AgentRole = "project-manager"
 )

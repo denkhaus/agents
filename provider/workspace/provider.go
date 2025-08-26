@@ -4,18 +4,18 @@ import (
 	"fmt"
 
 	"github.com/denkhaus/agents/provider"
-	ressourcemanager "github.com/denkhaus/agents/shared/resource_manager"
+	"github.com/denkhaus/agents/shared/resource"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 )
 
 type workspaceProviderImpl struct {
-	workspaces *ressourcemanager.Manager[provider.Workspace]
+	workspaces *resource.Manager[provider.Workspace]
 }
 
 func New(i *do.Injector) (provider.WorkspaceProvider, error) {
 	return &workspaceProviderImpl{
-		workspaces: ressourcemanager.New[provider.Workspace](),
+		workspaces: resource.NewManager[provider.Workspace](),
 	}, nil
 }
 

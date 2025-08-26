@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/denkhaus/agents/shared"
-	ressourcemanager "github.com/denkhaus/agents/shared/resource_manager"
+	"github.com/denkhaus/agents/shared/resource"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 )
@@ -22,7 +22,7 @@ type SettingsManager interface {
 
 // settingsManagerImpl is an unexported implementation of SettingsManager.
 type settingsManagerImpl struct {
-	settings *ressourcemanager.Manager[*Settings]
+	settings *resource.Manager[*Settings]
 }
 
 // NewSettingsManager creates a new instance of SettingsManager.
@@ -95,7 +95,7 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 	}
 
 	// Create generic manager and populate it
-	manager := ressourcemanager.New[*Settings]()
+	manager := resource.NewManager[*Settings]()
 	for id, setting := range settings {
 		manager.Set(id, setting)
 	}

@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"context"
-
 	"github.com/denkhaus/agents/shared"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
@@ -28,20 +26,16 @@ type ToolInfo struct {
 	Description string
 }
 
-func GetToolInfoFromSets(ctx context.Context, sets []tool.ToolSet) []shared.ToolInfo {
+func GetToolInfo(tools ...tool.Tool) []shared.ToolInfo {
 	var toolInfos []shared.ToolInfo
 
-	for _, toolSet := range sets {
-		tools := toolSet.Tools(ctx)
-
-		for _, tool := range tools {
-			decl := tool.Declaration()
-			toolInfo := shared.ToolInfo{
-				Name:        decl.Name,
-				Description: decl.Description,
-			}
-			toolInfos = append(toolInfos, toolInfo)
+	for _, tool := range tools {
+		decl := tool.Declaration()
+		toolInfo := shared.ToolInfo{
+			Name:        decl.Name,
+			Description: decl.Description,
 		}
+		toolInfos = append(toolInfos, toolInfo)
 	}
 
 	return toolInfos

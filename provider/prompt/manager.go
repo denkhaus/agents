@@ -2,19 +2,19 @@ package prompt
 
 import (
 	"github.com/denkhaus/agents/provider"
-	ressourcemanager "github.com/denkhaus/agents/shared/resource_manager"
+	"github.com/denkhaus/agents/shared/resource"
 
 	"github.com/google/uuid"
 )
 
 // promptManagerImpl is an unexported implementation of PromptManager.
 type promptManagerImpl struct {
-	prompts *ressourcemanager.Manager[*promptEntry]
+	prompts *resource.Manager[*promptEntry]
 }
 
 // NewManager creates a new instance of promptManagerImpl.
 func NewManager(prompts map[uuid.UUID]*promptEntry) provider.PromptManager {
-	manager := ressourcemanager.New[*promptEntry]()
+	manager := resource.NewManager[*promptEntry]()
 
 	// Populate the generic manager with existing prompts
 	for id, entry := range prompts {

@@ -1,4 +1,4 @@
-package ressourcemanager
+package resource
 
 import (
 	"fmt"
@@ -13,8 +13,8 @@ type Manager[T any] struct {
 	mu        sync.RWMutex
 }
 
-// New creates a new generic resource manager
-func New[T any]() *Manager[T] {
+// NewManager creates a new generic resource manager
+func NewManager[T any]() *Manager[T] {
 	return &Manager[T]{
 		resources: make(map[uuid.UUID]T),
 	}
@@ -136,6 +136,31 @@ func (rm *Manager[T]) UpdateWithError(id uuid.UUID, updater func(T) (T, error)) 
 	if !exists {
 		return fmt.Errorf("resource with id %s not found", id)
 	}
+
+	updatedResource, err := updater(resource)
+	if err != nil {
+		return err
+	}
+
+	rm.resources[id] = updatedResource
+	return nil
+}
+
+// Upsert atomically updates a resource, creating it if it doesn't exist
+func (rm *Manager[T]) Upsert(id uuid.UUID, updater func(T) T) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	resource, _ := rm.resources[id]
+	rm.resources[id] = updater(resource)
+}
+
+// UpsertWithError atomically updates a resource, creating it if it doesn't exist, with error handling
+func (rm *Manager[T]) UpsertWithError(id uuid.UUID, updater func(T) (T, error)) error {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	resource, _ := rm.resources[id]
 
 	updatedResource, err := updater(resource)
 	if err != nil {
