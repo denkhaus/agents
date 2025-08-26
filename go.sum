@@ -136,8 +136,7 @@ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
 github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 h1:QwWKgMY28TAXaDl+ExRDqGQltzXqN/xypdKP86niVn8=
 github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728/go.mod h1:1fEHWurg7pvf5SG6XNE5Q8UZmOwex51Mkx3SLhrW5B4=
-github.com/lestrrat-go/blackmagic v1.0.2 h1:Cg2gVSc9h7sz9NOByczrbUvLopQmXrfFx//N+AkAr5k=
-github.com/lestrrat-go/blackmagic v1.0.2/go.mod h1:UrEqBzIR2U6CnzVyUtfM6oZNMt/7O7Vohk2J0OGSAtU=
+github.com/lestrrat-go/blackmagic v1.0.3 h1:94HXkVLxkZO9vJI/w2u1T0DAoprShFd13xtnSINtDWs=
 github.com/lestrrat-go/blackmagic v1.0.3/go.mod h1:6AWFyKNNj0zEXQYfTMPfZrAXUWUfTIZ5ECEUEJaijtw=
 github.com/lestrrat-go/httpcc v1.0.1 h1:ydWCStUeJLkpYyjLDHihupbn2tYmZ7m22BGkcvZZrIE=
 github.com/lestrrat-go/httpcc v1.0.1/go.mod h1:qiltp3Mt56+55GPVCbTdM9MlqhvzyuL6W/NMDA8vA5E=
@@ -145,8 +144,6 @@ github.com/lestrrat-go/httprc v1.0.6 h1:qgmgIRhpvBqexMJjA/PmwSvhNk679oqD1RbovdCG
 github.com/lestrrat-go/httprc v1.0.6/go.mod h1:mwwz3JMTPBjHUkkDv/IGJ39aALInZLrhBp0X7KGUZlo=
 github.com/lestrrat-go/iter v1.0.2 h1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzltI=
 github.com/lestrrat-go/iter v1.0.2/go.mod h1:Momfcq3AnRlRjI5b5O8/G5/BvpzrhoFTZcn06fEOPt4=
-github.com/lestrrat-go/jwx/v2 v2.1.4 h1:uBCMmJX8oRZStmKuMMOFb0Yh9xmEMgNJLgjuKKt4/qc=
-github.com/lestrrat-go/jwx/v2 v2.1.4/go.mod h1:nWRbDFR1ALG2Z6GJbBXzfQaYyvn751KuuyySN2yR6is=
 github.com/lestrrat-go/jwx/v2 v2.1.6 h1:hxM1gfDILk/l5ylers6BX/Eq1m/pnxe9NBwW6lVfecA=
 github.com/lestrrat-go/jwx/v2 v2.1.6/go.mod h1:Y722kU5r/8mV7fYDifjug0r8FK8mZdw0K0GpJw/l8pU=
 github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=
@@ -386,8 +383,6 @@ trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3 h1:1U9oL8
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3/go.mod h1:Y7eKEMD7p6PKuJgvfr1WIVlbn5WvmdPoIx5MVxaMQWw=
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3 h1:xGG7k3iYVf1R+31TuYJUiPwoEUMM61E79REr1vUWCGo=
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3/go.mod h1:JqiD71KCWjZ/cYgIKge88H0LECY+YyiyEnGWbJjnAAE=
-trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250822091206-02470fa4ece0 h1:m/emykXSXX5p0N0+agiApVu/w7cQNMQZooOWxpJwTcE=
-trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250822091206-02470fa4ece0/go.mod h1:rdBybTpKpHJW5zhvrnjUk+4VzSp7sIDxs325V5P73Jw=
 trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250825120349-cac330182fde h1:zYi0q2qBUOJydffIWIEmMcS5uZZUXRoaBzWlgNMaRtU=
 trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250825120349-cac330182fde/go.mod h1:rdBybTpKpHJW5zhvrnjUk+4VzSp7sIDxs325V5P73Jw=
 trpc.group/trpc-go/trpc-agent-go/session/redis v0.0.4 h1:XDLyxtHwEO+nwZsx1Qf40wwBQwNXZTeu2BGVTXkbNFY=

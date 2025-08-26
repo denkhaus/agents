@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/denkhaus/agents/provider/generic"
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
@@ -21,7 +22,7 @@ type SettingsManager interface {
 
 // settingsManagerImpl is an unexported implementation of SettingsManager.
 type settingsManagerImpl struct {
-	settings map[uuid.UUID]*Settings
+	settings *generic.ResourceManager[*Settings]
 }
 
 // NewSettingsManager creates a new instance of SettingsManager.
@@ -93,11 +94,17 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 		return nil, err
 	}
 
-	return &settingsManagerImpl{settings: settings}, nil
+	// Create generic manager and populate it
+	manager := generic.NewResourceManager[*Settings]()
+	for id, setting := range settings {
+		manager.Set(id, setting)
+	}
+
+	return &settingsManagerImpl{settings: manager}, nil
 }
 
 func (sm *settingsManagerImpl) GetSettings(agentID uuid.UUID) (*Settings, error) {
-	settings, ok := sm.settings[agentID]
+	settings, ok := sm.settings.Get(agentID)
 	if !ok {
 		return nil, fmt.Errorf("settings not found for agent ID: %s", agentID)
 	}
