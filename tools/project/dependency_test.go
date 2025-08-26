@@ -18,10 +18,10 @@ func TestAddTaskDependency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create two tasks
-	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
 	// Add a dependency
@@ -48,10 +48,10 @@ func TestRemoveTaskDependency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create two tasks
-	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
 	// Add a dependency
@@ -80,13 +80,13 @@ func TestGetTaskDependencies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create three tasks
-	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
-	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5, 5)
+	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5)
 	require.NoError(t, err)
 
 	// Add dependencies
@@ -119,13 +119,13 @@ func TestGetDependentTasks(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create three tasks
-	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
-	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5, 5)
+	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5)
 	require.NoError(t, err)
 
 	// Add dependencies
@@ -158,13 +158,13 @@ func TestCircularDependencyDetection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create three tasks
-	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
-	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5, 5)
+	task3, err := manager.CreateTask(ctx, project.ID, nil, "Task 3", "Third task", 5)
 	require.NoError(t, err)
 
 	// Add a normal dependency
@@ -193,10 +193,10 @@ func TestCrossProjectDependencyRejection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create tasks in different projects
-	task1, err := manager.CreateTask(ctx, project1.ID, nil, "Task 1", "First task", 5, 5)
+	task1, err := manager.CreateTask(ctx, project1.ID, nil, "Task 1", "First task", 5)
 	require.NoError(t, err)
 
-	task2, err := manager.CreateTask(ctx, project2.ID, nil, "Task 2", "Second task", 5, 5)
+	task2, err := manager.CreateTask(ctx, project2.ID, nil, "Task 2", "Second task", 5)
 	require.NoError(t, err)
 
 	// Try to create a dependency between tasks in different projects - this should fail

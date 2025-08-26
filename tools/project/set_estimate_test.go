@@ -53,7 +53,6 @@ func TestSetTaskEstimate(t *testing.T) {
 		"title":       "Test Task",
 		"description": "A test task",
 		"complexity":  5,
-		"priority":    5,
 	}
 	taskInputJSON, _ := json.Marshal(taskInput)
 

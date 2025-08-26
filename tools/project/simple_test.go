@@ -28,11 +28,10 @@ func TestProjectTaskManager(t *testing.T) {
 	assert.Equal(t, project.Title, retrieved.Title)
 
 	// Test task creation
-	task, err := manager.CreateTask(ctx, project.ID, nil, "Test Task", "A test task", 5, 8)
+	task, err := manager.CreateTask(ctx, project.ID, nil, "Test Task", "A test task", 5)
 	require.NoError(t, err)
 	assert.Equal(t, "Test Task", task.Title)
 	assert.Equal(t, 5, task.Complexity)
-	assert.Equal(t, 8, task.Priority)
 	assert.Equal(t, 0, task.Depth)
 
 	// Test task retrieval
@@ -60,7 +59,7 @@ func TestProjectTaskManager(t *testing.T) {
 	assert.Equal(t, "Test Task", rootTasks[0].Title)
 
 	// Test subtask creation
-	subtask, err := manager.CreateTask(ctx, project.ID, &task.ID, "Subtask", "A subtask", 3, 6)
+	subtask, err := manager.CreateTask(ctx, project.ID, &task.ID, "Subtask", "A subtask", 3)
 	require.NoError(t, err)
 	assert.Equal(t, 1, subtask.Depth)
 	assert.Equal(t, task.ID, *subtask.ParentID)

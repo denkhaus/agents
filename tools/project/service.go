@@ -99,8 +99,8 @@ func (s *service) ListProjects(ctx context.Context) ([]*Project, error) {
 
 // Task operations
 
-func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity, priority int) (*Task, error) {
-	if err := s.validateTaskInput(title, description, complexity, priority); err != nil {
+func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int) (*Task, error) {
+	if err := s.validateTaskInput(title, description, complexity); err != nil {
 		return nil, err
 	}
 
@@ -144,7 +144,6 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 		Description: description,
 		State:       TaskStatePending,
 		Complexity:  complexity,
-		Priority:    priority,
 		Depth:       depth,
 	}
 
@@ -173,8 +172,8 @@ func (s *service) UpdateTaskState(ctx context.Context, taskID uuid.UUID, state T
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity, priority int, state TaskState) (*Task, error) {
-	if err := s.validateTaskInput(title, description, complexity, priority); err != nil {
+func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state TaskState) (*Task, error) {
+	if err := s.validateTaskInput(title, description, complexity); err != nil {
 		return nil, err
 	}
 
@@ -186,7 +185,6 @@ func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, descr
 	task.Title = title
 	task.Description = description
 	task.Complexity = complexity
-	task.Priority = priority
 	task.State = state
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
@@ -266,13 +264,8 @@ func (s *service) BulkUpdateTasks(ctx context.Context, taskIDs []uuid.UUID, upda
 	}
 
 	// Validate updates
-	if updates.State == nil && updates.Priority == nil && updates.Complexity == nil {
+	if updates.State == nil && updates.Complexity == nil {
 		return ValidationError{Field: "updates", Message: "at least one field must be specified for update"}
-	}
-
-	// Validate priority if provided
-	if updates.Priority != nil && (*updates.Priority < 1 || *updates.Priority > 10) {
-		return ValidationError{Field: "priority", Message: "priority must be between 1 and 10"}
 	}
 
 	// Validate complexity if provided
@@ -296,9 +289,6 @@ func (s *service) BulkUpdateTasks(ctx context.Context, taskIDs []uuid.UUID, upda
 			} else if task.State != TaskStateCompleted && task.CompletedAt != nil {
 				task.CompletedAt = nil
 			}
-		}
-		if updates.Priority != nil {
-			task.Priority = *updates.Priority
 		}
 		if updates.Complexity != nil {
 			task.Complexity = *updates.Complexity
@@ -336,7 +326,6 @@ func (s *service) DuplicateTask(ctx context.Context, taskID uuid.UUID, newProjec
 		Description: originalTask.Description,
 		State:       TaskStatePending, // Reset state to pending
 		Complexity:  originalTask.Complexity,
-		Priority:    originalTask.Priority,
 		Depth:       0, // Reset depth to 0 as it's now a root task
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -379,35 +368,72 @@ func (s *service) FindNextActionableTask(ctx context.Context, projectID uuid.UUI
 		return nil, fmt.Errorf("project not found: %w", err)
 	}
 
-	// Get all pending and in-progress tasks, sorted by priority
-	pendingState := TaskStatePending
-	inProgressState := TaskStateInProgress
-
-	pendingTasks, err := s.repo.ListTasks(ctx, TaskFilter{
-		ProjectID: &projectID,
-		State:     &pendingState,
-	})
+	// Get all tasks in the project
+	allTasks, err := s.repo.GetTasksByProject(ctx, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pending tasks: %w", err)
+		return nil, fmt.Errorf("failed to get project tasks: %w", err)
 	}
 
-	inProgressTasks, err := s.repo.ListTasks(ctx, TaskFilter{
-		ProjectID: &projectID,
-		State:     &inProgressState,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get in-progress tasks: %w", err)
+	// Create a map of task IDs to tasks for quick lookup
+	taskMap := make(map[uuid.UUID]*Task)
+	for _, task := range allTasks {
+		taskMap[task.ID] = task
 	}
 
-	// Prioritize in-progress tasks first, then pending
+	// Separate tasks by state
+	var pendingTasks, inProgressTasks []*Task
+	for _, task := range allTasks {
+		switch task.State {
+		case TaskStatePending:
+			pendingTasks = append(pendingTasks, task)
+		case TaskStateInProgress:
+			inProgressTasks = append(inProgressTasks, task)
+		}
+	}
+
+	// Prioritize in-progress tasks first
 	if len(inProgressTasks) > 0 {
-		return inProgressTasks[0], nil
-	}
-	if len(pendingTasks) > 0 {
-		return pendingTasks[0], nil
+		// For in-progress tasks, find one that has all its dependencies met
+		for _, task := range inProgressTasks {
+			if s.areDependenciesMet(task, taskMap) {
+				return task, nil
+			}
+		}
+		// If no in-progress task has its dependencies met, this indicates an inconsistency
+		// Since we prevent circular dependencies and should maintain data integrity,
+		// this should not happen. We'll return an error to highlight the issue.
+		return nil, fmt.Errorf("in-progress tasks exist but none have all dependencies met - possible data inconsistency")
 	}
 
+	// For pending tasks, find one that has all its dependencies met
+	for _, task := range pendingTasks {
+		if s.areDependenciesMet(task, taskMap) {
+			return task, nil
+		}
+	}
+
+	// If we reach here, it means either:
+	// 1. There are no pending or in-progress tasks
+	// 2. All pending tasks have unmet dependencies (potential deadlock scenario)
+	// Since we prevent circular dependencies, case 2 suggests a logical error in task setup
+	if len(pendingTasks) > 0 {
+		return nil, fmt.Errorf("pending tasks exist but none have all dependencies met - possible deadlock scenario")
+	}
+
+	// No actionable tasks found
 	return nil, fmt.Errorf("no actionable tasks found")
+}
+
+// areDependenciesMet checks if all dependencies of a task are completed
+func (s *service) areDependenciesMet(task *Task, taskMap map[uuid.UUID]*Task) bool {
+	for _, depID := range task.Dependencies {
+		depTask, exists := taskMap[depID]
+		if !exists || depTask.State != TaskStateCompleted {
+			// If a dependency doesn't exist or isn't completed, the dependencies aren't met
+			return false
+		}
+	}
+	return true
 }
 
 func (s *service) FindTasksNeedingBreakdown(ctx context.Context, projectID uuid.UUID) ([]*Task, error) {
@@ -475,7 +501,7 @@ func (s *service) validateProjectInput(title, description string) error {
 	return nil
 }
 
-func (s *service) validateTaskInput(title, description string, complexity, priority int) error {
+func (s *service) validateTaskInput(title, description string, complexity int) error {
 	if title == "" {
 		return ValidationError{Field: "title", Message: "title cannot be empty"}
 	}
@@ -487,9 +513,6 @@ func (s *service) validateTaskInput(title, description string, complexity, prior
 	}
 	if complexity < 1 || complexity > 10 {
 		return ValidationError{Field: "complexity", Message: "complexity must be between 1 and 10"}
-	}
-	if priority < 1 || priority > 10 {
-		return ValidationError{Field: "priority", Message: "priority must be between 1 and 10"}
 	}
 	return nil
 }

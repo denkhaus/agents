@@ -26,7 +26,6 @@ type Task struct {
 	Description  string      `json:"description"`
 	State        TaskState   `json:"state"`
 	Complexity   int         `json:"complexity"`             // Used for breakdown decisions
-	Priority     int         `json:"priority"`               // Higher number = higher priority
 	Depth        int         `json:"depth"`                  // 0 for root tasks
 	Estimate     *int64      `json:"estimate,omitempty"`     // Time estimate in minutes
 	Dependencies []uuid.UUID `json:"dependencies,omitempty"` // Tasks this task depends on
@@ -86,7 +85,6 @@ func (e ValidationError) Error() string {
 // TaskUpdates represents the fields that can be updated in bulk
 type TaskUpdates struct {
 	State      *TaskState `json:"state,omitempty"`
-	Priority   *int       `json:"priority,omitempty"`
 	Complexity *int       `json:"complexity,omitempty"`
 }
 
@@ -131,7 +129,6 @@ type createTaskArgs struct {
 	Title       string  `json:"title" description:"Task title (required, max 200 chars)"`
 	Description string  `json:"description" description:"Task description (optional, max 2000 chars)"`
 	Complexity  int     `json:"complexity" description:"Task complexity (1-10, used for breakdown decisions)"`
-	Priority    int     `json:"priority" description:"Task priority (1-10, higher = more important)"`
 }
 
 // updateTaskDescriptionArgs holds the input for updating a task description
@@ -188,7 +185,6 @@ type updateTaskArgs struct {
 	Title       string    `json:"title" description:"The new title for the task"`
 	Description string    `json:"description" description:"The new description for the task"`
 	Complexity  int       `json:"complexity" description:"The new complexity for the task (1-10)"`
-	Priority    int       `json:"priority" description:"The new priority for the task (1-10)"`
 	State       TaskState `json:"state" description:"The new state for the task"`
 }
 
@@ -295,7 +291,6 @@ type listTasksForProjectResult struct {
 type bulkUpdateTasksArgs struct {
 	TaskIDs    []string   `json:"task_ids" description:"The IDs of the tasks to update"`
 	State      *TaskState `json:"state,omitempty" description:"The new state for the tasks"`
-	Priority   *int       `json:"priority,omitempty" description:"The new priority for the tasks (1-10)"`
 	Complexity *int       `json:"complexity,omitempty" description:"The new complexity for the tasks (1-10)"`
 }
 

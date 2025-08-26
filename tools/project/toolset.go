@@ -220,7 +220,7 @@ func (pts *projectTaskToolSet) createTask(ctx context.Context, args createTaskAr
 
 	log.Printf("Creating task in project %s: %s", projectID, args.Title)
 
-	task, err := pts.manager.CreateTask(ctx, projectID, parentID, args.Title, args.Description, args.Complexity, args.Priority)
+	task, err := pts.manager.CreateTask(ctx, projectID, parentID, args.Title, args.Description, args.Complexity)
 	if err != nil {
 		log.Printf("Failed to create task: %v", err)
 		return nil, err
@@ -562,7 +562,7 @@ func (pts *projectTaskToolSet) updateTask(ctx context.Context, args updateTaskAr
 
 	log.Printf("Updating task: %s", taskID)
 
-	task, err := pts.manager.UpdateTask(ctx, taskID, args.Title, args.Description, args.Complexity, args.Priority, args.State)
+	task, err := pts.manager.UpdateTask(ctx, taskID, args.Title, args.Description, args.Complexity, args.State)
 	if err != nil {
 		log.Printf("Failed to update task: %v", err)
 		return updateTaskResult{}, err
@@ -729,7 +729,6 @@ func (pts *projectTaskToolSet) bulkUpdateTasks(ctx context.Context, args bulkUpd
 	// Create updates object
 	updates := TaskUpdates{
 		State:      args.State,
-		Priority:   args.Priority,
 		Complexity: args.Complexity,
 	}
 

@@ -83,7 +83,6 @@ func TestMemoryRepository(t *testing.T) {
 			Description: "A root task",
 			State:       TaskStatePending,
 			Complexity:  5,
-			Priority:    8,
 		}
 
 		err = repo.CreateTask(ctx, rootTask)
@@ -106,7 +105,6 @@ func TestMemoryRepository(t *testing.T) {
 			Description: "A subtask",
 			State:       TaskStatePending,
 			Complexity:  3,
-			Priority:    6,
 		}
 
 		err = repo.CreateTask(ctx, subtask)
@@ -187,7 +185,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Root1",
 			State:      TaskStatePending,
 			Complexity: 5,
-			Priority:   8,
 		}
 		err = repo.CreateTask(ctx, root1)
 		require.NoError(t, err)
@@ -199,7 +196,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Child1.1",
 			State:      TaskStatePending,
 			Complexity: 3,
-			Priority:   6,
 		}
 		err = repo.CreateTask(ctx, child11)
 		require.NoError(t, err)
@@ -211,7 +207,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Grandchild1.1.1",
 			State:      TaskStateCompleted,
 			Complexity: 2,
-			Priority:   4,
 		}
 		err = repo.CreateTask(ctx, grandchild111)
 		require.NoError(t, err)
@@ -223,7 +218,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Child1.2",
 			State:      TaskStateInProgress,
 			Complexity: 4,
-			Priority:   7,
 		}
 		err = repo.CreateTask(ctx, child12)
 		require.NoError(t, err)
@@ -234,7 +228,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Root2",
 			State:      TaskStatePending,
 			Complexity: 6,
-			Priority:   5,
 		}
 		err = repo.CreateTask(ctx, root2)
 		require.NoError(t, err)
@@ -243,8 +236,13 @@ func TestMemoryRepository(t *testing.T) {
 		children, err := repo.GetTasksByParent(ctx, root1.ID)
 		require.NoError(t, err)
 		assert.Len(t, children, 2)
-		assert.Equal(t, "Child1.2", children[0].Title) // Higher priority
-		assert.Equal(t, "Child1.1", children[1].Title)
+		// Note: Order may vary since we've removed priority-based sorting
+		childTitles := make(map[string]bool)
+		for _, child := range children {
+			childTitles[child.Title] = true
+		}
+		assert.True(t, childTitles["Child1.2"])
+		assert.True(t, childTitles["Child1.1"])
 
 		// Test parent task retrieval
 		parent, err := repo.GetParentTask(ctx, child11.ID)
@@ -300,7 +298,6 @@ func TestMemoryRepository(t *testing.T) {
 				Title:      "Completed Task",
 				State:      TaskStateCompleted,
 				Complexity: 5,
-				Priority:   5,
 			},
 			{
 				ID:         uuid.New(),
@@ -308,7 +305,6 @@ func TestMemoryRepository(t *testing.T) {
 				Title:      "In Progress Task",
 				State:      TaskStateInProgress,
 				Complexity: 3,
-				Priority:   6,
 			},
 			{
 				ID:         uuid.New(),
@@ -316,7 +312,6 @@ func TestMemoryRepository(t *testing.T) {
 				Title:      "Pending Task",
 				State:      TaskStatePending,
 				Complexity: 4,
-				Priority:   7,
 			},
 			{
 				ID:         uuid.New(),
@@ -324,7 +319,6 @@ func TestMemoryRepository(t *testing.T) {
 				Title:      "Blocked Task",
 				State:      TaskStateBlocked,
 				Complexity: 2,
-				Priority:   3,
 			},
 		}
 
@@ -378,7 +372,6 @@ func TestMemoryRepository(t *testing.T) {
 					Title:      fmt.Sprintf("Concurrent Task %d", taskNum),
 					State:      TaskStatePending,
 					Complexity: 5,
-					Priority:   5,
 				}
 				results <- repo.CreateTask(ctx, task)
 			}(i)
@@ -447,7 +440,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Invalid Task",
 			State:      TaskStatePending,
 			Complexity: 5,
-			Priority:   5,
 		}
 		err = repo.CreateTask(ctx, task)
 		assert.Error(t, err)
@@ -475,7 +467,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Root",
 			State:      TaskStatePending,
 			Complexity: 5,
-			Priority:   5,
 		}
 		err = repo.CreateTask(ctx, rootTask)
 		require.NoError(t, err)
@@ -487,7 +478,6 @@ func TestMemoryRepository(t *testing.T) {
 			Title:      "Child",
 			State:      TaskStatePending,
 			Complexity: 3,
-			Priority:   5,
 		}
 		err = repo.CreateTask(ctx, childTask)
 		require.NoError(t, err)

@@ -62,16 +62,16 @@ func (m *manager) ListProjects(ctx context.Context) ([]*Project, error) {
 
 // Task operations
 
-func (m *manager) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity, priority int) (*Task, error) {
-	return m.service.CreateTask(ctx, projectID, parentID, title, description, complexity, priority)
+func (m *manager) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int) (*Task, error) {
+	return m.service.CreateTask(ctx, projectID, parentID, title, description, complexity)
 }
 
 func (m *manager) GetTask(ctx context.Context, taskID uuid.UUID) (*Task, error) {
 	return m.service.GetTask(ctx, taskID)
 }
 
-func (m *manager) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity, priority int, state TaskState) (*Task, error) {
-	return m.service.UpdateTask(ctx, taskID, title, description, complexity, priority, state)
+func (m *manager) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state TaskState) (*Task, error) {
+	return m.service.UpdateTask(ctx, taskID, title, description, complexity, state)
 }
 
 func (m *manager) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string) (*Task, error) {

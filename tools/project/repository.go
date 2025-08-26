@@ -286,9 +286,6 @@ func (r *memoryRepository) ListTasks(ctx context.Context, filter TaskFilter) ([]
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {
-		if tasks[i].Priority != tasks[j].Priority {
-			return tasks[i].Priority > tasks[j].Priority
-		}
 		return tasks[i].CreatedAt.Before(tasks[j].CreatedAt)
 	})
 
@@ -340,11 +337,8 @@ func (r *memoryRepository) GetTasksByParent(ctx context.Context, parentID uuid.U
 		}
 	}
 
-	// Sort by priority then creation time
+	// Sort by creation time
 	sort.Slice(childTasks, func(i, j int) bool {
-		if childTasks[i].Priority != childTasks[j].Priority {
-			return childTasks[i].Priority > childTasks[j].Priority
-		}
 		return childTasks[i].CreatedAt.Before(childTasks[j].CreatedAt)
 	})
 
@@ -366,9 +360,6 @@ func (r *memoryRepository) GetRootTasks(ctx context.Context, projectID uuid.UUID
 	}
 
 	sort.Slice(rootTasks, func(i, j int) bool {
-		if rootTasks[i].Priority != rootTasks[j].Priority {
-			return rootTasks[i].Priority > rootTasks[j].Priority
-		}
 		return rootTasks[i].CreatedAt.Before(rootTasks[j].CreatedAt)
 	})
 

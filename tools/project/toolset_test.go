@@ -38,7 +38,7 @@ func TestProjectTaskToolSet(t *testing.T) {
 	// Test project creation
 	createProjectTool := findTool("create_project")
 	projectInput := map[string]interface{}{
-		"title":       "Test Project",
+		"title":   "Test Project",
 		"details": "A test project for unit testing",
 	}
 	projectInputJSON, _ := json.Marshal(projectInput)
@@ -53,14 +53,13 @@ func TestProjectTaskToolSet(t *testing.T) {
 
 	projectID := project.ID.String()
 
-	// Test task creation
+	// Test root task creation
 	createTaskTool := findTool("create_task")
 	taskInput := map[string]interface{}{
 		"project_id":  projectID,
 		"title":       "Root Task",
 		"description": "A root level task",
 		"complexity":  5,
-		"priority":    8,
 	}
 	taskInputJSON, _ := json.Marshal(taskInput)
 
@@ -70,7 +69,6 @@ func TestProjectTaskToolSet(t *testing.T) {
 	rootTask := taskResult.(*Task)
 	assert.Equal(t, "Root Task", rootTask.Title)
 	assert.Equal(t, 5, rootTask.Complexity)
-	assert.Equal(t, 8, rootTask.Priority)
 	assert.Equal(t, 0, rootTask.Depth)
 	assert.Nil(t, rootTask.ParentID)
 
@@ -81,7 +79,6 @@ func TestProjectTaskToolSet(t *testing.T) {
 		"title":       "Subtask 1",
 		"description": "A subtask",
 		"complexity":  3,
-		"priority":    6,
 	}
 	subtaskInputJSON, _ := json.Marshal(subtaskInput)
 
@@ -230,7 +227,6 @@ func TestProjectTaskToolSetConcurrency(t *testing.T) {
 				"title":       fmt.Sprintf("Concurrent Task %d", taskNum),
 				"description": fmt.Sprintf("Task created concurrently %d", taskNum),
 				"complexity":  5,
-				"priority":    5,
 			}
 			taskInputJSON, _ := json.Marshal(taskInput)
 
@@ -308,7 +304,6 @@ func TestUpdateDescriptionFunctions(t *testing.T) {
 		"title":       "Test Task",
 		"description": "A test task",
 		"complexity":  5,
-		"priority":    5,
 	}
 	taskInputJSON, _ := json.Marshal(taskInput)
 
@@ -343,7 +338,6 @@ func TestProjectTaskToolSetDepthLimits(t *testing.T) {
 		MaxTasksPerDepth:    2, // Only 2 tasks per depth level
 		ComplexityThreshold: 8,
 		MaxDepth:            2,
-		DefaultPriority:     5,
 	}
 
 	toolSet, err := NewToolSet(WithConfig(config))
@@ -374,7 +368,6 @@ func TestProjectTaskToolSetDepthLimits(t *testing.T) {
 			"title":       fmt.Sprintf("Root Task %d", i+1),
 			"description": "Root task",
 			"complexity":  5,
-			"priority":    5,
 		}
 		taskInputJSON, _ := json.Marshal(taskInput)
 
@@ -388,7 +381,6 @@ func TestProjectTaskToolSetDepthLimits(t *testing.T) {
 		"title":       "Root Task 3",
 		"description": "This should fail",
 		"complexity":  5,
-		"priority":    5,
 	}
 	taskInputJSON, _ := json.Marshal(taskInput)
 

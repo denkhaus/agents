@@ -48,14 +48,13 @@ func TestBulkUpdateTasks(t *testing.T) {
 
 	// Create tasks
 	createTaskTool := findTool("create_task")
-	
+
 	// Create first task
 	task1Input := map[string]interface{}{
 		"project_id":  projectID,
 		"title":       "Task 1",
 		"description": "First task",
 		"complexity":  5,
-		"priority":    5,
 	}
 	task1InputJSON, _ := json.Marshal(task1Input)
 
@@ -69,7 +68,6 @@ func TestBulkUpdateTasks(t *testing.T) {
 		"title":       "Task 2",
 		"description": "Second task",
 		"complexity":  3,
-		"priority":    7,
 	}
 	task2InputJSON, _ := json.Marshal(task2Input)
 
@@ -95,7 +93,7 @@ func TestBulkUpdateTasks(t *testing.T) {
 
 	// Verify tasks were updated
 	getTaskTool := findTool("get_task")
-	
+
 	// Check first task
 	getTask1Input := map[string]interface{}{
 		"task_id": task1.ID.String(),
@@ -176,14 +174,12 @@ func TestBulkUpdateTasksWithMultipleFields(t *testing.T) {
 
 	// Bulk update task with multiple fields
 	bulkUpdateTool := findTool("bulk_update_tasks")
-	newPriority := 8
 	newComplexity := 7
 	newState := "in-progress"
 	bulkInput := map[string]interface{}{
-		"task_ids":    []string{task.ID.String()},
-		"state":       newState,
-		"priority":    newPriority,
-		"complexity":  newComplexity,
+		"task_ids":   []string{task.ID.String()},
+		"state":      newState,
+		"complexity": newComplexity,
 	}
 	bulkInputJSON, _ := json.Marshal(bulkInput)
 
@@ -202,7 +198,6 @@ func TestBulkUpdateTasksWithMultipleFields(t *testing.T) {
 
 	updatedTask := getTaskResult.(*Task)
 	assert.Equal(t, TaskStateInProgress, updatedTask.State)
-	assert.Equal(t, 8, updatedTask.Priority)
 	assert.Equal(t, 7, updatedTask.Complexity)
 	assert.Nil(t, updatedTask.CompletedAt)
 }

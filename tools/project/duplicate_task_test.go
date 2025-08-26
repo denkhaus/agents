@@ -66,7 +66,6 @@ func TestDuplicateTask(t *testing.T) {
 		"title":       "Original Task",
 		"description": "This is the original task",
 		"complexity":  7,
-		"priority":    8,
 	}
 	taskInputJSON, _ := json.Marshal(taskInput)
 
@@ -95,7 +94,6 @@ func TestDuplicateTask(t *testing.T) {
 	assert.Equal(t, originalTask.Title, duplicatedTask.Title)
 	assert.Equal(t, originalTask.Description, duplicatedTask.Description)
 	assert.Equal(t, originalTask.Complexity, duplicatedTask.Complexity)
-	assert.Equal(t, originalTask.Priority, duplicatedTask.Priority)
 	assert.Equal(t, TaskStatePending, duplicatedTask.State)
 	assert.Equal(t, 0, duplicatedTask.Depth)
 	assert.Nil(t, duplicatedTask.ParentID)

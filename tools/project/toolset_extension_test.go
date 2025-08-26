@@ -52,15 +52,15 @@ func TestFindNextActionableTask(t *testing.T) {
 	// Create first task
 	task1Input := map[string]interface{}{
 		"project_id":  projectID,
-		"title":       "Task 1",
+		"title":       "First Task",
 		"description": "First task",
 		"complexity":  5,
-		"priority":    8,
 	}
 	task1InputJSON, _ := json.Marshal(task1Input)
 
-	_, err = createTaskTool.Call(ctx, task1InputJSON)
+	task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 	require.NoError(t, err)
+	task1 := task1Result.(*Task)
 
 	// Create second task with higher priority
 	task2Input := map[string]interface{}{
@@ -68,13 +68,15 @@ func TestFindNextActionableTask(t *testing.T) {
 		"title":       "Task 2",
 		"description": "Second task",
 		"complexity":  3,
-		"priority":    9,
 	}
 	task2InputJSON, _ := json.Marshal(task2Input)
 
 	task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 	require.NoError(t, err)
+
 	task2 := task2Result.(*Task)
+	assert.Equal(t, "Task 2", task2.Title)
+	assert.Equal(t, 3, task2.Complexity)
 
 	// Find next actionable task
 	findNextActionableTaskTool := findTool("find_next_actionable_task")
@@ -87,8 +89,25 @@ func TestFindNextActionableTask(t *testing.T) {
 	require.NoError(t, err)
 
 	result := findResult.(findNextActionableTaskResult)
-	assert.Equal(t, task2.ID, result.Task.ID)
-	assert.Equal(t, "Task 2", result.Task.Title)
+	// Either task could be returned as next actionable since we've removed priority
+	taskIDs := []string{task1.ID.String(), task2.ID.String()}
+	found := false
+	for _, id := range taskIDs {
+		if result.Task.ID.String() == id {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Expected task ID to be one of the created tasks")
+	taskTitles := []string{"First Task", "Task 2"}
+	titleFound := false
+	for _, title := range taskTitles {
+		if result.Task.Title == title {
+			titleFound = true
+			break
+		}
+	}
+	assert.True(t, titleFound, "Expected task title to be one of the created tasks")
 }
 
 func TestFindTasksNeedingBreakdown(t *testing.T) {

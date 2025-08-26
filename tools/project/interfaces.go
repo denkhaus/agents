@@ -18,9 +18,9 @@ type ProjectManager interface {
 	ListProjects(ctx context.Context) ([]*Project, error)
 
 	// Task operations
-	CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity, priority int) (*Task, error)
+	CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int) (*Task, error)
 	GetTask(ctx context.Context, taskID uuid.UUID) (*Task, error)
-	UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity, priority int, state TaskState) (*Task, error)
+	UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state TaskState) (*Task, error)
 	UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string) (*Task, error)
 	UpdateTaskState(ctx context.Context, taskID uuid.UUID, state TaskState) (*Task, error)
 	DeleteTask(ctx context.Context, taskID uuid.UUID) error
@@ -88,7 +88,6 @@ type Config struct {
 	MaxTasksPerDepth    int // Maximum tasks allowed per depth level (applies to all depths)
 	ComplexityThreshold int // Threshold for task breakdown suggestions
 	MaxDepth            int // Maximum allowed depth
-	DefaultPriority     int // Default priority for new tasks
 	MaxDescriptionLength int // Maximum length for descriptions
 }
 
@@ -98,7 +97,6 @@ func DefaultConfig() *Config {
 		MaxTasksPerDepth:    20, // Max 50 tasks per depth level
 		ComplexityThreshold: 8,
 		MaxDepth:            5,
-		DefaultPriority:     5,
 		MaxDescriptionLength: 2000, // Default maximum description length
 	}
 }

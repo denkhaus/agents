@@ -53,7 +53,6 @@ func TestListTasksForProject(t *testing.T) {
 		"title":       "Root Task",
 		"description": "A root task",
 		"complexity":  5,
-		"priority":    5,
 	}
 	rootTaskInputJSON, _ := json.Marshal(rootTaskInput)
 
@@ -68,7 +67,6 @@ func TestListTasksForProject(t *testing.T) {
 		"title":       "Sub Task",
 		"description": "A sub task",
 		"complexity":  3,
-		"priority":    3,
 	}
 	subTaskInputJSON, _ := json.Marshal(subTaskInput)
 
