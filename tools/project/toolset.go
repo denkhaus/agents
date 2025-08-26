@@ -394,17 +394,6 @@ func (pts *projectTaskToolSet) getParentTaskTool() tool.CallableTool {
 	)
 }
 
-// findNextActionableTaskArgs defines the arguments for finding the next actionable task
-type findNextActionableTaskArgs struct {
-	ProjectID string `json:"project_id" description:"The ID of the project to find the next actionable task in"`
-}
-
-// findNextActionableTaskResult defines the result of finding the next actionable task
-type findNextActionableTaskResult struct {
-	Task    *Task `json:"task,omitempty" description:"The next actionable task, if found"`
-	Message string `json:"message" description:"A message describing the result"`
-}
-
 // findNextActionableTask finds the next actionable task in a project
 func (pts *projectTaskToolSet) findNextActionableTask(ctx context.Context, args findNextActionableTaskArgs) (findNextActionableTaskResult, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
@@ -436,18 +425,6 @@ func (pts *projectTaskToolSet) findNextActionableTaskTool() tool.CallableTool {
 		function.WithName("find_next_actionable_task"),
 		function.WithDescription("Find the next actionable task in a project"),
 	)
-}
-
-// findTasksNeedingBreakdownArgs defines the arguments for finding tasks needing breakdown
-type findTasksNeedingBreakdownArgs struct {
-	ProjectID string `json:"project_id" description:"The ID of the project to find tasks needing breakdown in"`
-}
-
-// findTasksNeedingBreakdownResult defines the result of finding tasks needing breakdown
-type findTasksNeedingBreakdownResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks needing breakdown, if any"`
-	Count   int     `json:"count" description:"The number of tasks needing breakdown"`
-	Message string  `json:"message" description:"A message describing the result"`
 }
 
 // findTasksNeedingBreakdown finds tasks that need to be broken down
@@ -482,18 +459,6 @@ func (pts *projectTaskToolSet) findTasksNeedingBreakdownTool() tool.CallableTool
 	)
 }
 
-// getRootTasksArgs defines the arguments for getting root tasks
-type getRootTasksArgs struct {
-	ProjectID string `json:"project_id" description:"The ID of the project to get root tasks from"`
-}
-
-// getRootTasksResult defines the result of getting root tasks
-type getRootTasksResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The root tasks, if any"`
-	Count   int     `json:"count" description:"The number of root tasks"`
-	Message string  `json:"message" description:"A message describing the result"`
-}
-
 // getRootTasks gets the root tasks of a project
 func (pts *projectTaskToolSet) getRootTasks(ctx context.Context, args getRootTasksArgs) (getRootTasksResult, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
@@ -524,19 +489,6 @@ func (pts *projectTaskToolSet) getRootTasksTool() tool.CallableTool {
 		function.WithName("get_root_tasks"),
 		function.WithDescription("Get the root tasks of a project"),
 	)
-}
-
-// listTasksByStateArgs defines the arguments for listing tasks by state
-type listTasksByStateArgs struct {
-	ProjectID string    `json:"project_id" description:"The ID of the project to list tasks from"`
-	State     TaskState `json:"state" description:"The state of tasks to list"`
-}
-
-// listTasksByStateResult defines the result of listing tasks by state
-type listTasksByStateResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks with the specified state, if any"`
-	Count   int     `json:"count" description:"The number of tasks with the specified state"`
-	Message string  `json:"message" description:"A message describing the result"`
 }
 
 // listTasksByState lists tasks by their state
@@ -571,16 +523,6 @@ func (pts *projectTaskToolSet) listTasksByStateTool() tool.CallableTool {
 	)
 }
 
-// deleteTaskSubtreeArgs defines the arguments for deleting a task subtree
-type deleteTaskSubtreeArgs struct {
-	TaskID string `json:"task_id" description:"The ID of the task whose subtree to delete"`
-}
-
-// deleteTaskSubtreeResult defines the result of deleting a task subtree
-type deleteTaskSubtreeResult struct {
-	Message string `json:"message" description:"A message describing the result"`
-}
-
 // deleteTaskSubtree deletes a task and all its descendants
 func (pts *projectTaskToolSet) deleteTaskSubtree(ctx context.Context, args deleteTaskSubtreeArgs) (deleteTaskSubtreeResult, error) {
 	taskID, err := uuid.Parse(args.TaskID)
@@ -609,22 +551,6 @@ func (pts *projectTaskToolSet) deleteTaskSubtreeTool() tool.CallableTool {
 		function.WithName("delete_task_subtree"),
 		function.WithDescription("Delete a task and all its descendants"),
 	)
-}
-
-// updateTaskArgs defines the arguments for updating a task
-type updateTaskArgs struct {
-	TaskID      string    `json:"task_id" description:"The ID of the task to update"`
-	Title       string    `json:"title" description:"The new title for the task"`
-	Description string    `json:"description" description:"The new description for the task"`
-	Complexity  int       `json:"complexity" description:"The new complexity for the task (1-10)"`
-	Priority    int       `json:"priority" description:"The new priority for the task (1-10)"`
-	State       TaskState `json:"state" description:"The new state for the task"`
-}
-
-// updateTaskResult defines the result of updating a task
-type updateTaskResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
 }
 
 // updateTask updates a task with all fields
@@ -658,16 +584,6 @@ func (pts *projectTaskToolSet) updateTaskTool() tool.CallableTool {
 	)
 }
 
-// deleteTaskArgs defines the arguments for deleting a task
-type deleteTaskArgs struct {
-	TaskID string `json:"task_id" description:"The ID of the task to delete"`
-}
-
-// deleteTaskResult defines the result of deleting a task
-type deleteTaskResult struct {
-	Message string `json:"message" description:"A message describing the result"`
-}
-
 // deleteTask deletes a task
 func (pts *projectTaskToolSet) deleteTask(ctx context.Context, args deleteTaskArgs) (deleteTaskResult, error) {
 	taskID, err := uuid.Parse(args.TaskID)
@@ -696,19 +612,6 @@ func (pts *projectTaskToolSet) deleteTaskTool() tool.CallableTool {
 		function.WithName("delete_task"),
 		function.WithDescription("Delete a task"),
 	)
-}
-
-// updateProjectArgs defines the arguments for updating a project
-type updateProjectArgs struct {
-	ProjectID   string `json:"project_id" description:"The ID of the project to update"`
-	Title       string `json:"title" description:"The new title for the project"`
-	Description string `json:"description" description:"The new description for the project"`
-}
-
-// updateProjectResult defines the result of updating a project
-type updateProjectResult struct {
-	Project *Project `json:"project,omitempty" description:"The updated project"`
-	Message string   `json:"message" description:"A message describing the result"`
 }
 
 // updateProject updates a project with all fields
@@ -742,16 +645,6 @@ func (pts *projectTaskToolSet) updateProjectTool() tool.CallableTool {
 	)
 }
 
-// deleteProjectArgs defines the arguments for deleting a project
-type deleteProjectArgs struct {
-	ProjectID string `json:"project_id" description:"The ID of the project to delete"`
-}
-
-// deleteProjectResult defines the result of deleting a project
-type deleteProjectResult struct {
-	Message string `json:"message" description:"A message describing the result"`
-}
-
 // deleteProject deletes a project
 func (pts *projectTaskToolSet) deleteProject(ctx context.Context, args deleteProjectArgs) (deleteProjectResult, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
@@ -780,18 +673,6 @@ func (pts *projectTaskToolSet) deleteProjectTool() tool.CallableTool {
 		function.WithName("delete_project"),
 		function.WithDescription("Delete a project"),
 	)
-}
-
-// listTasksForProjectArgs defines the arguments for listing all tasks in a project
-type listTasksForProjectArgs struct {
-	ProjectID string `json:"project_id" description:"The ID of the project to list tasks from"`
-}
-
-// listTasksForProjectResult defines the result of listing all tasks in a project
-type listTasksForProjectResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"All tasks in the project"`
-	Count   int     `json:"count" description:"The number of tasks in the project"`
-	Message string  `json:"message" description:"A message describing the result"`
 }
 
 // listTasksForProject lists all tasks in a project regardless of hierarchy level
@@ -824,20 +705,6 @@ func (pts *projectTaskToolSet) listTasksForProjectTool() tool.CallableTool {
 		function.WithName("list_tasks_for_project"),
 		function.WithDescription("List all tasks in a project regardless of hierarchy level"),
 	)
-}
-
-// bulkUpdateTasksArgs defines the arguments for bulk updating tasks
-type bulkUpdateTasksArgs struct {
-	TaskIDs  []string     `json:"task_ids" description:"The IDs of the tasks to update"`
-	State    *TaskState   `json:"state,omitempty" description:"The new state for the tasks"`
-	Priority *int         `json:"priority,omitempty" description:"The new priority for the tasks (1-10)"`
-	Complexity *int       `json:"complexity,omitempty" description:"The new complexity for the tasks (1-10)"`
-}
-
-// bulkUpdateTasksResult defines the result of bulk updating tasks
-type bulkUpdateTasksResult struct {
-	Message string `json:"message" description:"A message describing the result"`
-	Count   int    `json:"count" description:"The number of tasks that were updated"`
 }
 
 // bulkUpdateTasks bulk updates multiple tasks with the same updates
@@ -890,18 +757,6 @@ func (pts *projectTaskToolSet) bulkUpdateTasksTool() tool.CallableTool {
 	)
 }
 
-// duplicateTaskArgs defines the arguments for duplicating a task
-type duplicateTaskArgs struct {
-	TaskID      string `json:"task_id" description:"The ID of the task to duplicate"`
-	NewProjectID string `json:"new_project_id" description:"The ID of the project to duplicate the task to"`
-}
-
-// duplicateTaskResult defines the result of duplicating a task
-type duplicateTaskResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The duplicated task"`
-	Message string `json:"message" description:"A message describing the result"`
-}
-
 // duplicateTask duplicates a task in a new project
 func (pts *projectTaskToolSet) duplicateTask(ctx context.Context, args duplicateTaskArgs) (duplicateTaskResult, error) {
 	taskID, err := uuid.Parse(args.TaskID)
@@ -936,18 +791,6 @@ func (pts *projectTaskToolSet) duplicateTaskTool() tool.CallableTool {
 		function.WithName("duplicate_task"),
 		function.WithDescription("Duplicate a task in a new project"),
 	)
-}
-
-// setTaskEstimateArgs defines the arguments for setting a task estimate
-type setTaskEstimateArgs struct {
-	TaskID   string `json:"task_id" description:"The ID of the task to set estimate for"`
-	Estimate int64  `json:"estimate" description:"The time estimate in minutes"`
-}
-
-// setTaskEstimateResult defines the result of setting a task estimate
-type setTaskEstimateResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
 }
 
 // setTaskEstimate sets the time estimate for a task
