@@ -30,6 +30,18 @@ func WithManager(manager ProjectManager) Option {
 	}
 }
 
+// WithRepository sets a custom repository instance
+func WithRepository(repo Repository) Option {
+	return func(pts *projectTaskToolSet) {
+		// Create a new manager with the custom repository
+		config := DefaultConfig()
+		if pts.manager != nil {
+			config = pts.manager.GetConfig()
+		}
+		pts.manager = NewManagerWithRepository(repo, config)
+	}
+}
+
 // WithConfig sets a custom configuration
 func WithConfig(config *Config) Option {
 	return func(pts *projectTaskToolSet) {

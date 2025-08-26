@@ -22,6 +22,15 @@ func NewManager(config *Config) ProjectManager {
 	}
 }
 
+// NewManagerWithRepository creates a new project task manager with custom repository
+func NewManagerWithRepository(repo Repository, config *Config) ProjectManager {
+	svc := newService(repo, config)
+
+	return &manager{
+		service: svc,
+	}
+}
+
 // NewToolSetProvider creates a new tool set provider
 func NewToolSetProvider() ToolSetProvider {
 	return &toolSetProvider{}

@@ -83,6 +83,37 @@ type repository interface {
 	GetTaskCountByDepth(ctx context.Context, projectID uuid.UUID, maxDepth int) (map[int]int, error)
 }
 
+// Repository is the exported interface for task and project persistence
+// This interface can be implemented by different storage backends
+type Repository interface {
+	// Project operations
+	CreateProject(ctx context.Context, project *Project) error
+	GetProject(ctx context.Context, id uuid.UUID) (*Project, error)
+	UpdateProject(ctx context.Context, project *Project) error
+	DeleteProject(ctx context.Context, id uuid.UUID) error
+	ListProjects(ctx context.Context) ([]*Project, error)
+
+	// Task operations
+	CreateTask(ctx context.Context, task *Task) error
+	GetTask(ctx context.Context, id uuid.UUID) (*Task, error)
+	UpdateTask(ctx context.Context, task *Task) error
+	DeleteTask(ctx context.Context, id uuid.UUID) error
+
+	// Task queries
+	ListTasks(ctx context.Context, filter TaskFilter) ([]*Task, error)
+	GetTasksByProject(ctx context.Context, projectID uuid.UUID) ([]*Task, error)
+	GetTasksByParent(ctx context.Context, parentID uuid.UUID) ([]*Task, error)
+	GetRootTasks(ctx context.Context, projectID uuid.UUID) ([]*Task, error)
+	GetParentTask(ctx context.Context, taskID uuid.UUID) (*Task, error)
+
+	// Hierarchy operations
+	DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID) error
+
+	// Metrics and analysis
+	GetProjectProgress(ctx context.Context, projectID uuid.UUID) (*ProjectProgress, error)
+	GetTaskCountByDepth(ctx context.Context, projectID uuid.UUID, maxDepth int) (map[int]int, error)
+}
+
 // Config holds configuration for the task management system
 type Config struct {
 	MaxTasksPerDepth    int // Maximum tasks allowed per depth level (applies to all depths)

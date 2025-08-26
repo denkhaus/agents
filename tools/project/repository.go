@@ -30,6 +30,8 @@ func newMemoryRepository() repository {
 
 // Project operations
 
+// Project operations
+
 func (r *memoryRepository) CreateProject(ctx context.Context, project *Project) error {
 	if r.projects.Exists(project.ID) {
 		return fmt.Errorf("project with ID %s already exists", project.ID)

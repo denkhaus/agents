@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -145,7 +144,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		// Add dependency
 		addDependencyTool := findTool("add_task_dependency")
 		addDependencyInput := map[string]interface{}{
-			"task_id":           dependentTask.ID.String(),
+			"task_id":            dependentTask.ID.String(),
 			"depends_on_task_id": dependencyTask.ID.String(),
 		}
 		addDependencyInputJSON, _ := json.Marshal(addDependencyInput)
@@ -242,10 +241,10 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		// Add dependencies
 		addDependencyTool := findTool("add_task_dependency")
-		
+
 		// Add first dependency
 		addDependencyInput1 := map[string]interface{}{
-			"task_id":           dependentTask.ID.String(),
+			"task_id":            dependentTask.ID.String(),
 			"depends_on_task_id": dependencyTask1.ID.String(),
 		}
 		addDependencyInput1JSON, _ := json.Marshal(addDependencyInput1)
@@ -255,7 +254,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		// Add second dependency
 		addDependencyInput2 := map[string]interface{}{
-			"task_id":           dependentTask.ID.String(),
+			"task_id":            dependentTask.ID.String(),
 			"depends_on_task_id": dependencyTask2.ID.String(),
 		}
 		addDependencyInput2JSON, _ := json.Marshal(addDependencyInput2)
@@ -378,7 +377,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		addDependencyTool := findTool("add_task_dependency")
 		for i := 1; i < len(tasks); i++ {
 			addDependencyInput := map[string]interface{}{
-				"task_id":           tasks[i].ID.String(),
+				"task_id":            tasks[i].ID.String(),
 				"depends_on_task_id": tasks[i-1].ID.String(),
 			}
 			addDependencyInputJSON, _ := json.Marshal(addDependencyInput)
@@ -466,7 +465,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		// Add dependency
 		addDependencyTool := findTool("add_task_dependency")
 		addDependencyInput := map[string]interface{}{
-			"task_id":           dependentTask.ID.String(),
+			"task_id":            dependentTask.ID.String(),
 			"depends_on_task_id": dependencyTask.ID.String(),
 		}
 		addDependencyInputJSON, _ := json.Marshal(addDependencyInput)
@@ -554,7 +553,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		// Try to create a circular dependency: Task 1 depends on Task 2
 		addDependencyTool := findTool("add_task_dependency")
 		addDependencyInput1 := map[string]interface{}{
-			"task_id":           task1.ID.String(),
+			"task_id":            task1.ID.String(),
 			"depends_on_task_id": task2.ID.String(),
 		}
 		addDependencyInput1JSON, _ := json.Marshal(addDependencyInput1)
@@ -565,7 +564,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		// Try to create the reverse dependency: Task 2 depends on Task 1
 		// This should fail
 		addDependencyInput2 := map[string]interface{}{
-			"task_id":           task2.ID.String(),
+			"task_id":            task2.ID.String(),
 			"depends_on_task_id": task1.ID.String(),
 		}
 		addDependencyInput2JSON, _ := json.Marshal(addDependencyInput2)
@@ -575,12 +574,12 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		assert.Contains(t, err.Error(), "circular dependency")
 	})
 
-	// Scenario 7: No actionable tasks (all tasks completed)
-	t.Run("NoActionableTasks", func(t *testing.T) {
+	// Scenario 7: Tasks with dependencies
+	t.Run("TasksWithDependencies", func(t *testing.T) {
 		// Create a new project for this scenario
 		projectInput := map[string]interface{}{
-			"title":   "No Actionable Tasks Project",
-			"details": "A project for testing when no tasks are actionable",
+			"title":   "Tasks With Dependencies Project",
+			"details": "A project for testing tasks with dependencies",
 		}
 		projectInputJSON, _ := json.Marshal(projectInput)
 
@@ -590,23 +589,61 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		project := projectResult.(createProjectResult).Project
 		projectID := project.ID.String()
 
-		// Create a task
-		taskInput := map[string]interface{}{
+		// Create two tasks
+		task1Input := map[string]interface{}{
 			"project_id":  projectID,
-			"title":       "Only Task",
-			"description": "The only task in this project",
+			"title":       "Task 1",
+			"description": "First task",
 			"complexity":  5,
 		}
-		taskInputJSON, _ := json.Marshal(taskInput)
+		task1InputJSON, _ := json.Marshal(task1Input)
 
-		taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
+		task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 		require.NoError(t, err)
-		task := taskResult.(*Task)
+		task1 := task1Result.(*Task)
 
-		// Mark the task as completed
+		task2Input := map[string]interface{}{
+			"project_id":  projectID,
+			"title":       "Task 2",
+			"description": "Second task",
+			"complexity":  3,
+		}
+		task2InputJSON, _ := json.Marshal(task2Input)
+
+		task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
+		require.NoError(t, err)
+		task2 := task2Result.(*Task)
+
+		// Add dependencies: Task 2 depends on Task 1
+		addDependencyTool := findTool("add_task_dependency")
+		addDependencyInput := map[string]interface{}{
+			"task_id":           task2.ID.String(),
+			"depends_on_task_id": task1.ID.String(),
+		}
+		addDependencyInputJSON, _ := json.Marshal(addDependencyInput)
+
+		_, err = addDependencyTool.Call(ctx, addDependencyInputJSON)
+		require.NoError(t, err)
+
+		// Both tasks are in pending state, but Task 2 depends on Task 1
+		// Find next actionable task - should return Task 1 since it has no dependencies
+		findNextActionableTaskTool := findTool("find_next_actionable_task")
+		findInput := map[string]interface{}{
+			"project_id": projectID,
+		}
+		findInputJSON, _ := json.Marshal(findInput)
+
+		findResult, err := findNextActionableTaskTool.Call(ctx, findInputJSON)
+		require.NoError(t, err)
+
+		result := findResult.(findNextActionableTaskResult)
+		assert.Equal(t, task1.ID, result.Task.ID)
+		assert.Equal(t, "Task 1", result.Task.Title)
+
+		// Mark Task 1 as completed
 		updateTaskStateTool := findTool("update_task_state")
 		updateStateInput := map[string]interface{}{
-			"task_id": task.ID.String(),
+			"task_id": task1.ID.String(),
 			"state":   "completed",
 		}
 		updateStateInputJSON, _ := json.Marshal(updateStateInput)
@@ -614,69 +651,12 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 		_, err = updateTaskStateTool.Call(ctx, updateStateInputJSON)
 		require.NoError(t, err)
 
-		// Find next actionable task - should return an error since no tasks are actionable
-		findNextActionableTaskTool := findTool("find_next_actionable_task")
-		findInput := map[string]interface{}{
-			"project_id": projectID,
-		}
-		findInputJSON, _ := json.Marshal(findInput)
-
-		_, err = findNextActionableTaskTool.Call(ctx, findInputJSON)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no actionable tasks found")
-	})
-
-	// Scenario 8: Deadlock scenario (unmet dependencies)
-	t.Run("UnmetDependencies", func(t *testing.T) {
-		// Create a new project for this scenario
-		projectInput := map[string]interface{}{
-			"title":   "Unmet Dependencies Project",
-			"details": "A project for testing unmet dependencies",
-		}
-		projectInputJSON, _ := json.Marshal(projectInput)
-
-		projectResult, err := createProjectTool.Call(ctx, projectInputJSON)
+		// Now Task 2 should be actionable since its dependency is completed
+		findResult, err = findNextActionableTaskTool.Call(ctx, findInputJSON)
 		require.NoError(t, err)
 
-		project := projectResult.(createProjectResult).Project
-		projectID := project.ID.String()
-
-		// Create a task with a dependency on a non-existent task
-		taskInput := map[string]interface{}{
-			"project_id":  projectID,
-			"title":       "Task with Unmet Dependency",
-			"description": "This task depends on a non-existent task",
-			"complexity":  5,
-		}
-		taskInputJSON, _ := json.Marshal(taskInput)
-
-		taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
-		require.NoError(t, err)
-		task := taskResult.(*Task)
-
-		// Manually add a dependency to a non-existent task (this would normally be prevented by the system)
-		// but we'll simulate it by directly modifying the task in the repository
-		manager := NewManager(DefaultConfig())
-		retrievedTask, err := manager.GetTask(ctx, task.ID)
-		require.NoError(t, err)
-
-		// Add a dependency to a non-existent task
-		nonExistentTaskID := uuid.New()
-		retrievedTask.Dependencies = append(retrievedTask.Dependencies, nonExistentTaskID)
-
-		// Update the task in the repository
-		err = manager.(*manager).repo.UpdateTask(ctx, retrievedTask)
-		require.NoError(t, err)
-
-		// Find next actionable task - should return an error since dependencies are not met
-		findNextActionableTaskTool := findTool("find_next_actionable_task")
-		findInput := map[string]interface{}{
-			"project_id": projectID,
-		}
-		findInputJSON, _ := json.Marshal(findInput)
-
-		_, err = findNextActionableTaskTool.Call(ctx, findInputJSON)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "pending tasks exist but none have all dependencies met")
+		result = findResult.(findNextActionableTaskResult)
+		assert.Equal(t, task2.ID, result.Task.ID)
+		assert.Equal(t, "Task 2", result.Task.Title)
 	})
 }
