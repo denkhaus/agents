@@ -13,6 +13,7 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
+	"trpc.group/trpc-go/trpc-agent-go/agent/parallelagent"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/planner/react"
@@ -107,8 +108,14 @@ func (p *agentSettingsImpl) getToolSets() ([]tool.ToolSet, error) {
 	return []tool.ToolSet{fileToolSet, shellToolSet}, nil
 }
 
-func (p *agentSettingsImpl) GetDefaultOptions(ctx context.Context, agentProvider provider.AgentProvider) ([]llmagent.Option, error) {
+func (p *agentSettingsImpl) GetDefaultOptions(
+	ctx context.Context,
+	agentProvider provider.AgentProvider,
+	opt ...llmagent.Option,
+) ([]llmagent.Option, error) {
+
 	options := []llmagent.Option{}
+	options = append(options, opt...)
 
 	toolSets, err := p.getToolSets()
 	if err != nil {
@@ -158,6 +165,9 @@ func (p *agentSettingsImpl) GetDefaultOptions(ctx context.Context, agentProvider
 		options = append(options, llmagent.WithSubAgents(subAgents))
 	}
 
+	options = append(options, llmagent.WithInputSchema(p.Agent.InputSchema))
+	options = append(options, llmagent.WithOutputSchema(p.Agent.OutputSchema))
+	options = append(options, llmagent.WithOutputKey(p.Agent.OutputKey))
 	options = append(options, llmagent.WithGlobalInstruction(p.prompt.GetGlobalInstruction()))
 	options = append(options, llmagent.WithDescription(p.prompt.GetDescription()))
 	options = append(options, llmagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
@@ -168,8 +178,11 @@ func (p *agentSettingsImpl) GetDefaultOptions(ctx context.Context, agentProvider
 func (p *agentSettingsImpl) GetCycleOptions(
 	ctx context.Context,
 	agentProvider provider.AgentProvider,
+	opt ...cycleagent.Option,
 ) ([]cycleagent.Option, error) {
+
 	options := []cycleagent.Option{}
+	options = append(options, opt...)
 
 	subAgents, err := p.getSubAgents(ctx, agentProvider)
 	if err != nil {
@@ -189,8 +202,11 @@ func (p *agentSettingsImpl) GetCycleOptions(
 func (p *agentSettingsImpl) GetChainOptions(
 	ctx context.Context,
 	agentProvider provider.AgentProvider,
+	opt ...chainagent.Option,
 ) ([]chainagent.Option, error) {
+
 	options := []chainagent.Option{}
+	options = append(options, opt...)
 
 	subAgents, err := p.getSubAgents(ctx, agentProvider)
 	if err != nil {
@@ -202,6 +218,29 @@ func (p *agentSettingsImpl) GetChainOptions(
 	}
 
 	options = append(options, chainagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
+
+	return options, nil
+}
+
+func (p *agentSettingsImpl) GetParallelOptions(
+	ctx context.Context,
+	agentProvider provider.AgentProvider,
+	opt ...parallelagent.Option,
+) ([]parallelagent.Option, error) {
+
+	options := []parallelagent.Option{}
+	options = append(options, opt...)
+
+	subAgents, err := p.getSubAgents(ctx, agentProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subagents for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
+	}
+
+	if len(subAgents) > 0 {
+		options = append(options, parallelagent.WithSubAgents(subAgents))
+	}
+
+	options = append(options, parallelagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
 
 	return options, nil
 }

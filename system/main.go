@@ -9,13 +9,18 @@ import (
 	"strings"
 
 	"github.com/denkhaus/agents/di"
+	"github.com/denkhaus/agents/provider"
+	"github.com/denkhaus/agents/provider/agent"
 	"github.com/denkhaus/agents/provider/chat"
 	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/tools/calculator"
 	"github.com/google/uuid"
 	"github.com/samber/do"
+	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
+	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
-func enterChat(ctx context.Context, chat chat.Chat) error {
+func enterChat(ctx context.Context, chat provider.Chat) error {
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -54,15 +59,21 @@ func enterChat(ctx context.Context, chat chat.Chat) error {
 func startup(ctx context.Context) error {
 
 	injector := di.NewContainer()
-	chatProvider := do.MustInvoke[chat.ChatProvider](injector)
+	chatProvider := do.MustInvoke[provider.ChatProvider](injector)
+	calculatorTool := do.MustInvokeNamed[tool.CallableTool](injector, calculator.ToolName)
 
 	chat, err := chatProvider.GetChat(ctx, shared.AgentIDCoder,
+		chat.WithAgentProviderOptions(
+			agent.WithLLMAgentOptions(
+				llmagent.WithTools([]tool.Tool{calculatorTool}),
+			),
+		),
 		chat.WithAppName("denkhaus-system-chat"),
 		chat.WithSessionID(uuid.New()),
 		chat.WithUserID(uuid.New()),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to getchat for agent %s", shared.AgentIDCoder)
+		return fmt.Errorf("failed to get chat for agent %s", shared.AgentIDCoder)
 	}
 
 	return enterChat(ctx, chat)

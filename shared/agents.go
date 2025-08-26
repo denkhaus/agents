@@ -21,18 +21,19 @@ func (p AgentType) String() string {
 // Validate checks if the AgentRole is a valid defined role
 func (p AgentType) Validate() error {
 	switch p {
-	case AgentTypeDefault, AgentTypeChain, AgentTypeCycle:
+	case AgentTypeDefault, AgentTypeChain, AgentTypeCycle, AgentTypeParallel:
 		return nil
 	default:
-		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s",
-			p, AgentTypeDefault, AgentTypeChain, AgentTypeCycle)
+		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s",
+			p, AgentTypeDefault, AgentTypeChain, AgentTypeCycle, AgentTypeParallel)
 	}
 }
 
 const (
-	AgentTypeDefault AgentType = "default"
-	AgentTypeChain   AgentType = "chain"
-	AgentTypeCycle   AgentType = "cycle"
+	AgentTypeDefault  AgentType = "default"
+	AgentTypeChain    AgentType = "chain"
+	AgentTypeCycle    AgentType = "cycle"
+	AgentTypeParallel AgentType = "parallel"
 )
 
 type AgentRole string

@@ -13,7 +13,7 @@ type chatProviderImpl struct {
 	agentProvider provider.AgentProvider
 }
 
-func New(i *do.Injector) (ChatProvider, error) {
+func New(i *do.Injector) (provider.ChatProvider, error) {
 	agentProvider := do.MustInvoke[provider.AgentProvider](i)
 
 	return &chatProviderImpl{
@@ -21,22 +21,25 @@ func New(i *do.Injector) (ChatProvider, error) {
 	}, nil
 }
 
-func (p *chatProviderImpl) GetChat(ctx context.Context, agentID uuid.UUID, opts ...Option) (Chat, error) {
-	agent, streaming, err := p.agentProvider.GetAgent(ctx, agentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get agent with id %s", agentID)
-	}
+func (p *chatProviderImpl) GetChat(
+	ctx context.Context,
+	agentID uuid.UUID,
+	opts ...provider.ChatProviderOption,
+) (provider.Chat, error) {
 
-	var options Options = Options{
-		appName:   "generic-chat",
-		streaming: streaming,
-		agent:     agent,
+	var options provider.ChatProviderOptions = provider.ChatProviderOptions{
+		AppName: "generic-chat",
 	}
 
 	for _, opt := range opts {
 		opt(&options)
 	}
 
-	chat := NewChat(options)
+	agent, streaming, err := p.agentProvider.GetAgent(ctx, agentID, options.AgentProviderOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent with id %s", agentID)
+	}
+
+	chat := NewChat(agent, streaming, options)
 	return chat, nil
 }

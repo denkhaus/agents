@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/denkhaus/agents/provider"
+	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -26,25 +28,27 @@ func (p *State) Reset() {
 
 type chatImpl struct {
 	State
-	Options
-	runner runner.Runner
+	provider.ChatProviderOptions
+	runner    runner.Runner
+	streaming bool
 }
 
-func NewChat(options Options) Chat {
+func NewChat(agent agent.Agent, streaming bool, options provider.ChatProviderOptions) provider.Chat {
 	runnerOptions := []runner.Option{}
-	if options.sessionService != nil {
+	if options.SessionService != nil {
 		runnerOptions = append(runnerOptions,
 			runner.WithSessionService(
-				options.sessionService,
+				options.SessionService,
 			),
 		)
 	}
 
 	impl := &chatImpl{
-		Options: options,
+		streaming:           streaming,
+		ChatProviderOptions: options,
 		runner: runner.NewRunner(
-			options.appName,
-			options.agent,
+			options.AppName,
+			agent,
 			runnerOptions...,
 		),
 	}
@@ -59,7 +63,7 @@ func (c *chatImpl) ProcessMessage(ctx context.Context, userMessage string) error
 	message := model.NewUserMessage(userMessage)
 
 	// Run the agent through the runner.
-	eventChan, err := c.runner.Run(ctx, c.userID, c.sessionID, message)
+	eventChan, err := c.runner.Run(ctx, c.UserID, c.SessionID, message)
 	if err != nil {
 		return fmt.Errorf("failed to run agent: %w", err)
 	}

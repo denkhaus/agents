@@ -12,6 +12,7 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
+	"trpc.group/trpc-go/trpc-agent-go/agent/parallelagent"
 )
 
 type agentProviderImpl struct {
@@ -28,8 +29,9 @@ func New(i *do.Injector) (provider.AgentProvider, error) {
 func (p *agentProviderImpl) getDefaultAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
+	opt ...llmagent.Option,
 ) (agent.Agent, error) {
-	options, err := agentConfig.GetDefaultOptions(ctx, p)
+	options, err := agentConfig.GetDefaultOptions(ctx, p, opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +44,9 @@ func (p *agentProviderImpl) getDefaultAgent(
 func (p *agentProviderImpl) getChainAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
+	opt ...chainagent.Option,
 ) (agent.Agent, error) {
-	options, err := agentConfig.GetChainOptions(ctx, p)
+	options, err := agentConfig.GetChainOptions(ctx, p, opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +59,9 @@ func (p *agentProviderImpl) getChainAgent(
 func (p *agentProviderImpl) getCycleAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
+	opt ...cycleagent.Option,
 ) (agent.Agent, error) {
-	options, err := agentConfig.GetCycleOptions(ctx, p)
+	options, err := agentConfig.GetCycleOptions(ctx, p, opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +71,31 @@ func (p *agentProviderImpl) getCycleAgent(
 	), nil
 }
 
+func (p *agentProviderImpl) getParallelAgent(
+	ctx context.Context,
+	agentConfig provider.AgentConfiguration,
+	opt ...parallelagent.Option,
+) (agent.Agent, error) {
+	options, err := agentConfig.GetParallelOptions(ctx, p, opt...)
+	if err != nil {
+		return nil, err
+	}
+
+	return parallelagent.New(
+		agentConfig.GetName(), options...,
+	), nil
+}
+
 func (p *agentProviderImpl) GetAgent(
 	ctx context.Context,
 	agentID uuid.UUID,
+	opt ...provider.AgentProviderOption,
 ) (agent agent.Agent, isStreamingEnabled bool, err error) {
+
+	var options provider.AgentProviderOptions
+	for _, o := range opt {
+		o(&options)
+	}
 
 	agentConfig, err := p.settingsProvider.GetAgentConfiguration(agentID)
 	if err != nil {
@@ -79,16 +104,15 @@ func (p *agentProviderImpl) GetAgent(
 
 	switch agentConfig.GetType() {
 	case shared.AgentTypeDefault:
-		agent, err = p.getDefaultAgent(ctx, agentConfig)
-
+		agent, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
 	case shared.AgentTypeChain:
-		agent, err = p.getChainAgent(ctx, agentConfig)
-
+		agent, err = p.getChainAgent(ctx, agentConfig, options.ChainOpt...)
 	case shared.AgentTypeCycle:
-		agent, err = p.getCycleAgent(ctx, agentConfig)
-
+		agent, err = p.getCycleAgent(ctx, agentConfig, options.CycleOpt...)
+	case shared.AgentTypeParallel:
+		agent, err = p.getParallelAgent(ctx, agentConfig, options.ParallelOpt...)
 	default:
-		agent, err = p.getDefaultAgent(ctx, agentConfig)
+		agent, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
 	}
 
 	return agent, agentConfig.IsStreamingEnabled(), err
