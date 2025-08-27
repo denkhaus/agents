@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -16,53 +17,42 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
 	sessioninmemory "trpc.group/trpc-go/trpc-agent-go/session/inmemory"
-	"trpc.group/trpc-go/trpc-agent-go/tool"
 
-	messaging "github.com/denkhaus/agents/provider/agent"
+	"github.com/denkhaus/agents/logger"
+	"github.com/denkhaus/agents/messaging"
+	"github.com/denkhaus/agents/shared"
 )
 
-// AgentRunner represents an AI agent with messaging capabilities
 type AgentRunner struct {
-	ID      uuid.UUID
 	Runner  runner.Runner
-	Wrapper *messaging.MessagingWrapper
+	Wrapper shared.TheAgent
+	ID      uuid.UUID
 	Name    string
 }
 
-// ChatSystem manages the multi-agent chat
 type ChatSystem struct {
-	broker *messaging.MessageBroker
-	agents map[string]*AgentRunner
-	human  *HumanAgent
-}
-
-// HumanAgent represents the human participant
-type HumanAgent struct {
-	ID   uuid.UUID
-	Name string
+	applicationName string
+	human           agent.Agent
+	agents          map[string]*AgentRunner
+	broker          messaging.MessageBroker
 }
 
 // NewChatSystem creates a new chat system
-func NewChatSystem() *ChatSystem {
+func NewChatSystem(applicationName string) *ChatSystem {
 	// Create human agent
-	humanAgent := &HumanAgent{
-		ID:   uuid.New(),
-		Name: "Human",
-	}
-
+	humanAgent := shared.NewHumanAgent(shared.AgentInfoHuman)
 	broker := messaging.NewMessageBroker()
 
 	system := &ChatSystem{
-		broker: broker,
-		agents: make(map[string]*AgentRunner),
-		human:  humanAgent,
+		broker:          broker,
+		applicationName: applicationName,
+		agents:          make(map[string]*AgentRunner),
+		human:           humanAgent,
 	}
 
 	// Set up message listener to intercept agent-to-agent messages
 	system.setupMessageListener()
-
-	// Register human agent with broker (as a dummy agent for message routing)
-	system.registerHumanWithBroker()
+	system.broker.RegisterAgent(shared.AgentIDHuman, system.human)
 
 	return system
 }
@@ -87,8 +77,8 @@ func (cs *ChatSystem) setupMessageListener() {
 // getAgentNameByID returns the agent name for a given ID
 func (cs *ChatSystem) getAgentNameByID(id uuid.UUID) string {
 	// Check human
-	if cs.human.ID == id {
-		return cs.human.Name
+	if shared.AgentIDHuman == id {
+		return cs.human.Info().Name
 	}
 
 	// Check AI agents
@@ -110,18 +100,18 @@ func (cs *ChatSystem) getAgentInfoByAuthor(author string) (string, string) {
 			return name, authorID.String()
 		}
 	}
-	
+
 	// If not UUID or not found, check if it's already a name
 	for _, agent := range cs.agents {
 		if agent.Name == author {
 			return agent.Name, agent.ID.String()
 		}
 	}
-	
-	if cs.human.Name == author {
-		return cs.human.Name, cs.human.ID.String()
+
+	if cs.human.Info().Name == author {
+		return cs.human.Info().Name, shared.AgentIDHuman.String()
 	}
-	
+
 	// Fallback: return as-is
 	return author, author
 }
@@ -140,7 +130,7 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 		// Get the message channel for this agent
 		msgChan, err := cs.broker.GetMessageChannel(agent.ID)
 		if err != nil {
-			log.Printf("Failed to get message channel for agent %s: %v", agent.Name, err)
+			logger.Log.Error("failed to get message channel for agent", zap.String("agent", agent.Name), zap.Error(err))
 			return
 		}
 
@@ -155,7 +145,7 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 			// Send to the agent's runner
 			events, err := agent.Runner.Run(ctx, msg.From.String(), fmt.Sprintf("msg-%s", msg.ID), model.NewUserMessage(messageContent))
 			if err != nil {
-				log.Printf("Error processing message for agent %s: %v", agent.Name, err)
+				logger.Log.Error("failed to process message for agent", zap.String("agent", agent.Name), zap.Error(err))
 				continue
 			}
 
@@ -169,59 +159,20 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 	}()
 }
 
-// registerHumanWithBroker registers the human agent with the message broker
-func (cs *ChatSystem) registerHumanWithBroker() {
-	// Create a dummy agent for the human
-	humanAgent := &dummyHumanAgent{id: cs.human.ID, name: cs.human.Name}
-	cs.broker.RegisterAgentWithID(cs.human.ID, humanAgent)
-}
-
-// dummyHumanAgent implements the agent.Agent interface for the human
-type dummyHumanAgent struct {
-	id   uuid.UUID
-	name string
-}
-
-func (d *dummyHumanAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
-	// Humans don't process messages automatically, just return empty channel
-	ch := make(chan *event.Event)
-	close(ch)
-	return ch, nil
-}
-
-func (d *dummyHumanAgent) Info() agent.Info {
-	return agent.Info{
-		Name:        d.name,
-		Description: "Human user",
-	}
-}
-
-func (d *dummyHumanAgent) Tools() []tool.Tool {
-	return []tool.Tool{}
-}
-
-func (d *dummyHumanAgent) FindSubAgent(name string) agent.Agent {
-	return nil
-}
-
-func (d *dummyHumanAgent) SubAgents() []agent.Agent {
-	return []agent.Agent{}
-}
-
 // CreateAgent creates an AI agent and adds it to the system
-func (cs *ChatSystem) CreateAgent(appName, name, description, instruction string) error {
+func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction string) error {
 	// Get the pre-registered agent entry
-	agentEntry, exists := cs.agents[strings.ToLower(name)]
+	agentEntry, exists := cs.agents[strings.ToLower(agentName)]
 	if !exists {
-		return fmt.Errorf("agent %s not pre-registered", name)
+		return fmt.Errorf("agent %s not pre-registered", agentName)
 	}
 
 	// Create base agent with full instruction including agent list (excluding self)
 	baseAgent := llmagent.New(
-		name,
+		agentName,
 		llmagent.WithModel(openai.New("deepseek-chat")),
-		llmagent.WithDescription(description),
-		llmagent.WithInstruction(instruction+cs.generateAgentListForAgent(name)),
+		llmagent.WithDescription(agentDescription),
+		llmagent.WithInstruction(instruction+cs.generateAgentListForAgent(agentName)),
 		llmagent.WithGenerationConfig(model.GenerationConfig{
 			MaxTokens:   intPtr(500),
 			Temperature: floatPtr(0.7),
@@ -230,13 +181,15 @@ func (cs *ChatSystem) CreateAgent(appName, name, description, instruction string
 	)
 
 	// Wrap with messaging using predefined ID
-	wrapper := messaging.NewMessagingWrapperWithID(baseAgent, cs.broker, agentEntry.ID)
+	wrapper := messaging.NewMessagingWrapper(baseAgent, cs.broker, agentEntry.ID)
 
 	// Create runner
 	agentRunner := runner.NewRunner(
-		appName,
+		cs.applicationName,
 		wrapper,
-		runner.WithSessionService(sessioninmemory.NewSessionService()),
+		runner.WithSessionService(
+			sessioninmemory.NewSessionService(),
+		),
 	)
 
 	// Update the agent entry with actual components
@@ -254,7 +207,7 @@ func (cs *ChatSystem) generateAgentListForAgent(excludeAgentName string) string 
 	result := "\n\nKnown agents you can message:\n"
 
 	// Add human agent
-	result += fmt.Sprintf("- %s (ID: %s) - Human user you can communicate with\n", cs.human.Name, cs.human.ID.String())
+	result += fmt.Sprintf("- %s (ID: %s) - Human user you can communicate with\n", cs.human.Info().Name, shared.AgentIDHuman.String())
 
 	// Add other AI agents (excluding self)
 	for _, agent := range cs.agents {
@@ -275,14 +228,14 @@ func (cs *ChatSystem) SendMessage(ctx context.Context, agentName, message string
 	}
 
 	userMessage := model.NewUserMessage(message)
-	return agent.Runner.Run(ctx, "user", "session-"+agentName, userMessage)
+	return agent.Runner.Run(ctx, agentName, "session-"+agentName, userMessage)
 }
 
 // ListAgents returns a list of agent names
 func (cs *ChatSystem) ListAgents() []string {
 	var names []string
 	// Add human first
-	names = append(names, cs.human.Name)
+	names = append(names, cs.human.Info().Name)
 	// Add AI agents
 	for _, agent := range cs.agents {
 		names = append(names, agent.Name)
@@ -300,7 +253,7 @@ func main() {
 	}
 
 	// Create system
-	system := NewChatSystem()
+	system := NewChatSystem("multi-agent-chat")
 
 	// Create agents in two phases: first register IDs, then create with full knowledge
 	fmt.Println("Creating agents...")
@@ -333,7 +286,6 @@ func main() {
 	// Phase 2: Create actual agents with full knowledge
 	for _, meta := range agentMetadata {
 		err := system.CreateAgent(
-			"multi-agent-chat",
 			meta.name,
 			meta.description,
 			meta.instruction,
@@ -384,8 +336,8 @@ func startChat(system *ChatSystem) {
 				for _, agentName := range agents {
 					if agentName == "Human" {
 						fmt.Printf("- %s (ID: %s) [Type: Human]\n",
-							system.human.Name,
-							shortenID(system.human.ID.String()))
+							system.human.Info().Name,
+							shortenID(shared.AgentIDHuman.String()))
 					} else {
 						for _, agent := range system.agents {
 							if agent.Name == agentName {
@@ -424,12 +376,12 @@ func startChat(system *ChatSystem) {
 			}
 
 			fmt.Printf(">> Message delivered to %s - Processing...\n", agentName)
-			
+
 			// Process events
 			for event := range events {
 				system.processEvent(event)
 			}
-			
+
 			fmt.Printf(">> %s finished processing\n", agentName)
 			continue
 		}
@@ -470,65 +422,44 @@ func (cs *ChatSystem) processEvent(event *event.Event) {
 	}
 }
 
-// printWithBorder prints a message with a decorative border
+// printWithBorder prints a message with a simple, clean border
 func printWithBorder(sender, message string) {
+	// Fixed width for consistency
+	const width = 120
+
+	// Print top border
+	fmt.Println(strings.Repeat("=", width))
+
+	// Print sender with padding
+	senderLine := fmt.Sprintf("[ %s ]", sender)
+	if len(senderLine) > width-2 {
+		senderLine = senderLine[:width-5] + "..."
+	}
+	fmt.Printf("%s%s\n", senderLine, strings.Repeat(" ", width-len(senderLine)))
+
+	// Print separator
+	fmt.Println(strings.Repeat("-", width))
+
+	// Print message lines
 	lines := strings.Split(message, "\n")
-	maxLen := len(sender) + 4
-
-	// Find the longest line for border width
 	for _, line := range lines {
-		if len(line)+4 > maxLen {
-			maxLen = len(line) + 4
+		if len(line) > width-2 {
+			// Split long lines
+			for len(line) > width-2 {
+				fmt.Printf("%s\n", line[:width-2])
+				line = line[width-2:]
+			}
+			if len(line) > 0 {
+				fmt.Printf("%s\n", line)
+			}
+		} else {
+			fmt.Printf("%s\n", line)
 		}
 	}
 
-	// Limit maximum width to prevent overly wide displays
-	if maxLen > 80 {
-		maxLen = 80
-	} else if maxLen < 50 {
-		maxLen = 50
-	}
-
-	// Top border
-	fmt.Printf("+")
-	for i := 0; i < maxLen-2; i++ {
-		fmt.Printf("-")
-	}
-	fmt.Printf("+\n")
-
-	// Sender line
-	fmt.Printf("| %s", sender)
-	for i := len(sender) + 2; i < maxLen-1; i++ {
-		fmt.Printf(" ")
-	}
-	fmt.Printf("|\n")
-
-	// Separator
-	fmt.Printf("+")
-	for i := 0; i < maxLen-2; i++ {
-		fmt.Printf("-")
-	}
-	fmt.Printf("+\n")
-
-	// Message lines (simplified to avoid formatting issues)
-	for _, line := range lines {
-		if len(line) > maxLen-4 {
-			// Simple truncation for very long lines
-			line = line[:maxLen-7] + "..."
-		}
-		fmt.Printf("| %s", line)
-		for i := len(line) + 2; i < maxLen-1; i++ {
-			fmt.Printf(" ")
-		}
-		fmt.Printf("|\n")
-	}
-
-	// Bottom border
-	fmt.Printf("+")
-	for i := 0; i < maxLen-2; i++ {
-		fmt.Printf("-")
-	}
-	fmt.Printf("+\n\n")
+	// Print bottom border
+	fmt.Println(strings.Repeat("=", width))
+	fmt.Println() // Extra line for spacing
 }
 
 // Helper functions

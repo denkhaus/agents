@@ -38,6 +38,7 @@ type AgentConfiguration interface {
 }
 
 type SettingsProvider interface {
+	GetActiveAgents() ([]shared.AgentInfo, error)
 	GetAgentConfiguration(agentID uuid.UUID) (AgentConfiguration, error)
 }
 

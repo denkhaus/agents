@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/denkhaus/agents/shared"
+	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
@@ -39,4 +40,19 @@ func GetToolInfo(tools ...tool.Tool) []shared.ToolInfo {
 	}
 
 	return toolInfos
+}
+
+func GetAgentInfoForAgent(agentID uuid.UUID, availableAgents ...shared.AgentInfo) []shared.AgentInfo {
+	var info []shared.AgentInfo = []shared.AgentInfo{
+		shared.AgentInfoHuman,
+	}
+
+	for _, agent := range availableAgents {
+		// Add other AI agents (excluding self)
+		if agent.ID != agentID {
+			info = append(info, agent)
+		}
+	}
+
+	return info
 }

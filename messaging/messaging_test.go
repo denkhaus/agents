@@ -1,4 +1,4 @@
-package agent
+package messaging
 
 import (
 	"context"
@@ -19,13 +19,13 @@ type TestAgent struct {
 
 func (ta *TestAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
 	eventChan := make(chan *event.Event, 1)
-	
+
 	go func() {
 		defer close(eventChan)
-		
+
 		// Create a message in the content
 		message := model.NewAssistantMessage("Test message from " + ta.name)
-		
+
 		response := &model.Response{
 			Object:    model.ObjectTypeChatCompletion,
 			Done:      true,
@@ -33,7 +33,7 @@ func (ta *TestAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-c
 			Choices:   []model.Choice{{Message: message}},
 			Timestamp: time.Now(),
 		}
-		
+
 		event := &event.Event{
 			Response:     response,
 			InvocationID: uuid.New().String(),
@@ -41,10 +41,10 @@ func (ta *TestAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-c
 			ID:           uuid.New().String(),
 			Timestamp:    time.Now(),
 		}
-		
+
 		eventChan <- event
 	}()
-	
+
 	return eventChan, nil
 }
 
@@ -69,25 +69,37 @@ func (ta *TestAgent) FindSubAgent(name string) agent.Agent {
 
 func TestMessageBroker(t *testing.T) {
 	broker := NewMessageBroker()
-	
+
 	agent1 := &TestAgent{name: "Agent1"}
 	agent2 := &TestAgent{name: "Agent2"}
-	
-	wrapper1 := NewMessagingWrapper(agent1, broker)
-	wrapper2 := NewMessagingWrapper(agent2, broker)
-	
+
+	uuid1 := uuid.New()
+	uuid2 := uuid.New()
+	wrapper1 := NewMessagingWrapper(agent1, broker, uuid1)
+	wrapper2 := NewMessagingWrapper(agent2, broker, uuid2)
+
+	// Type assert to access messaging-specific methods
+	messagingWrapper1, ok := wrapper1.(*messagingWrapper)
+	if !ok {
+		t.Fatal("wrapper1 is not a messagingWrapper")
+	}
+	messagingWrapper2, ok := wrapper2.(*messagingWrapper)
+	if !ok {
+		t.Fatal("wrapper2 is not a messagingWrapper")
+	}
+
 	// Test sending a message
-	err := wrapper1.SendMessage(wrapper2.ID(), "Hello from Agent1")
+	err := messagingWrapper1.SendMessage(messagingWrapper2.ID(), "Hello from Agent1")
 	if err != nil {
 		t.Errorf("Failed to send message: %v", err)
 	}
-	
+
 	// Test receiving a message
-	msgChan, err := wrapper2.GetMessageChannel()
+	msgChan, err := messagingWrapper2.GetMessageChannel()
 	if err != nil {
 		t.Errorf("Failed to get message channel: %v", err)
 	}
-	
+
 	select {
 	case msg := <-msgChan:
 		if msg.Content != "Hello from Agent1" {
@@ -100,32 +112,39 @@ func TestMessageBroker(t *testing.T) {
 
 func TestMessagingWrapper(t *testing.T) {
 	broker := NewMessageBroker()
-	
+
+	uuid1 := uuid.New()
 	testAgent := &TestAgent{name: "TestAgent"}
-	wrapper := NewMessagingWrapper(testAgent, broker)
-	
+	wrapper := NewMessagingWrapper(testAgent, broker, uuid1)
+
+	// Type assert to access messaging-specific methods
+	messagingWrapper, ok := wrapper.(*messagingWrapper)
+	if !ok {
+		t.Fatal("wrapper is not a messagingWrapper")
+	}
+
 	// Test that the wrapper has an ID
-	if wrapper.ID() == uuid.Nil {
+	if messagingWrapper.ID() == uuid.Nil {
 		t.Error("Wrapper should have a valid ID")
 	}
-	
+
 	// Test that the wrapper info is correct
-	info := wrapper.Info()
+	info := messagingWrapper.Info()
 	if info.Name != "TestAgent" {
 		t.Errorf("Expected name 'TestAgent', got '%s'", info.Name)
 	}
-	
+
 	// Test running the agent
 	ctx := context.Background()
 	invocation := &agent.Invocation{
 		InvocationID: uuid.New().String(),
 	}
-	
-	eventChan, err := wrapper.Run(ctx, invocation)
+
+	eventChan, err := messagingWrapper.Run(ctx, invocation)
 	if err != nil {
 		t.Errorf("Failed to run agent: %v", err)
 	}
-	
+
 	select {
 	case event := <-eventChan:
 		if event.Author != "TestAgent" {

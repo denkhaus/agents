@@ -23,19 +23,22 @@ import (
 
 type agentSettingsImpl struct {
 	*Settings
-	workspace provider.Workspace
-	prompt    provider.Prompt
+	workspaceProvider provider.Workspace
+	promptProvider    provider.Prompt
+	settingsProvider  provider.SettingsProvider
 }
 
 func NewConfiguration(
-	workspace provider.Workspace,
-	prompt provider.Prompt,
+	workspaceProvider provider.Workspace,
+	promptProvider provider.Prompt,
+	settingsProvider provider.SettingsProvider,
 	settings *Settings,
 ) (provider.AgentConfiguration, error) {
 	return &agentSettingsImpl{
-		Settings:  settings,
-		workspace: workspace,
-		prompt:    prompt,
+		Settings:          settings,
+		settingsProvider:  settingsProvider,
+		workspaceProvider: workspaceProvider,
+		promptProvider:    promptProvider,
 	}, nil
 }
 
@@ -60,11 +63,39 @@ func (p *agentSettingsImpl) getGenerationConfig() (model.GenerationConfig, error
 }
 
 func (p *agentSettingsImpl) getModel() (model.Model, error) {
-	modelInstance := openai.New(p.Model.Name, openai.WithChannelBufferSize(
-		p.Model.ChannelBufferSize,
-	))
+	switch p.Model.Provider {
+	case shared.ModelProviderOpenAI:
+		modelOptions := []openai.Option{}
 
-	return modelInstance, nil
+		if len(p.Model.BaseURL) > 0 {
+			modelOptions = append(modelOptions,
+				openai.WithBaseURL(
+					p.Model.BaseURL,
+				),
+			)
+		}
+
+		if len(p.Model.APIKey) > 0 {
+			modelOptions = append(modelOptions,
+				openai.WithAPIKey(
+					p.Model.APIKey,
+				),
+			)
+		}
+
+		if p.Model.ChannelBufferSize > 0 {
+			modelOptions = append(modelOptions,
+				openai.WithChannelBufferSize(
+					p.Model.ChannelBufferSize,
+				),
+			)
+		}
+
+		modelInstance := openai.New(p.Model.Name, modelOptions...)
+		return modelInstance, nil
+	}
+
+	return nil, fmt.Errorf("model provider %s is unknown", p.Model.Provider)
 }
 
 func (p *agentSettingsImpl) getSubAgents(
@@ -147,17 +178,24 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 
-	toolInfo := utils.GetToolInfo(tools...)
-	promptContext := map[string]interface{}{
-		shared.ContextKeyToolInfo: toolInfo,
+	availableAgents, err := p.settingsProvider.GetActiveAgents()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active agents: %w", err)
 	}
 
-	instruction, err := p.prompt.GetInstruction(promptContext)
+	// prepare context for prompt renderring
+	promptContext := map[string]interface{}{
+		shared.ContextKeyToolInfo:  utils.GetToolInfo(tools...),
+		shared.ContextKeyAgentInfo: utils.GetAgentInfoForAgent(p.AgentID, availableAgents...),
+	}
+
+	instruction, err := p.promptProvider.GetInstruction(promptContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get instruction prompt for agent [%s]-[%s]: %w", p.Agent.Role, p.AgentID, err)
 	}
 
 	options = append(options, llmagent.WithInstruction(instruction))
+	options = append(options, llmagent.WithGlobalInstruction(p.promptProvider.GetGlobalInstruction()))
 
 	model, err := p.getModel()
 	if err != nil {
@@ -183,8 +221,7 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 	options = append(options, llmagent.WithInputSchema(p.Agent.InputSchema))
 	options = append(options, llmagent.WithOutputSchema(p.Agent.OutputSchema))
 	options = append(options, llmagent.WithOutputKey(p.Agent.OutputKey))
-	options = append(options, llmagent.WithGlobalInstruction(p.prompt.GetGlobalInstruction()))
-	options = append(options, llmagent.WithDescription(p.prompt.GetDescription()))
+	options = append(options, llmagent.WithDescription(p.Agent.Description))
 	options = append(options, llmagent.WithChannelBufferSize(p.Agent.ChannelBufferSize))
 
 	return options, nil

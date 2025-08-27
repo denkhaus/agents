@@ -1,8 +1,10 @@
 agent_id: "550e8400-e29b-41d4-a716-446655440003"
 model:
   channel_buffer_size: 512
-  model_name: "deepseek-chat"
+  name: "deepseek-chat"
+  provider: openai
 agent:
+  active: false
   streaming_enabled: true
   planning_enabled: true
   temperature: 0.5

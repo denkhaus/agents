@@ -7,10 +7,32 @@ import (
 )
 
 var (
+	AgentIDHuman          = uuid.MustParse("550e8400-e29b-41d4-a716-446655500000")
 	AgentIDSupervisor     = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
 	AgentIDCoder          = uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
 	AgentIDDebugger       = uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
 	AgentIDProjectManager = uuid.MustParse("550e8400-e29b-41d4-a716-446655440003")
+)
+
+type ModelProvider string
+
+func (p ModelProvider) String() string {
+	return string(p)
+}
+
+// Validate checks if the AgentRole is a valid defined role
+func (p ModelProvider) Validate() error {
+	switch p {
+	case ModelProviderOpenAI:
+		return nil
+	default:
+		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s",
+			p, ModelProviderOpenAI)
+	}
+}
+
+const (
+	ModelProviderOpenAI ModelProvider = "openai"
 )
 
 type AgentType string

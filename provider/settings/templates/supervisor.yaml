@@ -1,8 +1,10 @@
 agent_id: "550e8400-e29b-41d4-a716-446655440000"
 model:
   channel_buffer_size: 512
-  model_name: "deepseek-chat"
+  name: "deepseek-chat"
+  provider: openai
 agent:
+  active: false
   sub_agents:
     - "550e8400-e29b-41d4-a716-446655440001"
     - "550e8400-e29b-41d4-a716-446655440002"

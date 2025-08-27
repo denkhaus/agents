@@ -1,3 +1,5 @@
+// Package agent provides an implementation of the AgentProvider interface
+// for creating different types of agents based on configuration.
 package agent
 
 import (
@@ -15,10 +17,12 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent/parallelagent"
 )
 
+// agentProviderImpl implements the AgentProvider interface
 type agentProviderImpl struct {
 	settingsProvider provider.SettingsProvider
 }
 
+// New creates a new AgentProvider instance using dependency injection
 func New(i *do.Injector) (provider.AgentProvider, error) {
 	settingsProvider := do.MustInvoke[provider.SettingsProvider](i)
 	return &agentProviderImpl{
@@ -26,6 +30,7 @@ func New(i *do.Injector) (provider.AgentProvider, error) {
 	}, nil
 }
 
+// getDefaultAgent creates a default LLM agent with the provided configuration
 func (p *agentProviderImpl) getDefaultAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
@@ -41,6 +46,7 @@ func (p *agentProviderImpl) getDefaultAgent(
 	), nil
 }
 
+// getChainAgent creates a chain agent with the provided configuration
 func (p *agentProviderImpl) getChainAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
@@ -56,6 +62,7 @@ func (p *agentProviderImpl) getChainAgent(
 	), nil
 }
 
+// getCycleAgent creates a cycle agent with the provided configuration
 func (p *agentProviderImpl) getCycleAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
@@ -71,6 +78,7 @@ func (p *agentProviderImpl) getCycleAgent(
 	), nil
 }
 
+// getParallelAgent creates a parallel agent with the provided configuration
 func (p *agentProviderImpl) getParallelAgent(
 	ctx context.Context,
 	agentConfig provider.AgentConfiguration,
@@ -86,6 +94,8 @@ func (p *agentProviderImpl) getParallelAgent(
 	), nil
 }
 
+// GetAgent creates and returns an agent based on the provided agent ID and configuration.
+// It also returns whether streaming is enabled for the agent and any error that occurred.
 func (p *agentProviderImpl) GetAgent(
 	ctx context.Context,
 	agentID uuid.UUID,

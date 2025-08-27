@@ -18,6 +18,7 @@ var SettingsFS embed.FS
 // SettingsManager defines the interface for managing agent settings.
 type SettingsManager interface {
 	GetSettings(agentID uuid.UUID) (*Settings, error)
+	GetAllSettings() map[uuid.UUID]*Settings
 }
 
 // settingsManagerImpl is an unexported implementation of SettingsManager.
@@ -75,6 +76,10 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 			return fmt.Errorf("invalid agent role in %s: %w", path, err)
 		}
 
+		if err := settingsData.Model.Provider.Validate(); err != nil {
+			return fmt.Errorf("invalid model provider in %s: %w", path, err)
+		}
+
 		if _, exists := settings[settingsData.AgentID]; exists {
 			return fmt.Errorf("duplicate agent id in settings %s: settings with agent id %s already exists", path, settingsData.AgentID)
 		}
@@ -110,4 +115,9 @@ func (sm *settingsManagerImpl) GetSettings(agentID uuid.UUID) (*Settings, error)
 	}
 
 	return settings, nil
+}
+
+// GetAllSettings returns all available settings
+func (sm *settingsManagerImpl) GetAllSettings() map[uuid.UUID]*Settings {
+	return sm.settings.GetAll()
 }

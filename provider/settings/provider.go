@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/denkhaus/agents/provider"
+	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 )
@@ -30,6 +31,32 @@ func New(i *do.Injector) (provider.SettingsProvider, error) {
 	}, nil
 }
 
+// GetActiveAgents returns a list of all available agents with their basic information.
+// This method collects information about all agents that have been configured in the system.
+func (p *agentSettingsProviderImpl) GetActiveAgents() ([]shared.AgentInfo, error) {
+	// Get all settings from the settings manager
+	allSettings := p.settingsManager.GetAllSettings()
+
+	// Create a slice to hold the agent info
+	agents := make([]shared.AgentInfo, 0, len(allSettings))
+
+	// Convert settings to AgentInfo structs
+	for agentID, settings := range allSettings {
+		if !settings.Agent.Active {
+			continue
+		}
+		agentInfo := shared.NewAgentInfo(
+			agentID,
+			settings.Agent.Name,
+			settings.Agent.Description,
+		)
+
+		agents = append(agents, agentInfo)
+	}
+
+	return agents, nil
+}
+
 func (p *agentSettingsProviderImpl) GetAgentConfiguration(agentID uuid.UUID) (provider.AgentConfiguration, error) {
 	workspace, err := p.workspaceProvider.GetWorkspace(agentID)
 	if err != nil {
@@ -46,5 +73,5 @@ func (p *agentSettingsProviderImpl) GetAgentConfiguration(agentID uuid.UUID) (pr
 		return nil, fmt.Errorf("failed to get settings for agent %s", agentID)
 	}
 
-	return NewConfiguration(workspace, prompt, settings)
+	return NewConfiguration(workspace, prompt, p, settings)
 }

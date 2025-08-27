@@ -1,77 +1,143 @@
-# Agent Messaging System
+# 🤖 Multi-Agent Chat System (Clean Version)
 
-This example demonstrates a generic messaging system that allows any `agent.Agent` implementation to communicate with other agents using unique IDs.
+Eine saubere, minimale Implementation des Multi-Agent-Chat-Systems, die die bestehende `MessagingWrapper` Infrastruktur nutzt.
 
-## Features
+## 🎯 **Hauptmerkmale**
 
-- **Generic Implementation**: Works with any `agent.Agent` implementation
-- **ID-based Communication**: Agents are identified by UUIDs rather than names
-- **Message Broker**: Centralized routing of messages between agents
-- **Non-blocking Communication**: Asynchronous message passing with timeouts
-- **Event Integration**: Messages are converted to events and merged with regular agent events
-- **Tool Integration**: Messaging functionality is available as a tool that agents can use
+- ✅ Nutzt bestehende `messaging.MessagingWrapper` und `messaging.MessageBroker`
+- ✅ Keine unbenutzten Variablen oder redundanter Code
+- ✅ Einfache, klare Architektur
+- ✅ Automatische Agent-zu-Agent Kommunikation über `send_message` Tool
+- ✅ Interaktive Chat-Oberfläche
 
-## Components
-
-### MessageBroker
-The central component that routes messages between agents:
-- Registers and unregisters agents
-- Routes messages between agents by ID
-- Manages message channels for each agent
-
-### MessagingWrapper
-A wrapper that adds messaging capabilities to any existing agent:
-- Wraps any `agent.Agent` implementation
-- Provides methods for sending messages to other agents
-- Merges incoming messages with regular agent events
-- Exposes messaging functionality as a tool
-
-### Message
-Represents a message between agents with sender, recipient, content, and timestamp.
-
-## Usage
+## 🏗️ **Architektur**
 
 ```go
-// Create a message broker
-broker := NewMessageBroker()
-
-// Wrap existing agents with messaging capabilities
-messagingAgent1 := NewMessagingWrapper(existingAgent1, broker)
-messagingAgent2 := NewMessagingWrapper(existingAgent2, broker)
-
-// Send a message from one agent to another
-err := messagingAgent1.SendMessage(messagingAgent2.ID(), "Hello from Agent1!")
-
-// Listen for messages
-msgChan, err := messagingAgent2.GetMessageChannel()
+ChatSystem
+├── MessageBroker (bestehend)    # Message-Routing zwischen Agents
+├── AgentRunner                  # AI Agent + MessagingWrapper + Runner
+└── Agent-Registry (map)         # Name -> AgentRunner Mapping
 ```
 
-## Key Benefits
+## 🚀 **Verwendung**
 
-1. **Decoupling**: Agents don't need to know about each other's implementations
-2. **Flexibility**: Works with any agent type (LLM, Chain, Parallel, Cycle, etc.)
-3. **Scalability**: Supports multiple agents with the same role through unique IDs
-4. **Integration**: Seamlessly integrates with existing event-based workflows
-5. **Tool Support**: Messaging functionality is available as a tool for agent use
+### Setup
+```bash
+export OPENAI_API_KEY="your-api-key"
+go run examples/messaging/main_clean.go
+```
 
-## Example Output
+### Chat-Kommandos
+```bash
+# Nachricht an Agent senden
+you> @coder Please write a function to sort an array
+
+# Agents auflisten
+you> /list
+
+# Chat beenden
+you> /exit
+```
+
+## 🔧 **Code-Struktur**
+
+### **ChatSystem** (Hauptklasse)
+```go
+type ChatSystem struct {
+    broker *messaging.MessageBroker        // Bestehende Message-Infrastruktur
+    agents map[string]*AgentRunner         // Agent-Registry
+}
+```
+
+### **AgentRunner** (Vereinfacht)
+```go
+type AgentRunner struct {
+    Runner  runner.Runner                  // Agent-Runner
+    Wrapper *messaging.MessagingWrapper    // Messaging-Fähigkeiten
+    Name    string                         // Agent-Name
+}
+```
+
+### **Agent-Erstellung** (Eine Zeile)
+```go
+// Basis-Agent erstellen
+baseAgent := llmagent.New(name, options...)
+
+// Mit Messaging umhüllen (automatische Registrierung)
+wrapper := messaging.NewMessagingWrapper(baseAgent, broker)
+
+// Runner erstellen
+runner := runner.NewRunner(appName, wrapper, options...)
+```
+
+## 💬 **Beispiel-Interaktion**
 
 ```
-Agent Messaging System Example
-==============================
-Backend Coder ID: df57524c-8a18-4a0c-b5e1-c2010860e0f5
-Frontend Coder ID: 7292dfc1-ff83-4d12-bd0c-b0705bf0083d
-Debugger ID: 316e3e4b-ba59-4f42-8fa4-aa1a77f1d3a8
+🤖 Multi-Agent Chat System
+==========================
+Creating agents...
+✅ Agents created successfully!
 
-Sending message from Backend Coder to Frontend Coder...
-Sending message from Frontend Coder to Debugger...
+Available agents: Coder, Reviewer
 
-Waiting for messages in Debugger...
-Debugger received message from 7292dfc1-ff83-4d12-bd0c-b0705bf0083d: Frontend is integrated with the new API. Ready for testing.
+Commands:
+  @<agent> <message>  - Send message to agent
+  /list              - List agents
+  /exit              - Exit
 
-Running Backend Coder agent...
-Events from Backend Coder:
-  Event from Backend-Coder: Hello, I'm Backend-Coder, a Backend Developer
+you> @coder Please write a bubble sort function in Go
 
-Example completed successfully!
+[Coder]: Here's a bubble sort implementation in Go:
+
+```go
+func bubbleSort(arr []int) []int {
+    n := len(arr)
+    for i := 0; i < n; i++ {
+        for j := 0; j < n-i-1; j++ {
+            if arr[j] > arr[j+1] {
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+            }
+        }
+    }
+    return arr
+}
 ```
+
+you> @reviewer Please review the code above
+
+[Reviewer] using tool: send_message
+
+[Reviewer]: I'll review the bubble sort code. The implementation is correct but could be optimized...
+```
+
+## 🔄 **Agent-zu-Agent Kommunikation**
+
+Agents können sich automatisch über das `send_message` Tool unterhalten:
+
+```go
+// Automatisch verfügbar für alle Agents:
+{
+  "name": "send_message",
+  "parameters": {
+    "to": "agent-uuid",
+    "content": "message content"
+  }
+}
+```
+
+## 📊 **Vorteile der sauberen Version**
+
+1. **🧹 Minimal**: Nur 150 Zeilen Code, keine unbenutzten Variablen
+2. **🔄 Wiederverwendung**: Nutzt bestehende Infrastruktur vollständig
+3. **📖 Lesbar**: Klare, einfache Struktur
+4. **🐛 Fehlerfrei**: Keine redundanten Agent-Erstellungen
+5. **⚡ Effizient**: Direkte Nutzung der MessagingWrapper-Features
+
+## 🛠️ **Erweiterungsmöglichkeiten**
+
+- **Human-Agent Integration**: Menschen als vollwertige Agents hinzufügen
+- **Persistenz**: Message-Historie speichern
+- **Web-Interface**: Browser-basierte Chat-Oberfläche
+- **Agent-Gruppen**: Thematische Agent-Gruppierungen
+
+Die saubere Version konzentriert sich auf das Wesentliche und nutzt die bestehende, bewährte Infrastruktur optimal!
