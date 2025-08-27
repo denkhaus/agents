@@ -15,8 +15,8 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
-	"trpc.group/trpc-go/trpc-agent-go/tool"
 	sessioninmemory "trpc.group/trpc-go/trpc-agent-go/session/inmemory"
+	"trpc.group/trpc-go/trpc-agent-go/tool"
 
 	messaging "github.com/denkhaus/agents/provider/agent"
 )
@@ -76,9 +76,9 @@ func (cs *ChatSystem) setupMessageListener() {
 
 		if fromName != "" && toName != "" {
 			// Format: "FromName (FromID) -> ToName (ToID)"
-			header := fmt.Sprintf("%s (%s) -> %s (%s)", 
-				fromName, fromID.String()[:8]+"...", 
-				toName, toID.String()[:8]+"...")
+			header := fmt.Sprintf("%s (%s) -> %s (%s)",
+				fromName, shortenID(fromID.String()),
+				toName, shortenID(toID.String()))
 			printWithBorder(header, content)
 		}
 	})
@@ -119,6 +119,14 @@ func (cs *ChatSystem) getAgentIDByAuthor(author string) string {
 	return author // Return as-is if not a valid UUID
 }
 
+// shortenID safely shortens a UUID string to first 8 characters
+func shortenID(id string) string {
+	if len(id) >= 8 {
+		return id[:8] + "..."
+	}
+	return id
+}
+
 // startMessageProcessing starts a goroutine to process incoming messages for an agent
 func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 	go func() {
@@ -133,10 +141,10 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 		for msg := range msgChan {
 			// Create a context for message processing
 			ctx := context.Background()
-			
+
 			// Format the message content
 			messageContent := fmt.Sprintf("Message from %s: %s", cs.getAgentNameByID(msg.From), msg.Content)
-			
+
 			// Send to the agent's runner
 			events, err := agent.Runner.Run(ctx, msg.From.String(), fmt.Sprintf("msg-%s", msg.ID), model.NewUserMessage(messageContent))
 			if err != nil {
@@ -368,15 +376,15 @@ func startChat(system *ChatSystem) {
 				fmt.Println("\n=== Available Agents ===")
 				for _, agentName := range agents {
 					if agentName == "Human" {
-						fmt.Printf("- %s (ID: %s) [Type: Human]\n", 
-							system.human.Name, 
-							system.human.ID.String()[:8]+"...")
+						fmt.Printf("- %s (ID: %s) [Type: Human]\n",
+							system.human.Name,
+							shortenID(system.human.ID.String()))
 					} else {
 						for _, agent := range system.agents {
 							if agent.Name == agentName {
-								fmt.Printf("- %s (ID: %s) [Type: AI]\n", 
-									agent.Name, 
-									agent.ID.String()[:8]+"...")
+								fmt.Printf("- %s (ID: %s) [Type: AI]\n",
+									agent.Name,
+									shortenID(agent.ID.String()))
 								break
 							}
 						}
@@ -433,7 +441,7 @@ func (cs *ChatSystem) processEvent(event *event.Event) {
 			// Get agent info for better display
 			agentName := cs.getAgentNameByAuthor(event.Author)
 			agentID := cs.getAgentIDByAuthor(event.Author)
-			header := fmt.Sprintf("%s (%s)", agentName, agentID[:8]+"...")
+			header := fmt.Sprintf("%s (%s)", agentName, shortenID(agentID))
 			printWithBorder(header, choice.Message.Content)
 		}
 
