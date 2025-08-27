@@ -61,6 +61,9 @@ func NewChatSystem() *ChatSystem {
 	// Set up message listener to intercept agent-to-agent messages
 	system.setupMessageListener()
 
+	// Register human agent with broker (as a dummy agent for message routing)
+	system.registerHumanWithBroker()
+
 	return system
 }
 
@@ -72,7 +75,11 @@ func (cs *ChatSystem) setupMessageListener() {
 		toName := cs.getAgentNameByID(toID)
 
 		if fromName != "" && toName != "" {
-			printWithBorder(fmt.Sprintf("%s -> %s", fromName, toName), content)
+			// Format: "FromName (FromID) -> ToName (ToID)"
+			header := fmt.Sprintf("%s (%s) -> %s (%s)", 
+				fromName, fromID.String()[:8]+"...", 
+				toName, toID.String()[:8]+"...")
+			printWithBorder(header, content)
 		}
 	})
 }
@@ -92,6 +99,24 @@ func (cs *ChatSystem) getAgentNameByID(id uuid.UUID) string {
 	}
 
 	return ""
+}
+
+// getAgentNameByAuthor returns agent name by author ID string
+func (cs *ChatSystem) getAgentNameByAuthor(author string) string {
+	// Try to parse as UUID
+	if authorID, err := uuid.Parse(author); err == nil {
+		return cs.getAgentNameByID(authorID)
+	}
+	return author // Return as-is if not a valid UUID
+}
+
+// getAgentIDByAuthor returns agent ID by author ID string
+func (cs *ChatSystem) getAgentIDByAuthor(author string) string {
+	// Try to parse as UUID
+	if authorID, err := uuid.Parse(author); err == nil {
+		return authorID.String()
+	}
+	return author // Return as-is if not a valid UUID
 }
 
 // startMessageProcessing starts a goroutine to process incoming messages for an agent
@@ -122,7 +147,7 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 			// Process events from the agent's response
 			go func() {
 				for event := range events {
-					processEvent(event)
+					cs.processEvent(event)
 				}
 			}()
 		}
@@ -339,7 +364,25 @@ func startChat(system *ChatSystem) {
 				fmt.Println("Goodbye!")
 				return
 			case "list":
-				fmt.Println("Available agents:", strings.Join(system.ListAgents(), ", "))
+				agents := system.ListAgents()
+				fmt.Println("\n=== Available Agents ===")
+				for _, agentName := range agents {
+					if agentName == "Human" {
+						fmt.Printf("- %s (ID: %s) [Type: Human]\n", 
+							system.human.Name, 
+							system.human.ID.String()[:8]+"...")
+					} else {
+						for _, agent := range system.agents {
+							if agent.Name == agentName {
+								fmt.Printf("- %s (ID: %s) [Type: AI]\n", 
+									agent.Name, 
+									agent.ID.String()[:8]+"...")
+								break
+							}
+						}
+					}
+				}
+				fmt.Println("========================")
 			default:
 				fmt.Println("Unknown command. Use /list or /exit")
 			}
@@ -366,7 +409,7 @@ func startChat(system *ChatSystem) {
 
 			// Process events
 			for event := range events {
-				processEvent(event)
+				system.processEvent(event)
 			}
 			continue
 		}
@@ -376,7 +419,7 @@ func startChat(system *ChatSystem) {
 }
 
 // processEvent handles a single event from an agent
-func processEvent(event *event.Event) {
+func (cs *ChatSystem) processEvent(event *event.Event) {
 	if event.Error != nil {
 		printWithBorder("ERROR", event.Error.Message)
 		return
@@ -387,24 +430,24 @@ func processEvent(event *event.Event) {
 
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {
-			printWithBorder(event.Author, choice.Message.Content)
+			// Get agent info for better display
+			agentName := cs.getAgentNameByAuthor(event.Author)
+			agentID := cs.getAgentIDByAuthor(event.Author)
+			header := fmt.Sprintf("%s (%s)", agentName, agentID[:8]+"...")
+			printWithBorder(header, choice.Message.Content)
 		}
 
-		// Show tool calls
+		// Show tool calls (but suppress the generic "sending message" for cleaner output)
 		if len(choice.Message.ToolCalls) > 0 {
 			for _, toolCall := range choice.Message.ToolCalls {
-				if toolCall.Function.Name == "send_message" {
-					printWithBorder(event.Author+" (Sending)", "Sending message to another agent...")
-				} else {
-					printWithBorder(event.Author+" (Tool)", fmt.Sprintf("Using tool: %s", toolCall.Function.Name))
+				if toolCall.Function.Name != "send_message" {
+					agentName := cs.getAgentNameByAuthor(event.Author)
+					printWithBorder(agentName+" (Tool)", fmt.Sprintf("Using tool: %s", toolCall.Function.Name))
 				}
 			}
 		}
 
-		// Show tool responses (messages from other agents)
-		if choice.Message.Role == model.RoleTool && choice.Message.Content != "" {
-			printWithBorder("Agent Message", choice.Message.Content)
-		}
+		// Suppress tool responses (they're shown via message interceptor)
 	}
 }
 
