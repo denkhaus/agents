@@ -101,22 +101,29 @@ func (cs *ChatSystem) getAgentNameByID(id uuid.UUID) string {
 	return ""
 }
 
-// getAgentNameByAuthor returns agent name by author ID string
-func (cs *ChatSystem) getAgentNameByAuthor(author string) string {
-	// Try to parse as UUID
+// getAgentInfoByAuthor returns agent name and ID by author string
+func (cs *ChatSystem) getAgentInfoByAuthor(author string) (string, string) {
+	// Try to parse as UUID first
 	if authorID, err := uuid.Parse(author); err == nil {
-		return cs.getAgentNameByID(authorID)
+		name := cs.getAgentNameByID(authorID)
+		if name != "" {
+			return name, authorID.String()
+		}
 	}
-	return author // Return as-is if not a valid UUID
-}
-
-// getAgentIDByAuthor returns agent ID by author ID string
-func (cs *ChatSystem) getAgentIDByAuthor(author string) string {
-	// Try to parse as UUID
-	if authorID, err := uuid.Parse(author); err == nil {
-		return authorID.String()
+	
+	// If not UUID or not found, check if it's already a name
+	for _, agent := range cs.agents {
+		if agent.Name == author {
+			return agent.Name, agent.ID.String()
+		}
 	}
-	return author // Return as-is if not a valid UUID
+	
+	if cs.human.Name == author {
+		return cs.human.Name, cs.human.ID.String()
+	}
+	
+	// Fallback: return as-is
+	return author, author
 }
 
 // shortenID safely shortens a UUID string to first 8 characters
@@ -444,8 +451,7 @@ func (cs *ChatSystem) processEvent(event *event.Event) {
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {
 			// Get agent info for better display
-			agentName := cs.getAgentNameByAuthor(event.Author)
-			agentID := cs.getAgentIDByAuthor(event.Author)
+			agentName, agentID := cs.getAgentInfoByAuthor(event.Author)
 			header := fmt.Sprintf("%s (%s)", agentName, shortenID(agentID))
 			printWithBorder(header, choice.Message.Content)
 		}
@@ -454,7 +460,7 @@ func (cs *ChatSystem) processEvent(event *event.Event) {
 		if len(choice.Message.ToolCalls) > 0 {
 			for _, toolCall := range choice.Message.ToolCalls {
 				if toolCall.Function.Name != "send_message" {
-					agentName := cs.getAgentNameByAuthor(event.Author)
+					agentName, _ := cs.getAgentInfoByAuthor(event.Author)
 					printWithBorder(agentName+" (Tool)", fmt.Sprintf("Using tool: %s", toolCall.Function.Name))
 				}
 			}
@@ -504,45 +510,17 @@ func printWithBorder(sender, message string) {
 	}
 	fmt.Printf("+\n")
 
-	// Message lines with word wrapping
+	// Message lines (simplified to avoid formatting issues)
 	for _, line := range lines {
-		// Word wrap long lines
 		if len(line) > maxLen-4 {
-			words := strings.Fields(line)
-			currentLine := ""
-			for _, word := range words {
-				if len(currentLine)+len(word)+1 <= maxLen-4 {
-					if currentLine != "" {
-						currentLine += " "
-					}
-					currentLine += word
-				} else {
-					// Print current line and start new one
-					if currentLine != "" {
-						fmt.Printf("| %s", currentLine)
-						for i := len(currentLine) + 2; i < maxLen-1; i++ {
-							fmt.Printf(" ")
-						}
-						fmt.Printf("|\n")
-					}
-					currentLine = word
-				}
-			}
-			// Print remaining line
-			if currentLine != "" {
-				fmt.Printf("| %s", currentLine)
-				for i := len(currentLine) + 2; i < maxLen-1; i++ {
-					fmt.Printf(" ")
-				}
-				fmt.Printf("|\n")
-			}
-		} else {
-			fmt.Printf("| %s", line)
-			for i := len(line) + 2; i < maxLen-1; i++ {
-				fmt.Printf(" ")
-			}
-			fmt.Printf("|\n")
+			// Simple truncation for very long lines
+			line = line[:maxLen-7] + "..."
 		}
+		fmt.Printf("| %s", line)
+		for i := len(line) + 2; i < maxLen-1; i++ {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("|\n")
 	}
 
 	// Bottom border
