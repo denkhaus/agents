@@ -49,16 +49,16 @@ func NewChatSystem() *ChatSystem {
 	}
 
 	broker := messaging.NewMessageBroker()
-	
+
 	system := &ChatSystem{
 		broker: broker,
 		agents: make(map[string]*AgentRunner),
 		human:  humanAgent,
 	}
-	
+
 	// Set up message listener to intercept agent-to-agent messages
 	system.setupMessageListener()
-	
+
 	return system
 }
 
@@ -68,7 +68,7 @@ func (cs *ChatSystem) setupMessageListener() {
 	cs.broker.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
 		fromName := cs.getAgentNameByID(fromID)
 		toName := cs.getAgentNameByID(toID)
-		
+
 		if fromName != "" && toName != "" {
 			printWithBorder(fmt.Sprintf("%s -> %s", fromName, toName), content)
 		}
@@ -81,14 +81,14 @@ func (cs *ChatSystem) getAgentNameByID(id uuid.UUID) string {
 	if cs.human.ID == id {
 		return cs.human.Name
 	}
-	
+
 	// Check AI agents
 	for _, agent := range cs.agents {
 		if agent.ID == id {
 			return agent.Name
 		}
 	}
-	
+
 	return ""
 }
 
@@ -333,40 +333,40 @@ func processEvent(event *event.Event) {
 func printWithBorder(sender, message string) {
 	lines := strings.Split(message, "\n")
 	maxLen := len(sender) + 4
-	
+
 	// Find the longest line for border width
 	for _, line := range lines {
 		if len(line)+4 > maxLen {
 			maxLen = len(line) + 4
 		}
 	}
-	
+
 	// Ensure minimum width
 	if maxLen < 60 {
 		maxLen = 60
 	}
-	
+
 	// Top border
 	fmt.Printf("+")
 	for i := 0; i < maxLen-2; i++ {
 		fmt.Printf("-")
 	}
 	fmt.Printf("+\n")
-	
+
 	// Sender line
 	fmt.Printf("| %s", sender)
 	for i := len(sender) + 2; i < maxLen-1; i++ {
 		fmt.Printf(" ")
 	}
 	fmt.Printf("|\n")
-	
+
 	// Separator
 	fmt.Printf("+")
 	for i := 0; i < maxLen-2; i++ {
 		fmt.Printf("-")
 	}
 	fmt.Printf("+\n")
-	
+
 	// Message lines
 	for _, line := range lines {
 		fmt.Printf("| %s", line)
@@ -375,7 +375,7 @@ func printWithBorder(sender, message string) {
 		}
 		fmt.Printf("|\n")
 	}
-	
+
 	// Bottom border
 	fmt.Printf("+")
 	for i := 0; i < maxLen-2; i++ {

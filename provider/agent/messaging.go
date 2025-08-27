@@ -75,6 +75,15 @@ func (mb *MessageBroker) UnregisterAgent(agentID uuid.UUID) {
 // SendMessage sends a message from one agent to another
 func (mb *MessageBroker) SendMessage(from, to uuid.UUID, content string) error {
 	mb.mu.RLock()
+	interceptor := mb.interceptor
+	mb.mu.RUnlock()
+
+	// Call interceptor if set (for displaying messages in chat)
+	if interceptor != nil {
+		interceptor(from, to, content)
+	}
+
+	mb.mu.RLock()
 	defer mb.mu.RUnlock()
 
 	// Check if recipient exists
@@ -358,4 +367,11 @@ func (mt *MessagingTool) Call(ctx context.Context, jsonArgs []byte) (any, error)
 		"to":      to.String(),
 		"content": content,
 	}, nil
+}
+
+// SetMessageInterceptor sets a function to intercept all messages
+func (mb *MessageBroker) SetMessageInterceptor(interceptor func(fromID, toID uuid.UUID, content string)) {
+	mb.mu.Lock()
+	defer mb.mu.Unlock()
+	mb.interceptor = interceptor
 }
