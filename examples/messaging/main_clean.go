@@ -8,15 +8,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/uuid"
+	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
+	"trpc.group/trpc-go/trpc-agent-go/tool"
 	sessioninmemory "trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 
 	messaging "github.com/denkhaus/agents/provider/agent"
-	"github.com/google/uuid"
 )
 
 // AgentRunner represents an AI agent with messaging capabilities
@@ -92,6 +94,80 @@ func (cs *ChatSystem) getAgentNameByID(id uuid.UUID) string {
 	return ""
 }
 
+// startMessageProcessing starts a goroutine to process incoming messages for an agent
+func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
+	go func() {
+		// Get the message channel for this agent
+		msgChan, err := cs.broker.GetMessageChannel(agent.ID)
+		if err != nil {
+			log.Printf("Failed to get message channel for agent %s: %v", agent.Name, err)
+			return
+		}
+
+		// Process incoming messages
+		for msg := range msgChan {
+			// Create a context for message processing
+			ctx := context.Background()
+			
+			// Format the message content
+			messageContent := fmt.Sprintf("Message from %s: %s", cs.getAgentNameByID(msg.From), msg.Content)
+			
+			// Send to the agent's runner
+			events, err := agent.Runner.Run(ctx, msg.From.String(), fmt.Sprintf("msg-%s", msg.ID), model.NewUserMessage(messageContent))
+			if err != nil {
+				log.Printf("Error processing message for agent %s: %v", agent.Name, err)
+				continue
+			}
+
+			// Process events from the agent's response
+			go func() {
+				for event := range events {
+					processEvent(event)
+				}
+			}()
+		}
+	}()
+}
+
+// registerHumanWithBroker registers the human agent with the message broker
+func (cs *ChatSystem) registerHumanWithBroker() {
+	// Create a dummy agent for the human
+	humanAgent := &dummyHumanAgent{id: cs.human.ID, name: cs.human.Name}
+	cs.broker.RegisterAgentWithID(cs.human.ID, humanAgent)
+}
+
+// dummyHumanAgent implements the agent.Agent interface for the human
+type dummyHumanAgent struct {
+	id   uuid.UUID
+	name string
+}
+
+func (d *dummyHumanAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
+	// Humans don't process messages automatically, just return empty channel
+	ch := make(chan *event.Event)
+	close(ch)
+	return ch, nil
+}
+
+func (d *dummyHumanAgent) Info() agent.Info {
+	return agent.Info{
+		Name:        d.name,
+		Description: "Human user",
+	}
+}
+
+func (d *dummyHumanAgent) Tools() []tool.Tool {
+	return []tool.Tool{}
+}
+
+func (d *dummyHumanAgent) FindSubAgent(name string) agent.Agent {
+	return nil
+}
+
+func (d *dummyHumanAgent) SubAgents() []agent.Agent {
+	return []agent.Agent{}
+}
+
 // CreateAgent creates an AI agent and adds it to the system
 func (cs *ChatSystem) CreateAgent(appName, name, description, instruction string) error {
 	// Get the pre-registered agent entry
@@ -126,6 +202,9 @@ func (cs *ChatSystem) CreateAgent(appName, name, description, instruction string
 	// Update the agent entry with actual components
 	agentEntry.Runner = agentRunner
 	agentEntry.Wrapper = wrapper
+
+	// Start message processing for this agent
+	cs.startMessageProcessing(agentEntry)
 
 	return nil
 }
@@ -341,9 +420,11 @@ func printWithBorder(sender, message string) {
 		}
 	}
 
-	// Ensure minimum width
-	if maxLen < 60 {
-		maxLen = 60
+	// Limit maximum width to prevent overly wide displays
+	if maxLen > 80 {
+		maxLen = 80
+	} else if maxLen < 50 {
+		maxLen = 50
 	}
 
 	// Top border
@@ -367,13 +448,45 @@ func printWithBorder(sender, message string) {
 	}
 	fmt.Printf("+\n")
 
-	// Message lines
+	// Message lines with word wrapping
 	for _, line := range lines {
-		fmt.Printf("| %s", line)
-		for i := len(line) + 2; i < maxLen-1; i++ {
-			fmt.Printf(" ")
+		// Word wrap long lines
+		if len(line) > maxLen-4 {
+			words := strings.Fields(line)
+			currentLine := ""
+			for _, word := range words {
+				if len(currentLine)+len(word)+1 <= maxLen-4 {
+					if currentLine != "" {
+						currentLine += " "
+					}
+					currentLine += word
+				} else {
+					// Print current line and start new one
+					if currentLine != "" {
+						fmt.Printf("| %s", currentLine)
+						for i := len(currentLine) + 2; i < maxLen-1; i++ {
+							fmt.Printf(" ")
+						}
+						fmt.Printf("|\n")
+					}
+					currentLine = word
+				}
+			}
+			// Print remaining line
+			if currentLine != "" {
+				fmt.Printf("| %s", currentLine)
+				for i := len(currentLine) + 2; i < maxLen-1; i++ {
+					fmt.Printf(" ")
+				}
+				fmt.Printf("|\n")
+			}
+		} else {
+			fmt.Printf("| %s", line)
+			for i := len(line) + 2; i < maxLen-1; i++ {
+				fmt.Printf(" ")
+			}
+			fmt.Printf("|\n")
 		}
-		fmt.Printf("|\n")
 	}
 
 	// Bottom border
