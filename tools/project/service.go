@@ -10,12 +10,12 @@ import (
 
 // service provides business logic for project task management
 type service struct {
-	repo   repository
+	repo   Repository
 	config *Config
 }
 
 // newService creates a new task management service
-func newService(repo repository, config *Config) *service {
+func newService(repo Repository, config *Config) *service {
 	if config == nil {
 		config = DefaultConfig()
 	}
@@ -24,6 +24,9 @@ func newService(repo repository, config *Config) *service {
 		config: config,
 	}
 }
+
+// Ensure service implements ProjectManager
+var _ ProjectManager = (*service)(nil)
 
 // Project operations
 

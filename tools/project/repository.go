@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// memoryRepository implements repository interface with in-memory storage using resource managers
+// memoryRepository implements Repository interface with in-memory storage using resource managers
 type memoryRepository struct {
 	projects       *resource.Manager[*Project]
 	tasks          *resource.Manager[*Task]
@@ -19,7 +19,7 @@ type memoryRepository struct {
 }
 
 // newMemoryRepository creates a new in-memory repository
-func newMemoryRepository() repository {
+func newMemoryRepository() Repository {
 	return &memoryRepository{
 		projects:       resource.NewManager[*Project](),
 		tasks:          resource.NewManager[*Task](),
