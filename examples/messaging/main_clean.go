@@ -409,16 +409,21 @@ func startChat(system *ChatSystem) {
 			message := parts[1]
 
 			// Send message and process events
+			fmt.Printf(">> Sending message to %s...\n", agentName)
 			events, err := system.SendMessage(ctx, agentName, message)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
+				fmt.Printf("ERROR: %v\n", err)
 				continue
 			}
 
+			fmt.Printf(">> Message delivered to %s - Processing...\n", agentName)
+			
 			// Process events
 			for event := range events {
 				system.processEvent(event)
 			}
+			
+			fmt.Printf(">> %s finished processing\n", agentName)
 			continue
 		}
 
