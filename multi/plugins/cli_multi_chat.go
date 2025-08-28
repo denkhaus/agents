@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
+	"github.com/acarl005/stripansi"
 	"github.com/denkhaus/agents/multi"
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
+	"github.com/mattn/go-runewidth"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
@@ -40,11 +42,12 @@ type MessageType int
 
 const (
 	MessageTypeNormal MessageType = iota
-	MessageTypeReasoning
-	MessageTypeTool
+	MessageTypeReasoningMessage
+	MessageTypeToolCall
 	MessageTypeIntercept
 	MessageTypeError
 	MessageTypeSystem
+	MessageTypeAgentError
 )
 
 // ChatPlugin defines the interface for chat plugins that can be started.
@@ -117,8 +120,10 @@ func (p *cliMultiAgentChatImpl) handleOnMessage(info *shared.AgentInfo, content 
 
 // handleOnError handles agent errors by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnError(info *shared.AgentInfo, err error) {
-	p.printWithBorderColored(info.String(), err.Error(), MessageTypeError)
+	p.printWithBorderColored(info.String(), fmt.Sprintf("%+v", err), MessageTypeAgentError)
 }
+
+
 
 // handleOnToolCall handles tool calls made by agents by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnToolCall(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
@@ -126,12 +131,12 @@ func (p *cliMultiAgentChatImpl) handleOnToolCall(info *shared.AgentInfo, functio
 	if len(functionDef.Arguments) > 0 {
 		toolCallInfo += fmt.Sprintf("\nArguments: %s", string(functionDef.Arguments))
 	}
-	p.printWithBorderColored(info.String()+" [TOOL]", toolCallInfo, MessageTypeTool)
+	p.printWithBorderColored(info.String()+" [TOOL]", toolCallInfo, MessageTypeToolCall)
 }
 
 // handleOnReasoningMessage handles reasoning messages from agents.
 func (p *cliMultiAgentChatImpl) handleOnReasoningMessage(info *shared.AgentInfo, reasoning string) {
-	p.printWithBorderColored(info.String(), reasoning, MessageTypeReasoning)
+	p.printWithBorderColored(info.String(), reasoning, MessageTypeReasoningMessage)
 }
 
 // Start runs the interactive chat loop, handling user input and agent communication.
@@ -267,19 +272,25 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 
 	// Sender line with bold text
 	senderLine := fmt.Sprintf(" %s%s%s ", ColorBold, sender, ColorReset)
-	formattedSender := fmt.Sprintf("│%s%s│", senderLine, strings.Repeat(" ", width-len(sender)-4))
-	fmt.Printf("%s%s%s\n", borderColor, formattedSender, ColorReset)
+	cleanSender := stripansi.Strip(senderLine)
+	senderPadding := width - runewidth.StringWidth(cleanSender) - 2
+	if senderPadding < 0 {
+		senderPadding = 0
+	}
+	fmt.Printf("%s│%s%s%s│%s\n", borderColor, senderLine, strings.Repeat(" ", senderPadding), borderColor, ColorReset)
 
 	// Separator
 	fmt.Printf("%s├%s┤%s\n", borderColor, strings.Repeat("─", width-2), ColorReset)
 
-	// Message content with word wrapping
-	wrappedLines := p.wrapText(message, width-4) // width-4 for padding
-	for _, line := range wrappedLines {
-		// Ensure the line has padding on both sides
-		paddedLine := fmt.Sprintf(" %s", line)
-		lineContent := fmt.Sprintf("│%s%s%s%s│", textColor, paddedLine, strings.Repeat(" ", width-len(paddedLine)-2), ColorReset)
-		fmt.Printf("%s%s%s\n", borderColor, lineContent, ColorReset)
+	// Message content
+	renderedMessage := markdown.Render(message, p.displayWidth-4, 2)
+	for _, line := range strings.Split(string(renderedMessage), "\n") {
+		cleanLine := stripansi.Strip(line)
+		padding := width - runewidth.StringWidth(cleanLine) - 4
+		if padding < 0 {
+			padding = 0
+		}
+		fmt.Printf("%s│ %s%s%s │%s\n", borderColor, textColor, line, strings.Repeat(" ", padding), ColorReset)
 	}
 
 	// Bottom border
@@ -287,50 +298,19 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 	fmt.Println() // Extra line for spacing
 }
 
-// wrapText wraps the given text to a specified width at word boundaries.
-func (p *cliMultiAgentChatImpl) wrapText(text string, width int) []string {
-	if width <= 0 {
-		return []string{text}
-	}
-
-	var lines []string
-	for _, paragraph := range strings.Split(text, "\n") {
-		if paragraph == "" {
-			lines = append(lines, "")
-			continue
-		}
-
-		words := strings.Fields(paragraph)
-		if len(words) == 0 {
-			continue
-		}
-
-		currentLine := words[0]
-		for _, word := range words[1:] {
-			if len(currentLine)+1+len(word) > width {
-				lines = append(lines, currentLine)
-				currentLine = word
-			} else {
-				currentLine += " " + word
-			}
-		}
-		lines = append(lines, currentLine)
-	}
-
-	return lines
-}
-
 // getColorsForMessageType returns the appropriate text and border colors for a message type.
 func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType MessageType) (textColor, borderColor string) {
 	switch msgType {
-	case MessageTypeReasoning:
+	case MessageTypeReasoningMessage:
 		return ColorReasoning, ColorBorderReasoning
-	case MessageTypeTool:
+	case MessageTypeToolCall:
 		return ColorTool, ColorBorderTool
 	case MessageTypeIntercept:
 		return ColorIntercept, ColorBorderIntercept
 	case MessageTypeError:
-		return ColorError, ColorBorderReasoning
+		return ColorError, ColorError
+	case MessageTypeAgentError:
+		return ColorError, ColorError
 	case MessageTypeSystem:
 		return ColorSystem, ColorBorderTool
 	default: // MessageTypeNormal
