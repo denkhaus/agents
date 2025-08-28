@@ -23,6 +23,7 @@ func startup(ctx context.Context) error {
 	}
 
 	chat := plugins.NewCLIMultiAgentChat(
+		plugins.WithDisplayWidth(120),
 		plugins.WithProcessorOptions(
 			multi.WithSessionID(uuid.New()),
 			multi.WithApplicationName("denkhaus-multi-chat"),

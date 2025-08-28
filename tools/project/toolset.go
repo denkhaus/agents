@@ -3,9 +3,9 @@ package project
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap" // Add this import
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
 )
@@ -17,6 +17,7 @@ const (
 // projectTaskToolSet implements the ToolSet interface for project task management
 type projectTaskToolSet struct {
 	manager ProjectManager
+	logger  *zap.Logger
 	tools   []tool.CallableTool
 }
 
@@ -48,6 +49,15 @@ func WithConfig(config *Config) Option {
 		if pts.manager != nil {
 			pts.manager.UpdateConfig(config)
 		}
+	}
+}
+
+// WithLogger sets a custom logger
+// It' neccessary to switch the logger off while in chat
+// since log messages interfere with chat output.
+func WithLogger(logger *zap.Logger) Option {
+	return func(pts *projectTaskToolSet) {
+		pts.logger = logger
 	}
 }
 
@@ -115,15 +125,15 @@ func (pts *projectTaskToolSet) Close() error {
 
 // createProject performs project creation
 func (pts *projectTaskToolSet) createProject(ctx context.Context, args createProjectArgs) (createProjectResult, error) {
-	log.Printf("Creating project: %s", args.Title)
+	pts.logger.Info("Creating project", zap.String("title", args.Title))
 
 	project, err := pts.manager.CreateProject(ctx, args.Title, args.Details)
 	if err != nil {
-		log.Printf("Failed to create project: %v", err)
+		pts.logger.Error("Failed to create project", zap.Error(err))
 		return createProjectResult{}, err
 	}
 
-	log.Printf("Created project %s successfully", project.ID)
+	pts.logger.Info("Created project successfully", zap.String("projectID", project.ID.String()))
 	return createProjectResult{
 		Project: project,
 		Message: "Project created successfully",
@@ -145,11 +155,11 @@ func (pts *projectTaskToolSet) getProject(ctx context.Context, args getProjectAr
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Getting project: %s", projectID)
+	pts.logger.Info("Getting project", zap.String("projectID", projectID.String()))
 
 	project, err := pts.manager.GetProject(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to get project: %v", err)
+		pts.logger.Error("Failed to get project", zap.Error(err))
 		return nil, err
 	}
 
@@ -171,11 +181,11 @@ func (pts *projectTaskToolSet) updateProjectDescription(ctx context.Context, arg
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Updating project description: %s", projectID)
+	pts.logger.Info("Updating project description", zap.String("projectID", projectID.String()))
 
 	project, err := pts.manager.UpdateProjectDescription(ctx, projectID, args.Description)
 	if err != nil {
-		log.Printf("Failed to update project description: %v", err)
+		pts.logger.Error("Failed to update project description", zap.Error(err))
 		return nil, err
 	}
 
@@ -192,11 +202,11 @@ func (pts *projectTaskToolSet) updateProjectDescriptionTool() tool.CallableTool 
 
 // listProjects performs project listing
 func (pts *projectTaskToolSet) listProjects(ctx context.Context, args listProjectsArgs) (listProjectsResult, error) {
-	log.Printf("Listing all projects")
+	pts.logger.Info("Listing all projects")
 
 	projects, err := pts.manager.ListProjects(ctx)
 	if err != nil {
-		log.Printf("Failed to list projects: %v", err)
+		pts.logger.Error("Failed to list projects", zap.Error(err))
 		return listProjectsResult{}, err
 	}
 
@@ -230,15 +240,15 @@ func (pts *projectTaskToolSet) createTask(ctx context.Context, args createTaskAr
 		parentID = &pid
 	}
 
-	log.Printf("Creating task in project %s: %s", projectID, args.Title)
+	pts.logger.Info("Creating task in project", zap.String("projectID", projectID.String()), zap.String("title", args.Title))
 
 	task, err := pts.manager.CreateTask(ctx, projectID, parentID, args.Title, args.Description, args.Complexity)
 	if err != nil {
-		log.Printf("Failed to create task: %v", err)
+		pts.logger.Error("Failed to create task", zap.Error(err))
 		return nil, err
 	}
 
-	log.Printf("Created task %s successfully", task.ID)
+	pts.logger.Info("Created task successfully", zap.String("taskID", task.ID.String()))
 	return task, nil
 }
 
@@ -257,11 +267,11 @@ func (pts *projectTaskToolSet) getTask(ctx context.Context, args getTaskArgs) (*
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Getting task: %s", taskID)
+	pts.logger.Info("Getting task", zap.String("taskID", taskID.String()))
 
 	task, err := pts.manager.GetTask(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to get task: %v", err)
+		pts.logger.Error("Failed to get task", zap.Error(err))
 		return nil, err
 	}
 
@@ -283,11 +293,11 @@ func (pts *projectTaskToolSet) updateTaskDescription(ctx context.Context, args u
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Updating task description: %s", taskID)
+	pts.logger.Info("Updating task description", zap.String("taskID", taskID.String()))
 
 	task, err := pts.manager.UpdateTaskDescription(ctx, taskID, args.Description)
 	if err != nil {
-		log.Printf("Failed to update task description: %v", err)
+		pts.logger.Error("Failed to update task description", zap.Error(err))
 		return nil, err
 	}
 
@@ -309,11 +319,11 @@ func (pts *projectTaskToolSet) updateTaskState(ctx context.Context, args updateT
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Updating task state: %s to %s", taskID, args.State)
+	pts.logger.Info("Updating task state", zap.String("taskID", taskID.String()), zap.String("state", string(args.State)))
 
 	task, err := pts.manager.UpdateTaskState(ctx, taskID, args.State)
 	if err != nil {
-		log.Printf("Failed to update task state: %v", err)
+		pts.logger.Error("Failed to update task state", zap.Error(err))
 		return nil, err
 	}
 
@@ -334,11 +344,11 @@ func (pts *projectTaskToolSet) getProjectProgress(ctx context.Context, args getP
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Getting project progress: %s", projectID)
+	pts.logger.Info("Getting project progress", zap.String("projectID", projectID.String()))
 
 	progress, err := pts.manager.GetProjectProgress(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to get project progress: %v", err)
+		pts.logger.Error("Failed to get project progress", zap.Error(err))
 		return nil, err
 	}
 
@@ -359,11 +369,11 @@ func (pts *projectTaskToolSet) getChildTasks(ctx context.Context, args getChildT
 		return getChildTasksResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Getting child tasks for task: %s", taskID)
+	pts.logger.Info("Getting child tasks", zap.String("taskID", taskID.String()))
 
 	tasks, err := pts.manager.GetChildTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to get child tasks: %v", err)
+		pts.logger.Error("Failed to get child tasks", zap.Error(err))
 		return getChildTasksResult{}, err
 	}
 
@@ -387,11 +397,11 @@ func (pts *projectTaskToolSet) getParentTask(ctx context.Context, args getParent
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Getting parent task for task: %s", taskID)
+	pts.logger.Info("Getting parent task", zap.String("taskID", taskID.String()))
 
 	task, err := pts.manager.GetParentTask(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to get parent task: %v", err)
+		pts.logger.Error("Failed to get parent task", zap.Error(err))
 		return nil, err
 	}
 
@@ -413,17 +423,17 @@ func (pts *projectTaskToolSet) findNextActionableTask(ctx context.Context, args 
 		return findNextActionableTaskResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Finding next actionable task in project: %s", projectID)
+	pts.logger.Info("Finding next actionable task", zap.String("projectID", projectID.String()))
 
 	task, err := pts.manager.FindNextActionableTask(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to find next actionable task: %v", err)
+		pts.logger.Error("Failed to find next actionable task", zap.Error(err))
 		return findNextActionableTaskResult{
 			Message: fmt.Sprintf("No actionable task found: %v", err),
 		}, nil
 	}
 
-	log.Printf("Found next actionable task: %s", task.ID)
+	pts.logger.Info("Found next actionable task", zap.String("taskID", task.ID.String()))
 	return findNextActionableTaskResult{
 		Task:    task,
 		Message: "Successfully found next actionable task",
@@ -446,15 +456,15 @@ func (pts *projectTaskToolSet) findTasksNeedingBreakdown(ctx context.Context, ar
 		return findTasksNeedingBreakdownResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Finding tasks needing breakdown in project: %s", projectID)
+	pts.logger.Info("Finding tasks needing breakdown", zap.String("projectID", projectID.String()))
 
 	tasks, err := pts.manager.FindTasksNeedingBreakdown(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to find tasks needing breakdown: %v", err)
+		pts.logger.Error("Failed to find tasks needing breakdown", zap.Error(err))
 		return findTasksNeedingBreakdownResult{}, err
 	}
 
-	log.Printf("Found %d tasks needing breakdown", len(tasks))
+	pts.logger.Info("Found tasks needing breakdown", zap.Int("count", len(tasks)))
 	return findTasksNeedingBreakdownResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
@@ -478,15 +488,15 @@ func (pts *projectTaskToolSet) getRootTasks(ctx context.Context, args getRootTas
 		return getRootTasksResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Getting root tasks for project: %s", projectID)
+	pts.logger.Info("Getting root tasks", zap.String("projectID", projectID.String()))
 
 	tasks, err := pts.manager.GetRootTasks(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to get root tasks: %v", err)
+		pts.logger.Error("Failed to get root tasks", zap.Error(err))
 		return getRootTasksResult{}, err
 	}
 
-	log.Printf("Found %d root tasks", len(tasks))
+	pts.logger.Info("Found root tasks", zap.Int("count", len(tasks)))
 	return getRootTasksResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
@@ -510,15 +520,15 @@ func (pts *projectTaskToolSet) listTasksByState(ctx context.Context, args listTa
 		return listTasksByStateResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Listing tasks with state %s for project: %s", args.State, projectID)
+	pts.logger.Info("Listing tasks with state", zap.String("state", string(args.State)), zap.String("projectID", projectID.String()))
 
 	tasks, err := pts.manager.ListTasksByState(ctx, projectID, args.State)
 	if err != nil {
-		log.Printf("Failed to list tasks by state: %v", err)
+		pts.logger.Error("Failed to list tasks by state", zap.Error(err))
 		return listTasksByStateResult{}, err
 	}
 
-	log.Printf("Found %d tasks with state %s", len(tasks), args.State)
+	pts.logger.Info("Found tasks with state", zap.Int("count", len(tasks)), zap.String("state", string(args.State)))
 	return listTasksByStateResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
@@ -542,15 +552,15 @@ func (pts *projectTaskToolSet) deleteTaskSubtree(ctx context.Context, args delet
 		return deleteTaskSubtreeResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Deleting task subtree: %s", taskID)
+	pts.logger.Info("Deleting task subtree", zap.String("taskID", taskID.String()))
 
 	err = pts.manager.DeleteTaskSubtree(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to delete task subtree: %v", err)
+		pts.logger.Error("Failed to delete task subtree", zap.Error(err))
 		return deleteTaskSubtreeResult{}, err
 	}
 
-	log.Printf("Successfully deleted task subtree: %s", taskID)
+	pts.logger.Info("Successfully deleted task subtree", zap.String("taskID", taskID.String()))
 	return deleteTaskSubtreeResult{
 		Message: fmt.Sprintf("Successfully deleted task subtree: %s", taskID),
 	}, nil
@@ -572,15 +582,15 @@ func (pts *projectTaskToolSet) updateTask(ctx context.Context, args updateTaskAr
 		return updateTaskResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Updating task: %s", taskID)
+	pts.logger.Info("Updating task", zap.String("taskID", taskID.String()))
 
 	task, err := pts.manager.UpdateTask(ctx, taskID, args.Title, args.Description, args.Complexity, args.State)
 	if err != nil {
-		log.Printf("Failed to update task: %v", err)
+		pts.logger.Error("Failed to update task", zap.Error(err))
 		return updateTaskResult{}, err
 	}
 
-	log.Printf("Successfully updated task: %s", task.ID)
+	pts.logger.Info("Successfully updated task", zap.String("taskID", task.ID.String()))
 	return updateTaskResult{
 		Task:    task,
 		Message: fmt.Sprintf("Successfully updated task: %s", task.ID),
@@ -603,15 +613,15 @@ func (pts *projectTaskToolSet) deleteTask(ctx context.Context, args deleteTaskAr
 		return deleteTaskResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Deleting task: %s", taskID)
+	pts.logger.Info("Deleting task", zap.String("taskID", taskID.String()))
 
 	err = pts.manager.DeleteTask(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to delete task: %v", err)
+		pts.logger.Error("Failed to delete task", zap.Error(err))
 		return deleteTaskResult{}, err
 	}
 
-	log.Printf("Successfully deleted task: %s", taskID)
+	pts.logger.Info("Successfully deleted task", zap.String("taskID", taskID.String()))
 	return deleteTaskResult{
 		Message: fmt.Sprintf("Successfully deleted task: %s", taskID),
 	}, nil
@@ -633,15 +643,15 @@ func (pts *projectTaskToolSet) updateProject(ctx context.Context, args updatePro
 		return updateProjectResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Updating project: %s", projectID)
+	pts.logger.Info("Updating project", zap.String("projectID", projectID.String()))
 
 	project, err := pts.manager.UpdateProject(ctx, projectID, args.Title, args.Description)
 	if err != nil {
-		log.Printf("Failed to update project: %v", err)
+		pts.logger.Error("Failed to update project", zap.Error(err))
 		return updateProjectResult{}, err
 	}
 
-	log.Printf("Successfully updated project: %s", project.ID)
+	pts.logger.Info("Successfully updated project", zap.String("projectID", project.ID.String()))
 	return updateProjectResult{
 		Project: project,
 		Message: fmt.Sprintf("Successfully updated project: %s", project.ID),
@@ -664,15 +674,15 @@ func (pts *projectTaskToolSet) deleteProject(ctx context.Context, args deletePro
 		return deleteProjectResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Deleting project: %s", projectID)
+	pts.logger.Info("Deleting project", zap.String("projectID", projectID.String()))
 
 	err = pts.manager.DeleteProject(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to delete project: %v", err)
+		pts.logger.Error("Failed to delete project", zap.Error(err))
 		return deleteProjectResult{}, err
 	}
 
-	log.Printf("Successfully deleted project: %s", projectID)
+	pts.logger.Info("Successfully deleted project", zap.String("projectID", projectID.String()))
 	return deleteProjectResult{
 		Message: fmt.Sprintf("Successfully deleted project: %s", projectID),
 	}, nil
@@ -694,15 +704,15 @@ func (pts *projectTaskToolSet) listTasksForProject(ctx context.Context, args lis
 		return listTasksForProjectResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Listing all tasks for project: %s", projectID)
+	pts.logger.Info("Listing all tasks for project", zap.String("projectID", projectID.String()))
 
 	tasks, err := pts.manager.ListTasksForProject(ctx, projectID)
 	if err != nil {
-		log.Printf("Failed to list tasks for project: %v", err)
+		pts.logger.Error("Failed to list tasks for project", zap.Error(err))
 		return listTasksForProjectResult{}, err
 	}
 
-	log.Printf("Found %d tasks in project", len(tasks))
+	pts.logger.Info("Found tasks in project", zap.Int("count", len(tasks)))
 	return listTasksForProjectResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
@@ -744,15 +754,15 @@ func (pts *projectTaskToolSet) bulkUpdateTasks(ctx context.Context, args bulkUpd
 		Complexity: args.Complexity,
 	}
 
-	log.Printf("Bulk updating %d tasks", len(taskIDs))
+	pts.logger.Info("Bulk updating tasks", zap.Int("count", len(taskIDs)))
 
 	err := pts.manager.BulkUpdateTasks(ctx, taskIDs, updates)
 	if err != nil {
-		log.Printf("Failed to bulk update tasks: %v", err)
+		pts.logger.Error("Failed to bulk update tasks", zap.Error(err))
 		return bulkUpdateTasksResult{}, err
 	}
 
-	log.Printf("Successfully bulk updated %d tasks", len(taskIDs))
+	pts.logger.Info("Successfully bulk updated tasks", zap.Int("count", len(taskIDs)))
 	return bulkUpdateTasksResult{
 		Message: fmt.Sprintf("Successfully updated %d tasks", len(taskIDs)),
 		Count:   len(taskIDs),
@@ -780,15 +790,15 @@ func (pts *projectTaskToolSet) duplicateTask(ctx context.Context, args duplicate
 		return duplicateTaskResult{}, fmt.Errorf("invalid project ID format: %w", err)
 	}
 
-	log.Printf("Duplicating task %s to project %s", taskID, newProjectID)
+	pts.logger.Info("Duplicating task", zap.String("taskID", taskID.String()), zap.String("newProjectID", newProjectID.String()))
 
 	task, err := pts.manager.DuplicateTask(ctx, taskID, newProjectID)
 	if err != nil {
-		log.Printf("Failed to duplicate task: %v", err)
+		pts.logger.Error("Failed to duplicate task", zap.Error(err))
 		return duplicateTaskResult{}, err
 	}
 
-	log.Printf("Successfully duplicated task %s as %s", taskID, task.ID)
+	pts.logger.Info("Successfully duplicated task", zap.String("originalTaskID", taskID.String()), zap.String("newTaskID", task.ID.String()))
 	return duplicateTaskResult{
 		Task:    task,
 		Message: fmt.Sprintf("Successfully duplicated task as %s", task.ID),
@@ -811,15 +821,15 @@ func (pts *projectTaskToolSet) setTaskEstimate(ctx context.Context, args setTask
 		return setTaskEstimateResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Setting estimate for task %s to %d minutes", taskID, args.Estimate)
+	pts.logger.Info("Setting estimate for task", zap.String("taskID", taskID.String()), zap.Int64("estimateMinutes", args.Estimate))
 
 	task, err := pts.manager.SetTaskEstimate(ctx, taskID, args.Estimate)
 	if err != nil {
-		log.Printf("Failed to set task estimate: %v", err)
+		pts.logger.Error("Failed to set task estimate", zap.Error(err))
 		return setTaskEstimateResult{}, err
 	}
 
-	log.Printf("Successfully set estimate for task %s", taskID)
+	pts.logger.Info("Successfully set estimate for task", zap.String("taskID", taskID.String()))
 	return setTaskEstimateResult{
 		Task:    task,
 		Message: fmt.Sprintf("Successfully set estimate for task %s", taskID),

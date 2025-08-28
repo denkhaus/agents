@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync" // Add this import
 
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/acarl005/stripansi"
@@ -25,15 +26,15 @@ const (
 	// Message type colors
 	ColorNormal    = "\033[37m" // White - normal messages
 	ColorReasoning = "\033[33m" // Yellow - reasoning/planning messages
-	ColorTool      = "\033[36m" // Cyan - tool call messages
+	ColorTool      = "\033[34m" // Blue - tool call messages
 	ColorIntercept = "\033[35m" // Magenta - intercepted messages
 	ColorError     = "\033[31m" // Red - error messages
-	ColorSystem    = "\033[32m" // Green - system messages
+	ColorSystem    = "\033[92m" // Bright Green - system messages
 
 	// Border colors
 	ColorBorderNormal    = "\033[90m" // Dark gray
 	ColorBorderReasoning = "\033[93m" // Bright yellow
-	ColorBorderTool      = "\033[96m" // Bright cyan
+	ColorBorderTool      = "\033[94m" // Bright Blue
 	ColorBorderIntercept = "\033[95m" // Bright magenta
 )
 
@@ -60,6 +61,7 @@ type ChatPlugin interface {
 type cliMultiAgentChatImpl struct {
 	Options
 	currentAgent *shared.AgentInfo // Track the currently selected agent
+	outputMutex  sync.Mutex        // Mutex to protect concurrent writes to stdout
 }
 
 // NewCLIMultiAgentChat creates a new CLI-based multi-agent chat plugin.
@@ -123,8 +125,6 @@ func (p *cliMultiAgentChatImpl) handleOnError(info *shared.AgentInfo, err error)
 	p.printWithBorderColored(info.String(), fmt.Sprintf("%+v", err), MessageTypeAgentError)
 }
 
-
-
 // handleOnToolCall handles tool calls made by agents by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnToolCall(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
 	toolCallInfo := fmt.Sprintf("Tool Call: %s", functionDef.Name)
@@ -178,7 +178,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 					}
 					builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, shortenID(info.ID.String()), marker))
 				}
-				builder.WriteString("========================")
+				builder.WriteString("=========================")
 				p.printSystemMessage(builder.String())
 			case "clear":
 				p.currentAgent = nil
@@ -242,7 +242,7 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	builder.WriteString("/list                 - List all available agents\n")
 	builder.WriteString("/clear                - Clear current agent selection\n")
 	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.displayWidth))
-	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
+	builder.WriteString(" /<agent-name>         - Select an agent to chat with\n")
 	builder.WriteString("/exit                 - Exit the chat\n")
 	builder.WriteString("\n")
 	builder.WriteString("=== Usage ===\n")
@@ -250,17 +250,15 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	builder.WriteString("2. Chat directly: Hello, how can you help?\n")
 	builder.WriteString("3. Switch agents: /another-agent\n")
 	builder.WriteString("4. Adjust display: /width 80\n")
-	builder.WriteString("==========================")
+	builder.WriteString("===========================")
 	return builder.String()
-}
-
-// printWithBorder prints a message with a decorative border for better readability.
-func (p *cliMultiAgentChatImpl) printWithBorder(sender, message string) {
-	p.printWithBorderColored(sender, message, MessageTypeNormal)
 }
 
 // printWithBorderColored prints a message with a decorative colored border for better readability.
 func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, msgType MessageType) {
+	p.outputMutex.Lock()         // Acquire lock
+	defer p.outputMutex.Unlock() // Release lock when function exits
+
 	// Use configurable width
 	width := p.displayWidth
 
@@ -285,12 +283,18 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 	// Message content
 	renderedMessage := markdown.Render(message, p.displayWidth-4, 2)
 	for _, line := range strings.Split(string(renderedMessage), "\n") {
+		// Apply textColor to the line *after* markdown rendering, and ensure it's reset
+		coloredLine := fmt.Sprintf("%s%s%s", textColor, line, ColorReset)
+
+		// Calculate padding based on the *clean* line (without ANSI codes)
 		cleanLine := stripansi.Strip(line)
 		padding := width - runewidth.StringWidth(cleanLine) - 4
 		if padding < 0 {
 			padding = 0
 		}
-		fmt.Printf("%s│ %s%s%s │%s\n", borderColor, textColor, line, strings.Repeat(" ", padding), ColorReset)
+
+		// Print the line with correct padding and border colors
+		fmt.Printf("%s│ %s%s │%s%s\n", borderColor, coloredLine, strings.Repeat(" ", padding), borderColor, ColorReset)
 	}
 
 	// Bottom border
@@ -300,22 +304,26 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 
 // getColorsForMessageType returns the appropriate text and border colors for a message type.
 func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType MessageType) (textColor, borderColor string) {
+	// All borders will now be ColorBorderNormal
+	borderColor = ColorBorderNormal
+
 	switch msgType {
 	case MessageTypeReasoningMessage:
-		return ColorReasoning, ColorBorderReasoning
+		textColor = ColorReasoning
 	case MessageTypeToolCall:
-		return ColorTool, ColorBorderTool
+		textColor = ColorTool
 	case MessageTypeIntercept:
-		return ColorIntercept, ColorBorderIntercept
+		textColor = ColorIntercept
 	case MessageTypeError:
-		return ColorError, ColorError
+		textColor = ColorError
 	case MessageTypeAgentError:
-		return ColorError, ColorError
+		textColor = ColorError
 	case MessageTypeSystem:
-		return ColorSystem, ColorBorderTool
+		textColor = ColorSystem
 	default: // MessageTypeNormal
-		return ColorNormal, ColorBorderNormal
+		textColor = ColorNormal
 	}
+	return textColor, borderColor
 }
 
 // shortenID safely shortens a UUID string to the first 8 characters for display purposes.

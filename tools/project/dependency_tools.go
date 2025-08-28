@@ -3,11 +3,12 @@ package project
 import (
 	"context"
 	"fmt"
-	"log"
 
+	// Add this import
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/tool/function"
+	"go.uber.org/zap" // Add this import
 	"trpc.group/trpc-go/trpc-agent-go/tool"
+	"trpc.group/trpc-go/trpc-agent-go/tool/function"
 )
 
 // addTaskDependencyArgs defines the arguments for adding a task dependency
@@ -34,15 +35,15 @@ func (pts *projectTaskToolSet) addTaskDependency(ctx context.Context, args addTa
 		return addTaskDependencyResult{}, fmt.Errorf("invalid depends on task ID format: %w", err)
 	}
 
-	log.Printf("Adding dependency: task %s depends on task %s", taskID, dependsOnTaskID)
+	pts.logger.Info("Adding dependency", zap.String("taskID", taskID.String()), zap.String("dependsOnTaskID", dependsOnTaskID.String()))
 
 	task, err := pts.manager.AddTaskDependency(ctx, taskID, dependsOnTaskID)
 	if err != nil {
-		log.Printf("Failed to add task dependency: %v", err)
+		pts.logger.Error("Failed to add task dependency", zap.Error(err))
 		return addTaskDependencyResult{}, err
 	}
 
-	log.Printf("Successfully added dependency: task %s depends on task %s", taskID, dependsOnTaskID)
+	pts.logger.Info("Successfully added dependency", zap.String("taskID", taskID.String()), zap.String("dependsOnTaskID", dependsOnTaskID.String()))
 	return addTaskDependencyResult{
 		Task:    task,
 		Message: fmt.Sprintf("Successfully added dependency: task %s depends on task %s", taskID, dependsOnTaskID),
@@ -82,15 +83,15 @@ func (pts *projectTaskToolSet) removeTaskDependency(ctx context.Context, args re
 		return removeTaskDependencyResult{}, fmt.Errorf("invalid depends on task ID format: %w", err)
 	}
 
-	log.Printf("Removing dependency: task %s no longer depends on task %s", taskID, dependsOnTaskID)
+	pts.logger.Info("Removing dependency", zap.String("taskID", taskID.String()), zap.String("dependsOnTaskID", dependsOnTaskID.String()))
 
 	task, err := pts.manager.RemoveTaskDependency(ctx, taskID, dependsOnTaskID)
 	if err != nil {
-		log.Printf("Failed to remove task dependency: %v", err)
+		pts.logger.Error("Failed to remove task dependency", zap.Error(err))
 		return removeTaskDependencyResult{}, err
 	}
 
-	log.Printf("Successfully removed dependency: task %s no longer depends on task %s", taskID, dependsOnTaskID)
+	pts.logger.Info("Successfully removed dependency", zap.String("taskID", taskID.String()), zap.String("dependsOnTaskID", dependsOnTaskID.String()))
 	return removeTaskDependencyResult{
 		Task:    task,
 		Message: fmt.Sprintf("Successfully removed dependency: task %s no longer depends on task %s", taskID, dependsOnTaskID),
@@ -125,15 +126,15 @@ func (pts *projectTaskToolSet) getTaskDependencies(ctx context.Context, args get
 		return getTaskDependenciesResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Getting dependencies for task: %s", taskID)
+	pts.logger.Info("Getting dependencies for task", zap.String("taskID", taskID.String()))
 
 	tasks, err := pts.manager.GetTaskDependencies(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to get task dependencies: %v", err)
+		pts.logger.Error("Failed to get task dependencies", zap.Error(err))
 		return getTaskDependenciesResult{}, err
 	}
 
-	log.Printf("Found %d dependencies for task %s", len(tasks), taskID)
+	pts.logger.Info("Found dependencies for task", zap.Int("count", len(tasks)), zap.String("taskID", taskID.String()))
 	return getTaskDependenciesResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
@@ -169,15 +170,15 @@ func (pts *projectTaskToolSet) getDependentTasks(ctx context.Context, args getDe
 		return getDependentTasksResult{}, fmt.Errorf("invalid task ID format: %w", err)
 	}
 
-	log.Printf("Getting dependent tasks for task: %s", taskID)
+	pts.logger.Info("Getting dependent tasks for task", zap.String("taskID", taskID.String()))
 
 	tasks, err := pts.manager.GetDependentTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Failed to get dependent tasks: %v", err)
+		pts.logger.Error("Failed to get dependent tasks", zap.Error(err))
 		return getDependentTasksResult{}, err
 	}
 
-	log.Printf("Found %d dependent tasks for task %s", len(tasks), taskID)
+	pts.logger.Info("Found dependent tasks for task", zap.Int("count", len(tasks)), zap.String("taskID", taskID.String()))
 	return getDependentTasksResult{
 		Tasks:   tasks,
 		Count:   len(tasks),
