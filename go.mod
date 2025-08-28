@@ -19,7 +19,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.30.0
 	gopkg.in/yaml.v2 v2.4.0
-	trpc.group/trpc-go/trpc-a2a-go v0.2.2
+	trpc.group/trpc-go/trpc-a2a-go v0.2.3
 	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f
 	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250827071733-e6ae6aa6e9d6
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3
@@ -103,7 +103,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect

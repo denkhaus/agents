@@ -13,7 +13,7 @@ const (
 )
 
 var (
-	AgentInfoHuman = NewAgentInfo(AgentIDHuman, "Denkhaus-<human>", "A human you can chat with")
+	AgentInfoHuman = NewAgentInfo(AgentIDHuman, "denkhaus", "A human you can chat with")
 )
 
 type ToolInfo struct {

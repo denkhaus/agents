@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	AgentIDHuman          = uuid.MustParse("550e8400-e29b-41d4-a716-446655500000")
+	AgentIDHuman          = uuid.MustParse("550e8400-e29b-41d4-a716-665544332211")
 	AgentIDSupervisor     = uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
 	AgentIDCoder          = uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
 	AgentIDDebugger       = uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")

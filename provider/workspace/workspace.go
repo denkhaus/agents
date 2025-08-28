@@ -17,6 +17,6 @@ func NewWorkspace(agentID uuid.UUID, path string) (provider.Workspace, error) {
 	}, nil
 }
 
-func (p *workspaceImpl) GetWorkspacePath() (string, error) {
+func (p *workspaceImpl) GetPath() (string, error) {
 	return p.path, nil
 }

@@ -42,7 +42,7 @@ type SettingsProvider interface {
 }
 
 type Workspace interface {
-	GetWorkspacePath() (string, error)
+	GetPath() (string, error)
 }
 
 type WorkspaceProvider interface {
