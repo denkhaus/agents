@@ -117,7 +117,9 @@ func (p *cliMultiAgentChatImpl) handleOnProgress(messageType multi.SystemMessage
 
 // handleOnMessage handles agent messages by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnMessage(info *shared.AgentInfo, content string) {
-	p.printWithBorderColored(info.String(), content, MessageTypeNormal)
+	// Detect if this is a reasoning/planning message based on content
+	msgType := p.detectMessageType(content)
+	p.printWithBorderColored(info.String(), content, msgType)
 }
 
 // handleOnError handles agent errors by displaying them with a formatted border.
@@ -142,6 +144,9 @@ func (p *cliMultiAgentChatImpl) handleOnReasoningMessage(info *shared.AgentInfo,
 // Start runs the interactive chat loop, handling user input and agent communication.
 // It supports commands like /exit, /list, /agent-name to select agents, and direct messaging.
 func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
+	// Show welcome message with all available commands
+	p.showWelcomeMessage()
+
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -234,6 +239,49 @@ func (p *cliMultiAgentChatImpl) printSystemMessage(format string, a ...any) {
 	p.printWithBorderColored("SYSTEM", message, MessageTypeSystem)
 }
 
+// showWelcomeMessage displays a welcome message with all available commands and agents.
+func (p *cliMultiAgentChatImpl) showWelcomeMessage() {
+	var builder strings.Builder
+	builder.WriteString("🤖 Welcome to Multi-Agent Chat System! 🤖\n\n")
+
+	// Show available agents
+	builder.WriteString("=== Available Agents ===\n")
+	agents := p.processor.GetAllAgentInfos()
+	if len(agents) > 0 {
+		for _, info := range agents {
+			builder.WriteString(fmt.Sprintf("• %s (ID: %s)\n", info.Name, shortenID(info.ID.String())))
+		}
+	} else {
+		builder.WriteString("No agents available\n")
+	}
+
+	builder.WriteString("\n=== Available Commands ===\n")
+	builder.WriteString("/help                 - Show help message\n")
+	builder.WriteString("/list                 - List all available agents\n")
+	builder.WriteString("/clear                - Clear current agent selection\n")
+	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.displayWidth))
+	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
+	builder.WriteString("/exit                 - Exit the chat\n")
+
+	builder.WriteString("\n=== Quick Start ===\n")
+	builder.WriteString("1. Select an agent: /project-manager\n")
+	builder.WriteString("2. Start chatting: Hello, how can you help?\n")
+	builder.WriteString("3. Switch agents anytime: /another-agent\n")
+	builder.WriteString("4. Get help: /help\n")
+
+	builder.WriteString("\n=== Message Types ===\n")
+	builder.WriteString("🟡 Yellow boxes: Reasoning/Planning messages\n")
+	builder.WriteString("🔵 Blue boxes: Tool calls and actions\n")
+	builder.WriteString("🟣 Purple boxes: Inter-agent communication\n")
+	builder.WriteString("⚪ White boxes: Normal responses\n")
+	builder.WriteString("🟢 Green boxes: System messages\n")
+
+	builder.WriteString("\n" + strings.Repeat("=", 60) + "\n")
+	builder.WriteString("Ready to chat! Select an agent to get started.\n")
+
+	p.printSystemMessage(builder.String())
+}
+
 // getHelpMessage returns the help message as a string.
 func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	var builder strings.Builder
@@ -242,7 +290,7 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	builder.WriteString("/list                 - List all available agents\n")
 	builder.WriteString("/clear                - Clear current agent selection\n")
 	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.displayWidth))
-	builder.WriteString(" /<agent-name>         - Select an agent to chat with\n")
+	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
 	builder.WriteString("/exit                 - Exit the chat\n")
 	builder.WriteString("\n")
 	builder.WriteString("=== Usage ===\n")
@@ -304,26 +352,54 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 
 // getColorsForMessageType returns the appropriate text and border colors for a message type.
 func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType MessageType) (textColor, borderColor string) {
-	// All borders will now be ColorBorderNormal
-	borderColor = ColorBorderNormal
-
 	switch msgType {
 	case MessageTypeReasoningMessage:
 		textColor = ColorReasoning
+		borderColor = ColorBorderReasoning
 	case MessageTypeToolCall:
 		textColor = ColorTool
+		borderColor = ColorBorderTool
 	case MessageTypeIntercept:
 		textColor = ColorIntercept
+		borderColor = ColorBorderIntercept
 	case MessageTypeError:
 		textColor = ColorError
+		borderColor = ColorBorderNormal // Keep normal border for errors
 	case MessageTypeAgentError:
 		textColor = ColorError
+		borderColor = ColorBorderNormal // Keep normal border for errors
 	case MessageTypeSystem:
 		textColor = ColorSystem
+		borderColor = ColorBorderNormal // Keep normal border for system messages
 	default: // MessageTypeNormal
 		textColor = ColorNormal
+		borderColor = ColorBorderNormal
 	}
 	return textColor, borderColor
+}
+
+// detectMessageType analyzes message content to determine the appropriate message type
+func (p *cliMultiAgentChatImpl) detectMessageType(content string) MessageType {
+	// Check for React planner tags that indicate reasoning/planning content
+	if strings.Contains(content, "/PLANNING/") ||
+		strings.Contains(content, "/REASONING/") ||
+		strings.Contains(content, "/REPLANNING/") ||
+		strings.Contains(content, "/*PLANNING*/") ||
+		strings.Contains(content, "/*REASONING*/") ||
+		strings.Contains(content, "/*REPLANNING*/") {
+		fmt.Printf("[DEBUG] Detected reasoning content based on planning tags\n")
+		return MessageTypeReasoningMessage
+	}
+
+	// Check for other reasoning indicators
+	if strings.Contains(content, "/ACTION/") ||
+		strings.Contains(content, "/*ACTION*/") {
+		// ACTION sections are still part of reasoning flow
+		fmt.Printf("[DEBUG] Detected reasoning content based on action tags\n")
+		return MessageTypeReasoningMessage
+	}
+
+	return MessageTypeNormal
 }
 
 // shortenID safely shortens a UUID string to the first 8 characters for display purposes.

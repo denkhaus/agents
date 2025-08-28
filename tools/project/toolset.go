@@ -65,6 +65,7 @@ func WithLogger(logger *zap.Logger) Option {
 func NewToolSet(opts ...Option) (tool.ToolSet, error) {
 	toolSet := &projectTaskToolSet{
 		manager: NewManager(DefaultConfig()),
+		logger:  zap.NewNop(), // Use null logger by default to avoid interfering with chat output
 	}
 
 	// Apply options

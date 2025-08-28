@@ -248,12 +248,14 @@ func (p *chatProcessorImpl) processEvent(event *event.Event) {
 
 		// Show reasoning content first if present (future-proof detection)
 		if choice.Message.ReasoningContent != "" {
+			fmt.Printf("[DEBUG] ReasoningMessage detected for %s\n", event.Author)
 			info := p.GetAgentInfoByAuthor(event.Author)
 			p.onReasoningMessage(info, choice.Message.ReasoningContent)
 		}
 
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {
+			fmt.Printf("[DEBUG] NormalMessage detected for %s\n", event.Author)
 			info := p.GetAgentInfoByAuthor(event.Author)
 			p.onMessage(info, choice.Message.Content)
 		}
