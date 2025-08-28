@@ -45,7 +45,7 @@ type ChatProcessor interface {
 }
 
 // chatProcessorImpl implements the ChatProcessor interface and manages
-// the lifecycle and communication between multiple AI agents.
+// the lifecycle and communication between multiple agents.
 type chatProcessorImpl struct {
 	Options
 	agents map[uuid.UUID]*AgentRunner
@@ -136,9 +136,6 @@ func (p *chatProcessorImpl) GetAgentInfoByAuthor(author string) *shared.AgentInf
 		if info := p.GetAgentInfoByID(authorID); info != nil {
 			return info
 		}
-		if p.humanAgent.ID() == authorID {
-			return shared.TheAgentToInfo(p.humanAgent)
-		}
 	}
 
 	// If not UUID or not found, check if it's already a name
@@ -148,21 +145,12 @@ func (p *chatProcessorImpl) GetAgentInfoByAuthor(author string) *shared.AgentInf
 		}
 	}
 
-	if p.humanAgent.Info().Name == author {
-		return shared.TheAgentToInfo(p.humanAgent)
-	}
-
 	return nil
 }
 
 // GetAgentNameByID returns the agent name for a given AgentID
 func (p *chatProcessorImpl) GetAgentNameByID(agentID uuid.UUID) string {
-	// Check human
-	if p.humanAgent.ID() == agentID {
-		return p.humanAgent.Info().Name
-	}
-
-	// Check AI agents
+	// Check all agents
 	for _, agent := range p.agents {
 		if agent.ID() == agentID {
 			return agent.Name()
@@ -257,6 +245,12 @@ func (p *chatProcessorImpl) processEvent(event *event.Event) {
 
 	if event.Response != nil && len(event.Response.Choices) > 0 {
 		choice := event.Response.Choices[0]
+
+		// Show reasoning content first if present (future-proof detection)
+		if choice.Message.ReasoningContent != "" {
+			info := p.GetAgentInfoByAuthor(event.Author)
+			p.onReasoningMessage(info, choice.Message.ReasoningContent)
+		}
 
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {

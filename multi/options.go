@@ -15,19 +15,22 @@ type OnProgress func(format string, a ...any)
 // OnMessage is a callback function type for handling messages from agents.
 type OnMessage func(info *shared.AgentInfo, content string)
 
+// OnReasoningMessage is a callback function type for handling reasoning/thinking messages from agents.
+type OnReasoningMessage func(info *shared.AgentInfo, content string)
+
 // OnToolCall is a callback function type for handling tool calls made by agents.
 type OnToolCall func(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam)
 
 // Options contains configuration settings for the ChatProcessor.
 type Options struct {
-	sessionID       uuid.UUID
-	humanAgent      shared.TheAgent
-	agents          []shared.TheAgent
-	applicationName string
-	onToolCall      OnToolCall
-	onMessage       OnMessage
-	onProgress      OnProgress
-	onError         OnError
+	sessionID          uuid.UUID
+	agents             []shared.TheAgent
+	applicationName    string
+	onToolCall         OnToolCall
+	onMessage          OnMessage
+	onReasoningMessage OnReasoningMessage
+	onProgress         OnProgress
+	onError            OnError
 }
 
 // ChatProcessorOption is a function type for configuring ChatProcessor options.
@@ -47,12 +50,6 @@ func WithApplicationName(applicationName string) ChatProcessorOption {
 	}
 }
 
-// WithHumanAgent sets the human agent for the ChatProcessor.
-func WithHumanAgent(humanAgent shared.TheAgent) ChatProcessorOption {
-	return func(opts *Options) {
-		opts.humanAgent = humanAgent
-	}
-}
 
 // WithAgents sets the AI agents for the ChatProcessor.
 func WithAgents(agents ...shared.TheAgent) ChatProcessorOption {
@@ -79,6 +76,13 @@ func WithOnProgress(onProgress OnProgress) ChatProcessorOption {
 func WithOnMessage(onMessage OnMessage) ChatProcessorOption {
 	return func(opts *Options) {
 		opts.onMessage = onMessage
+	}
+}
+
+// WithOnReasoningMessage sets the reasoning message callback function for the ChatProcessor.
+func WithOnReasoningMessage(onReasoningMessage OnReasoningMessage) ChatProcessorOption {
+	return func(opts *Options) {
+		opts.onReasoningMessage = onReasoningMessage
 	}
 }
 
