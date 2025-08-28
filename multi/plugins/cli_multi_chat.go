@@ -102,8 +102,7 @@ func (p *cliMultiAgentChatImpl) setupMessageListener() {
 		if fromName != "" && toName != "" {
 			// Format: "FromName (FromID) -> ToName (ToID)"
 			header := fmt.Sprintf("%s (%s) -> %s (%s)",
-				fromName, shortenID(fromID.String()),
-				toName, shortenID(toID.String()),
+				fromName, fromID, toName, toID,
 			)
 			p.printWithBorderColored(header, content, MessageTypeIntercept)
 		}
@@ -178,18 +177,18 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 				builder.WriteString("\n=== Available Agents ===\n")
 				for _, info := range p.processor.GetAllAgentInfos() {
 					marker := ""
-					if p.currentAgent != nil && info.ID == p.currentAgent.ID {
+					if p.currentAgent != nil && p.currentAgent.Equal(info) {
 						marker = " (current)"
 					}
-					builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, shortenID(info.ID.String()), marker))
+					builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, info.ID(), marker))
 				}
 				builder.WriteString("=========================")
-				p.printSystemMessage(builder.String())
+				p.printSystemText(builder.String())
 			case "clear":
 				p.currentAgent = nil
 				p.printSystemMessage("Current agent cleared. Use /<agent-name> to select an agent.")
 			case "help":
-				p.printSystemMessage(p.getHelpMessage())
+				p.printSystemText(p.getHelpMessage())
 			default:
 				// Check if it's a width command
 				if strings.HasPrefix(command, "width ") {
@@ -220,7 +219,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 
 		// Send message to current agent or show help
 		if p.currentAgent != nil {
-			err := p.processor.SendMessageWithProcessing(ctx, shared.AgentIDHuman, p.currentAgent.ID, input)
+			err := p.processor.SendMessageWithProcessing(ctx, shared.AgentIDHuman, p.currentAgent.ID(), input)
 			if err != nil {
 				fmt.Printf("ERROR: %v\n", err)
 				continue
@@ -239,47 +238,17 @@ func (p *cliMultiAgentChatImpl) printSystemMessage(format string, a ...any) {
 	p.printWithBorderColored("SYSTEM", message, MessageTypeSystem)
 }
 
+// printSystemText displays a pre-formatted system text without additional formatting.
+// Use this for already formatted content like markdown or when the text might contain % characters.
+func (p *cliMultiAgentChatImpl) printSystemText(text string) {
+	p.printWithBorderColored("SYSTEM", text, MessageTypeSystem)
+}
+
 // showWelcomeMessage displays a welcome message with all available commands and agents.
 func (p *cliMultiAgentChatImpl) showWelcomeMessage() {
-	var builder strings.Builder
-	builder.WriteString("🤖 Welcome to Multi-Agent Chat System! 🤖\n\n")
-
-	// Show available agents
-	builder.WriteString("=== Available Agents ===\n")
 	agents := p.processor.GetAllAgentInfos()
-	if len(agents) > 0 {
-		for _, info := range agents {
-			builder.WriteString(fmt.Sprintf("• %s (ID: %s)\n", info.Name, shortenID(info.ID.String())))
-		}
-	} else {
-		builder.WriteString("No agents available\n")
-	}
-
-	builder.WriteString("\n=== Available Commands ===\n")
-	builder.WriteString("/help                 - Show help message\n")
-	builder.WriteString("/list                 - List all available agents\n")
-	builder.WriteString("/clear                - Clear current agent selection\n")
-	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.displayWidth))
-	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
-	builder.WriteString("/exit                 - Exit the chat\n")
-
-	builder.WriteString("\n=== Quick Start ===\n")
-	builder.WriteString("1. Select an agent: /project-manager\n")
-	builder.WriteString("2. Start chatting: Hello, how can you help?\n")
-	builder.WriteString("3. Switch agents anytime: /another-agent\n")
-	builder.WriteString("4. Get help: /help\n")
-
-	builder.WriteString("\n=== Message Types ===\n")
-	builder.WriteString("🟡 Yellow boxes: Reasoning/Planning messages\n")
-	builder.WriteString("🔵 Blue boxes: Tool calls and actions\n")
-	builder.WriteString("🟣 Purple boxes: Inter-agent communication\n")
-	builder.WriteString("⚪ White boxes: Normal responses\n")
-	builder.WriteString("🟢 Green boxes: System messages\n")
-
-	builder.WriteString("\n" + strings.Repeat("=", 60) + "\n")
-	builder.WriteString("Ready to chat! Select an agent to get started.\n")
-
-	p.printSystemMessage(builder.String())
+	welcomeMarkdown := GetWelcomeMessage(agents, p.displayWidth)
+	p.printSystemText(welcomeMarkdown) // Use printSystemText for pre-formatted content
 }
 
 // getHelpMessage returns the help message as a string.
@@ -342,7 +311,7 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 		}
 
 		// Print the line with correct padding and border colors
-		fmt.Printf("%s│ %s%s │%s%s\n", borderColor, coloredLine, strings.Repeat(" ", padding), borderColor, ColorReset)
+		fmt.Printf("%s│%s %s%s %s│%s\n", borderColor, ColorReset, coloredLine, strings.Repeat(" ", padding), borderColor, ColorReset)
 	}
 
 	// Bottom border
@@ -400,12 +369,4 @@ func (p *cliMultiAgentChatImpl) detectMessageType(content string) MessageType {
 	}
 
 	return MessageTypeNormal
-}
-
-// shortenID safely shortens a UUID string to the first 8 characters for display purposes.
-func shortenID(id string) string {
-	if len(id) >= 8 {
-		return id[:8]
-	}
-	return id
 }

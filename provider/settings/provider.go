@@ -47,6 +47,8 @@ func (p *agentSettingsProviderImpl) GetActiveAgents(includeHumanAgent bool) ([]s
 		}
 		agentInfo := shared.NewAgentInfo(
 			agentID,
+			settings.Agent.Role,
+			settings.Agent.StreamingEnabled,
 			settings.Agent.Name,
 			settings.Agent.Description,
 		)

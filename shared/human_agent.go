@@ -26,21 +26,21 @@ func (d *humanAgentImpl) GetInfo() *AgentInfo {
 	return &d.AgentInfo
 }
 
-func (d *humanAgentImpl) ID() uuid.UUID {
-	return d.AgentInfo.ID
-}
-
 func (d *humanAgentImpl) IsStreaming() bool {
 	return false
+}
+
+func (d *humanAgentImpl) GetRole() AgentRole {
+	return AgentRoleHuman
 }
 
 func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
 	// Create an event channel for the human agent
 	eventChan := make(chan *event.Event, 10)
-	
+
 	go func() {
 		defer close(eventChan)
-		
+
 		// If there's a message in the invocation, convert it to an event
 		if invocation != nil && invocation.Message.Content != "" {
 			// Create an assistant message event to display the received message
@@ -52,7 +52,7 @@ func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) 
 					Message: model.NewAssistantMessage(invocation.Message.Content),
 				}},
 			}
-			
+
 			event := &event.Event{
 				Response:     response,
 				InvocationID: uuid.New().String(),
@@ -60,7 +60,7 @@ func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) 
 				ID:           uuid.New().String(),
 				Timestamp:    time.Now(),
 			}
-			
+
 			// Send the event
 			select {
 			case eventChan <- event:
@@ -68,11 +68,11 @@ func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) 
 				return
 			}
 		}
-		
+
 		// Wait for context cancellation
 		<-ctx.Done()
 	}()
-	
+
 	return eventChan, nil
 }
 

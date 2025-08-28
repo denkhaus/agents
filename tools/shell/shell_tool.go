@@ -1,4 +1,4 @@
-package shelltoolset
+package shell
 
 import (
 	"context"
@@ -138,24 +138,24 @@ func (t *shellToolSet) validateArgument(arg string) error {
 func (t *shellToolSet) validateAbsolutePathWithinWorkspace(absPath string) error {
 	// Clean the path
 	cleanPath := filepath.Clean(absPath)
-	
+
 	// Get absolute path of base directory
 	absBaseDir, err := filepath.Abs(t.baseDir)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute base directory: %w", err)
 	}
-	
+
 	// Check if the absolute path is within the base directory
 	relPath, err := filepath.Rel(absBaseDir, cleanPath)
 	if err != nil {
 		return fmt.Errorf("absolute path outside workspace: %s", absPath)
 	}
-	
+
 	// If the relative path starts with "..", it's outside the base directory
 	if strings.HasPrefix(relPath, "..") {
 		return fmt.Errorf("absolute path outside workspace boundary: %s", absPath)
 	}
-	
+
 	return nil
 }
 

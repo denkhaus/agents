@@ -1,4 +1,4 @@
-package shelltoolset
+package shell
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func TestTildeExpansion(t *testing.T) {
 	subDir1 := filepath.Join(tempDir, "documents")
 	subDir2 := filepath.Join(tempDir, "projects")
 	nestedDir := filepath.Join(subDir1, "work")
-	
+
 	for _, dir := range []string{subDir1, subDir2, nestedDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			t.Fatalf("failed to create directory %s: %v", dir, err)
@@ -106,7 +106,7 @@ func TestTildeExpansion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set starting directory
 			toolSet.currentWorkDir = tt.startDir
-			
+
 			input := ShellToolInput{
 				Command:   "cd",
 				Arguments: []string{tt.targetDir},
@@ -142,12 +142,12 @@ func TestTildeExpansion(t *testing.T) {
 					t.Errorf("expected success (exit code 0), got exit code %d: %s", result.ExitCode, result.StdError)
 					return
 				}
-				
+
 				// Check that current working directory was updated
 				if toolSet.currentWorkDir != tt.expectedWorkDir {
 					t.Errorf("expected current working directory to be %s, got %s", tt.expectedWorkDir, toolSet.currentWorkDir)
 				}
-				
+
 				// Check that result working directory matches
 				if result.WorkDir != tt.expectedWorkDir {
 					t.Errorf("expected result working directory to be %s, got %s", tt.expectedWorkDir, result.WorkDir)
@@ -157,11 +157,11 @@ func TestTildeExpansion(t *testing.T) {
 				if result.ExitCode == 0 {
 					t.Errorf("expected command to fail, but got exit code 0")
 				}
-				
+
 				// Check error message if specified
 				if tt.errorMsg != "" {
 					if !strings.Contains(result.StdError, tt.errorMsg) && !strings.Contains(result.Error, tt.errorMsg) {
-						t.Errorf("expected error message to contain '%s', got stderr: '%s', error: '%s'", 
+						t.Errorf("expected error message to contain '%s', got stderr: '%s', error: '%s'",
 							tt.errorMsg, result.StdError, result.Error)
 					}
 				}
@@ -310,7 +310,7 @@ func TestTildeSecurityValidation(t *testing.T) {
 			}
 
 			if !strings.Contains(result.StdError, tt.errorMsg) && !strings.Contains(result.Error, tt.errorMsg) {
-				t.Errorf("expected error message to contain '%s', got stderr: '%s', error: '%s'", 
+				t.Errorf("expected error message to contain '%s', got stderr: '%s', error: '%s'",
 					tt.errorMsg, result.StdError, result.Error)
 			}
 

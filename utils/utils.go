@@ -49,7 +49,7 @@ func GetAgentInfoForAgent(agentID uuid.UUID, availableAgents ...shared.AgentInfo
 
 	for _, agent := range availableAgents {
 		// Add other AI agents (excluding self)
-		if agent.ID != agentID {
+		if agent.ID() != agentID {
 			info = append(info, agent)
 		}
 	}

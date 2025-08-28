@@ -1,4 +1,4 @@
-package shelltoolset
+package shell
 
 import (
 	"context"

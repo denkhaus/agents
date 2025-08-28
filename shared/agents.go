@@ -68,11 +68,15 @@ func (p AgentRole) String() string {
 // Validate checks if the AgentRole is a valid defined role
 func (p AgentRole) Validate() error {
 	switch p {
-	case AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager:
+	case AgentRoleSupervisor,
+		AgentRoleCoder,
+		AgentRoleDebugger,
+		AgentRoleProjectManager,
+		AgentRoleHuman:
 		return nil
 	default:
-		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s",
-			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager)
+		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s, %s",
+			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager, AgentRoleHuman)
 	}
 }
 
@@ -81,4 +85,5 @@ const (
 	AgentRoleCoder          AgentRole = "coder"
 	AgentRoleDebugger       AgentRole = "debugger"
 	AgentRoleProjectManager AgentRole = "project-manager"
+	AgentRoleHuman          AgentRole = "human"
 )

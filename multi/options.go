@@ -4,9 +4,11 @@ import (
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/model"
+	"trpc.group/trpc-go/trpc-agent-go/session"
 )
 
 // SystemMessageType defines the type of system message.
+//
 //go:generate stringer -type=SystemMessageType
 type SystemMessageType int
 
@@ -35,8 +37,9 @@ type OnToolCall func(info *shared.AgentInfo, functionDef model.FunctionDefinitio
 // Options contains configuration settings for the ChatProcessor.
 type Options struct {
 	sessionID          uuid.UUID
-	agents             []shared.TheAgent
+	availableAgents    []shared.TheAgent
 	applicationName    string
+	sessionService     session.Service
 	onToolCall         OnToolCall
 	onMessage          OnMessage
 	onReasoningMessage OnReasoningMessage
@@ -61,11 +64,17 @@ func WithApplicationName(applicationName string) ChatProcessorOption {
 	}
 }
 
+// WithSessionService sets the session service to use.
+func WithSessionService(service session.Service) ChatProcessorOption {
+	return func(opts *Options) {
+		opts.sessionService = service
+	}
+}
 
 // WithAgents sets the AI agents for the ChatProcessor.
 func WithAgents(agents ...shared.TheAgent) ChatProcessorOption {
 	return func(opts *Options) {
-		opts.agents = agents
+		opts.availableAgents = agents
 	}
 }
 

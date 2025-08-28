@@ -1,4 +1,4 @@
-package shelltoolset
+package shell
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func TestAbsolutePathWorkspaceValidation(t *testing.T) {
 	subDir1 := filepath.Join(tempDir, "documents")
 	subDir2 := filepath.Join(tempDir, "projects")
 	nestedDir := filepath.Join(subDir1, "work")
-	
+
 	for _, dir := range []string{subDir1, subDir2, nestedDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			t.Fatalf("failed to create directory %s: %v", dir, err)

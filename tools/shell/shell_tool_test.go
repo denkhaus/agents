@@ -1,4 +1,4 @@
-package shelltoolset
+package shell
 
 import (
 	"context"
@@ -86,7 +86,7 @@ func TestNewToolSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toolSet, err := NewToolSet(tt.opts...)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -97,23 +97,23 @@ func TestNewToolSet(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			
+
 			if toolSet == nil {
 				t.Error("expected non-nil tool set")
 				return
 			}
-			
+
 			// Test that we can get tools
 			tools := toolSet.Tools(context.Background())
 			if len(tools) == 0 {
 				t.Error("expected at least one tool")
 			}
-			
+
 			// Test cleanup
 			if err := toolSet.Close(); err != nil {
 				t.Errorf("unexpected error during close: %v", err)
@@ -199,7 +199,7 @@ func TestValidateInput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := toolSet.validateInput(tt.input)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -210,7 +210,7 @@ func TestValidateInput(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -256,7 +256,7 @@ func TestIsCommandAllowed(t *testing.T) {
 			toolSet := &shellToolSet{
 				allowedCommands: tt.allowedCommands,
 			}
-			
+
 			result := toolSet.isCommandAllowed(tt.command)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
@@ -332,7 +332,7 @@ func TestValidateArgument(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := toolSet.validateArgument(tt.argument)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -343,7 +343,7 @@ func TestValidateArgument(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -402,7 +402,7 @@ func TestResolvePath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolvedPath, err := toolSet.resolvePath(tt.path)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -413,19 +413,19 @@ func TestResolvePath(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			
+
 			// Ensure resolved path is within base directory
 			relPath, err := filepath.Rel(tempDir, resolvedPath)
 			if err != nil {
 				t.Errorf("failed to get relative path: %v", err)
 				return
 			}
-			
+
 			if strings.HasPrefix(relPath, "..") {
 				t.Errorf("resolved path is outside base directory: %s", resolvedPath)
 			}
@@ -513,7 +513,7 @@ func TestExecuteCommand(t *testing.T) {
 		{
 			name: "disallowed command",
 			input: ShellToolInput{
-				Command: "rm",
+				Command:   "rm",
 				Arguments: []string{"test.txt"},
 			},
 			expectError: true,
@@ -534,7 +534,7 @@ func TestExecuteCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			output, err := toolSet.executeCommand(ctx, tt.input)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -545,22 +545,22 @@ func TestExecuteCommand(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			
+
 			if output == nil {
 				t.Error("expected non-nil output")
 				return
 			}
-			
+
 			// Check that working directory is set
 			if output.WorkDir == "" {
 				t.Error("expected working directory to be set")
 			}
-			
+
 			// Run custom output checks
 			if tt.checkOutput != nil {
 				tt.checkOutput(t, output)
@@ -620,7 +620,7 @@ func TestValidateWorkingDirectory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := toolSet.validateWorkingDirectory(tt.workDir)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("expected error but got none")
@@ -631,7 +631,7 @@ func TestValidateWorkingDirectory(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -641,9 +641,9 @@ func TestValidateWorkingDirectory(t *testing.T) {
 
 func TestGetRestrictedEnvironment(t *testing.T) {
 	toolSet := &shellToolSet{}
-	
+
 	env := toolSet.getRestrictedEnvironment()
-	
+
 	// Check that we have some basic environment variables
 	foundPath := false
 	for _, envVar := range env {
@@ -652,11 +652,11 @@ func TestGetRestrictedEnvironment(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if !foundPath {
 		t.Error("expected PATH environment variable to be set")
 	}
-	
+
 	// Check that we don't have too many environment variables (security)
 	if len(env) > 20 {
 		t.Errorf("environment has too many variables (%d), potential security risk", len(env))
@@ -675,7 +675,7 @@ func TestChangeDirectory(t *testing.T) {
 	subDir1 := filepath.Join(tempDir, "subdir1")
 	subDir2 := filepath.Join(tempDir, "subdir2")
 	nestedDir := filepath.Join(subDir1, "nested")
-	
+
 	for _, dir := range []string{subDir1, subDir2, nestedDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			t.Fatalf("failed to create directory %s: %v", dir, err)
@@ -691,11 +691,11 @@ func TestChangeDirectory(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		targetDir      string
-		expectError    bool
+		name            string
+		targetDir       string
+		expectError     bool
 		expectedWorkDir string
-		errorMsg       string
+		errorMsg        string
 	}{
 		{
 			name:            "change to subdirectory",
@@ -753,14 +753,14 @@ func TestChangeDirectory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset to base directory for each test
 			toolSet.currentWorkDir = tempDir
-			
+
 			// Special setup for parent directory test
 			if tt.name == "change to parent directory from subdir" {
 				// First change to subdirectory
 				toolSet.currentWorkDir = subDir1
 				tt.expectedWorkDir = tempDir
 			}
-			
+
 			input := ShellToolInput{
 				Command:   "cd",
 				Arguments: []string{tt.targetDir},
@@ -796,12 +796,12 @@ func TestChangeDirectory(t *testing.T) {
 					t.Errorf("expected success (exit code 0), got exit code %d: %s", result.ExitCode, result.StdError)
 					return
 				}
-				
+
 				// Check that current working directory was updated
 				if toolSet.currentWorkDir != tt.expectedWorkDir {
 					t.Errorf("expected current working directory to be %s, got %s", tt.expectedWorkDir, toolSet.currentWorkDir)
 				}
-				
+
 				// Check that result working directory matches
 				if result.WorkDir != tt.expectedWorkDir {
 					t.Errorf("expected result working directory to be %s, got %s", tt.expectedWorkDir, result.WorkDir)
@@ -883,7 +883,7 @@ func TestChangeDirectoryTool(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset to base directory for each test
 			toolSet.currentWorkDir = tempDir
-			
+
 			ctx := context.Background()
 			output, err := toolSet.changeDirectory(ctx, tt.input)
 
@@ -1001,12 +1001,12 @@ func BenchmarkValidateInput(b *testing.B) {
 		baseDir:         ".",
 		allowedCommands: []string{"ls", "cat", "echo"},
 	}
-	
+
 	input := ShellToolInput{
 		Command:   "ls",
 		Arguments: []string{"-l", "*.go"},
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = toolSet.validateInput(input)
@@ -1017,7 +1017,7 @@ func BenchmarkResolvePath(b *testing.B) {
 	toolSet := &shellToolSet{
 		baseDir: ".",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = toolSet.resolvePath("subdir/file.txt")

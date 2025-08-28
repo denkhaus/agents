@@ -47,7 +47,7 @@ You are a project management assistant with capabilities to coordinate tasks, tr
 ### Available Agents
 
 {{range .agent_info}}
-- {{.Name}}: {{.ID}} - {{.Description}}
+- {{.Name}}: Role: {{.Role}} | ID: {{.ID}} | {{.Description}}
 {{end}}
 
 To talk to each agent you must use the send_message tool.
