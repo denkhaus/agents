@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -68,14 +69,42 @@ func (ta *TestAgent) FindSubAgent(name string) agent.Agent {
 	return nil
 }
 
+// ID returns the agent's UUID
+func (ta *TestAgent) ID() uuid.UUID {
+	return ta.uuid
+}
+
+// IsStreaming returns whether the agent is streaming
+func (ta *TestAgent) IsStreaming() bool {
+	return false
+}
+
+// GetInfo returns the agent information
+func (ta *TestAgent) GetInfo() *shared.AgentInfo {
+	info := shared.NewAgentInfo(
+		ta.uuid,
+		"test", // Using a simple string for test role
+		false,
+		ta.name,
+		"Test agent",
+	)
+	return &info
+}
+
+// GetRole returns the agent role
+func (ta *TestAgent) GetRole() shared.AgentRole {
+	return "test"
+}
+
 func TestMessageBroker(t *testing.T) {
 	broker := NewMessageBroker()
 
 	agent1 := &TestAgent{name: "Agent1", uuid: uuid.New()}
 	agent2 := &TestAgent{name: "Agent2", uuid: uuid.New()}
 
-	wrapper1 := NewMessagingWrapper(agent1, broker)
-	wrapper2 := NewMessagingWrapper(agent2, broker)
+	// Convert to shared.TheAgent using the shared.NewAgent function
+	wrapper1 := NewMessagingWrapper(shared.NewAgent(agent1, agent1.uuid, false), broker)
+	wrapper2 := NewMessagingWrapper(shared.NewAgent(agent2, agent2.uuid, false), broker)
 
 	// Type assert to access messaging-specific methods
 	messagingWrapper1, ok := wrapper1.(*messagingWrapper)
@@ -113,8 +142,9 @@ func TestMessagingWrapper(t *testing.T) {
 	broker := NewMessageBroker()
 
 	uuid1 := uuid.New()
-	testAgent := &TestAgent{name: "TestAgent"}
-	wrapper := NewMessagingWrapper(testAgent, broker, uuid1)
+	testAgent := &TestAgent{name: "TestAgent", uuid: uuid1}
+	// Convert to shared.TheAgent using the shared.NewAgent function
+	wrapper := NewMessagingWrapper(shared.NewAgent(testAgent, uuid1, false), broker)
 
 	// Type assert to access messaging-specific methods
 	messagingWrapper, ok := wrapper.(*messagingWrapper)

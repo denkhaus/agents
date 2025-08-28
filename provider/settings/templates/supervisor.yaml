@@ -14,4 +14,4 @@ agent:
   channel_buffer_size: 100
   max_tokens: 2000
   role: "supervisor"
-  name: "Denkhaus ByteMan"
+  name: "vice"
