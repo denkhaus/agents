@@ -6,11 +6,22 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
+// SystemMessageType defines the type of system message.
+//go:generate stringer -type=SystemMessageType
+type SystemMessageType int
+
+const (
+	SystemMessageDefault SystemMessageType = iota
+	SystemMessageSending
+	SystemMessageDelivered
+	SystemMessageProcessed
+)
+
 // OnError is a callback function type for handling errors from agents.
 type OnError func(info *shared.AgentInfo, err error)
 
 // OnProgress is a callback function type for reporting progress updates.
-type OnProgress func(format string, a ...any)
+type OnProgress func(messageType SystemMessageType, format string, a ...any)
 
 // OnMessage is a callback function type for handling messages from agents.
 type OnMessage func(info *shared.AgentInfo, content string)

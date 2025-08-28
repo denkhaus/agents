@@ -217,21 +217,21 @@ func (p *chatProcessorImpl) SendMessageWithProcessing(ctx context.Context, fromA
 	}
 
 	userMessage := model.NewUserMessage(message)
-	p.onProgress("system >> sending message to %s...\n", agent)
+	p.onProgress(SystemMessageSending, "sending message to %s...", agent)
 
 	events, err := agent.Run(ctx, fromAgentID, userMessage)
 	if err != nil {
 		return fmt.Errorf("failed to send message from %s to %s: %w", fromAgentID, toAgentID, err)
 	}
 
-	p.onProgress("system >> message delivered to %s - Processing...\n", agent)
+	p.onProgress(SystemMessageDelivered, "message delivered to %s - Processing...", agent)
 
 	// Process events
 	for event := range events {
 		p.processEvent(event)
 	}
 
-	p.onProgress("system >> %s finished processing\n", agent)
+	p.onProgress(SystemMessageProcessed, "%s finished processing", agent)
 	return nil
 }
 
