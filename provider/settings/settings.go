@@ -105,7 +105,7 @@ func (p *agentSettingsImpl) getSubAgents(
 
 	var subAgents []agent.Agent
 	for _, agentID := range p.Agent.SubAgents {
-		agent, _, err := provider.GetAgent(ctx, agentID)
+		agent, err := provider.GetAgent(ctx, agentID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get agent with id %s", agentID)
 		}
@@ -178,7 +178,8 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 
-	availableAgents, err := p.settingsProvider.GetActiveAgents()
+	//TODO: make the includeHumanAgent setting configurable
+	availableAgents, err := p.settingsProvider.GetActiveAgents(true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agents: %w", err)
 	}

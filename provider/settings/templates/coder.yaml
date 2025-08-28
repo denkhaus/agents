@@ -5,6 +5,7 @@ model:
   provider: openai
 agent:
   active: true
+  description: "The integrated coder agent, specialized in golang coding, has access to tools an can talk to other agents in the system"
   streaming_enabled: true
   planning_enabled: false
   temperature: 0.7

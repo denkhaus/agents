@@ -32,17 +32,48 @@ func (p *AgentInfo) String() string {
 
 func NewAgentInfo(agentID uuid.UUID, name, description string) AgentInfo {
 	return AgentInfo{
+		ID: agentID,
 		Info: agent.Info{
 			Name:        name,
 			Description: description,
 		},
-		ID: agentID,
 	}
 }
 
 type TheAgent interface {
 	agent.Agent
 	ID() uuid.UUID
+	IsStreaming() bool
+	GetInfo() *AgentInfo
+}
+
+type theAgentImpl struct {
+	agent.Agent
+	agentID     uuid.UUID
+	isStreaming bool
+}
+
+func (p *theAgentImpl) ID() uuid.UUID {
+	return p.agentID
+}
+
+func (p *theAgentImpl) IsStreaming() bool {
+	return p.isStreaming
+}
+
+func (p *theAgentImpl) GetInfo() *AgentInfo {
+	return &AgentInfo{
+		Info: p.Agent.Info(),
+		ID:   p.agentID,
+	}
+}
+
+func NewAgent(agent agent.Agent, agentID uuid.UUID, isStreaming bool) TheAgent {
+	return &theAgentImpl{
+		Agent:       agent,
+		agentID:     agentID,
+		isStreaming: isStreaming,
+	}
 }
 
 func TheAgentToInfo(agent TheAgent) *AgentInfo {

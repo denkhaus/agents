@@ -86,8 +86,9 @@ func NewSettingsManager(fsys embed.FS, rootPath string) (SettingsManager, error)
 
 		// Create Settings struct from parsed data
 		settingsStruct := &Settings{
-			Model: settingsData.Model,
-			Agent: settingsData.Agent,
+			AgentID: settingsData.AgentID,
+			Model:   settingsData.Model,
+			Agent:   settingsData.Agent,
 		}
 
 		settings[settingsData.AgentID] = settingsStruct

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/denkhaus/agents/provider"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
+	"github.com/denkhaus/agents/shared"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -33,7 +33,7 @@ type chatImpl struct {
 	streaming bool
 }
 
-func NewChat(agent agent.Agent, streaming bool, options provider.ChatProviderOptions) provider.Chat {
+func NewChat(agent shared.TheAgent, options provider.ChatProviderOptions) provider.Chat {
 	runnerOptions := []runner.Option{}
 	if options.SessionService != nil {
 		runnerOptions = append(runnerOptions,
@@ -44,7 +44,7 @@ func NewChat(agent agent.Agent, streaming bool, options provider.ChatProviderOpt
 	}
 
 	impl := &chatImpl{
-		streaming:           streaming,
+		streaming:           agent.IsStreaming(),
 		ChatProviderOptions: options,
 		runner: runner.NewRunner(
 			options.AppName,

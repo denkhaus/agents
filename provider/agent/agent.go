@@ -100,7 +100,7 @@ func (p *agentProviderImpl) GetAgent(
 	ctx context.Context,
 	agentID uuid.UUID,
 	opt ...provider.AgentProviderOption,
-) (agent agent.Agent, isStreamingEnabled bool, err error) {
+) (shared.TheAgent, error) {
 
 	var options provider.AgentProviderOptions
 	for _, o := range opt {
@@ -109,21 +109,26 @@ func (p *agentProviderImpl) GetAgent(
 
 	agentConfig, err := p.settingsProvider.GetAgentConfiguration(agentID)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to get agent settings for agent %s", agentID)
+		return nil, fmt.Errorf("failed to get agent settings for agent %s", agentID)
 	}
 
+	var ag agent.Agent
 	switch agentConfig.GetType() {
 	case shared.AgentTypeDefault:
-		agent, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
+		ag, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
 	case shared.AgentTypeChain:
-		agent, err = p.getChainAgent(ctx, agentConfig, options.ChainOpt...)
+		ag, err = p.getChainAgent(ctx, agentConfig, options.ChainOpt...)
 	case shared.AgentTypeCycle:
-		agent, err = p.getCycleAgent(ctx, agentConfig, options.CycleOpt...)
+		ag, err = p.getCycleAgent(ctx, agentConfig, options.CycleOpt...)
 	case shared.AgentTypeParallel:
-		agent, err = p.getParallelAgent(ctx, agentConfig, options.ParallelOpt...)
+		ag, err = p.getParallelAgent(ctx, agentConfig, options.ParallelOpt...)
 	default:
-		agent, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
+		ag, err = p.getDefaultAgent(ctx, agentConfig, options.LLMOpt...)
 	}
 
-	return agent, agentConfig.IsStreamingEnabled(), err
+	return shared.NewAgent(
+		ag,
+		agentID,
+		agentConfig.IsStreamingEnabled(),
+	), err
 }

@@ -15,6 +15,7 @@ import (
 // TestAgent is a simple agent for testing
 type TestAgent struct {
 	name string
+	uuid uuid.UUID
 }
 
 func (ta *TestAgent) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
@@ -70,13 +71,11 @@ func (ta *TestAgent) FindSubAgent(name string) agent.Agent {
 func TestMessageBroker(t *testing.T) {
 	broker := NewMessageBroker()
 
-	agent1 := &TestAgent{name: "Agent1"}
-	agent2 := &TestAgent{name: "Agent2"}
+	agent1 := &TestAgent{name: "Agent1", uuid: uuid.New()}
+	agent2 := &TestAgent{name: "Agent2", uuid: uuid.New()}
 
-	uuid1 := uuid.New()
-	uuid2 := uuid.New()
-	wrapper1 := NewMessagingWrapper(agent1, broker, uuid1)
-	wrapper2 := NewMessagingWrapper(agent2, broker, uuid2)
+	wrapper1 := NewMessagingWrapper(agent1, broker)
+	wrapper2 := NewMessagingWrapper(agent2, broker)
 
 	// Type assert to access messaging-specific methods
 	messagingWrapper1, ok := wrapper1.(*messagingWrapper)

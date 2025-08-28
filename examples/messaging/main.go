@@ -160,7 +160,7 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 }
 
 // CreateAgent creates an AI agent and adds it to the system
-func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction string) error {
+func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction string, agentID uuid.UUID) error {
 	// Get the pre-registered agent entry
 	agentEntry, exists := cs.agents[strings.ToLower(agentName)]
 	if !exists {
@@ -181,7 +181,10 @@ func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction strin
 	)
 
 	// Wrap with messaging using predefined ID
-	wrapper := messaging.NewMessagingWrapper(baseAgent, cs.broker, agentEntry.ID)
+	wrapper := messaging.NewMessagingWrapper(
+		shared.NewAgent(baseAgent, agentID, false),
+		cs.broker,
+	)
 
 	// Create runner
 	agentRunner := runner.NewRunner(
@@ -261,24 +264,26 @@ func main() {
 	// Phase 1: Pre-register agent metadata
 	agentMetadata := []struct {
 		name, description, instruction string
+		agentID                        uuid.UUID
 	}{
 		{
 			"Coder",
 			"Expert software engineer",
 			"You are a skilled programmer who writes clean, efficient code. Help with coding tasks and collaborate with other agents when needed.",
+			uuid.New(),
 		},
 		{
 			"Reviewer",
 			"Expert code reviewer",
 			"You are an experienced code reviewer. Analyze code for quality, security, and best practices. Collaborate with other agents when needed.",
+			uuid.New(),
 		},
 	}
 
 	// Pre-create agent entries with IDs
 	for _, meta := range agentMetadata {
-		agentID := uuid.New()
 		system.agents[strings.ToLower(meta.name)] = &AgentRunner{
-			ID:   agentID,
+			ID:   meta.agentID,
 			Name: meta.name,
 		}
 	}
@@ -289,6 +294,7 @@ func main() {
 			meta.name,
 			meta.description,
 			meta.instruction,
+			meta.agentID,
 		)
 		if err != nil {
 			log.Fatal("Failed to create", meta.name+":", err)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
@@ -24,7 +23,7 @@ type AgentProviderOptions struct {
 type AgentProviderOption func(*AgentProviderOptions)
 
 type AgentProvider interface {
-	GetAgent(ctx context.Context, agentID uuid.UUID, opt ...AgentProviderOption) (agent.Agent, bool, error)
+	GetAgent(ctx context.Context, agentID uuid.UUID, opt ...AgentProviderOption) (shared.TheAgent, error)
 }
 
 type AgentConfiguration interface {
@@ -38,7 +37,7 @@ type AgentConfiguration interface {
 }
 
 type SettingsProvider interface {
-	GetActiveAgents() ([]shared.AgentInfo, error)
+	GetActiveAgents(includeHumanAgent bool) ([]shared.AgentInfo, error)
 	GetAgentConfiguration(agentID uuid.UUID) (AgentConfiguration, error)
 }
 

@@ -12,8 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
+// ChatPlugin defines the interface for chat plugins that can be started.
 type ChatPlugin interface {
-	Start(ctx context.Context)
+	// Start begins the chat plugin operation with the given context.
+	Start(ctx context.Context) error
 }
 
 // ChatSystem manages the multi-agent chat
@@ -21,6 +23,8 @@ type cliMultiAgentChatImpl struct {
 	Options
 }
 
+// NewCLIMultiAgentChat creates a new CLI-based multi-agent chat plugin.
+// It sets up the chat processor with the provided options and configures message handling.
 func NewCLIMultiAgentChat(opts ...MultiAgentChatOption) ChatPlugin {
 	chat := &cliMultiAgentChatImpl{}
 
@@ -28,17 +32,20 @@ func NewCLIMultiAgentChat(opts ...MultiAgentChatOption) ChatPlugin {
 		opt(&chat.Options)
 	}
 
-	chat.processor = multi.NewChatProcessor(
-		multi.WithHumanAgent(shared.NewHumanAgent(shared.AgentInfoHuman)),
+	processorOptions := []multi.ChatProcessorOption{
 		multi.WithOnProgress(chat.handleOnProgress),
 		multi.WithOnMessage(chat.handleOnMessage),
 		multi.WithOnError(chat.handleOnError),
-	)
+	}
 
+	processorOptions = append(processorOptions, chat.processorOptions...)
+	chat.processor = multi.NewChatProcessor(processorOptions...)
 	chat.setupMessageListener()
+
 	return chat
 }
 
+// setupMessageListener configures the message interceptor to display inter-agent communication.
 func (p *cliMultiAgentChatImpl) setupMessageListener() {
 	// Add a message interceptor to the broker
 	p.processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
@@ -49,26 +56,31 @@ func (p *cliMultiAgentChatImpl) setupMessageListener() {
 			// Format: "FromName (FromID) -> ToName (ToID)"
 			header := fmt.Sprintf("%s (%s) -> %s (%s)",
 				fromName, shortenID(fromID.String()),
-				toName, shortenID(toID.String()))
+				toName, shortenID(toID.String()),
+			)
 			p.printWithBorder(header, content)
 		}
 	})
 }
 
+// handleOnProgress handles progress updates by printing them to stdout.
 func (p *cliMultiAgentChatImpl) handleOnProgress(format string, a ...any) {
 	fmt.Printf(format, a...)
 }
 
+// handleOnMessage handles agent messages by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnMessage(info *shared.AgentInfo, content string) {
 	p.printWithBorder(info.String(), content)
 }
 
+// handleOnError handles agent errors by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnError(info *shared.AgentInfo, err error) {
 	p.printWithBorder(info.String(), err.Error())
 }
 
-// startChat runs the interactive chat loop
-func (p *cliMultiAgentChatImpl) Start(ctx context.Context) {
+// Start runs the interactive chat loop, handling user input and agent communication.
+// It supports commands like /exit, /list, and direct messaging to agents using @agent syntax.
+func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -88,7 +100,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) {
 			switch command {
 			case "exit":
 				fmt.Println("Goodbye!")
-				return
+				return nil
 			case "list":
 				fmt.Println("\n=== Available Agents ===")
 				for _, info := range p.processor.GetAllAgentInfos() {
@@ -126,9 +138,11 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) {
 
 		fmt.Println("Use @<agent> <message> to send a message, or /help for commands")
 	}
+
+	return nil
 }
 
-// printWithBorder prints a message with a simple, clean border
+// printWithBorder prints a message with a decorative border for better readability.
 func (p *cliMultiAgentChatImpl) printWithBorder(sender, message string) {
 	// Fixed width for consistency
 	const width = 120
@@ -168,7 +182,7 @@ func (p *cliMultiAgentChatImpl) printWithBorder(sender, message string) {
 	fmt.Println() // Extra line for spacing
 }
 
-// shortenID safely shortens a UUID string to first 8 characters
+// shortenID safely shortens a UUID string to the first 8 characters for display purposes.
 func shortenID(id string) string {
 	if len(id) >= 8 {
 		return id[:8] + "..."

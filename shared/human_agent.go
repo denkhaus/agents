@@ -20,8 +20,16 @@ func NewHumanAgent(info AgentInfo) TheAgent {
 	}
 }
 
+func (d *humanAgentImpl) GetInfo() *AgentInfo {
+	return &d.AgentInfo
+}
+
 func (d *humanAgentImpl) ID() uuid.UUID {
 	return d.AgentInfo.ID
+}
+
+func (d *humanAgentImpl) IsStreaming() bool {
+	return false
 }
 
 func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {

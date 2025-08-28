@@ -15,45 +15,38 @@ import (
 
 // MessagingWrapper wraps any agent.Agent to add messaging capabilities
 type messagingWrapper struct {
-	agent.Agent
+	shared.TheAgent
 	broker MessageBroker
-	id     uuid.UUID
 }
 
 // NewMessagingWrapper creates a new messaging wrapper with a predefined ID
-func NewMessagingWrapper(baseAgent agent.Agent, broker MessageBroker, agentID uuid.UUID) shared.TheAgent {
+func NewMessagingWrapper(baseAgent shared.TheAgent, broker MessageBroker) shared.TheAgent {
 	// Create wrapper with predefined ID
 	wrapper := &messagingWrapper{
-		Agent:  baseAgent,
-		broker: broker,
-		id:     agentID,
+		TheAgent: baseAgent,
+		broker:   broker,
 	}
 
 	// Register with broker using the predefined ID
-	broker.RegisterAgent(agentID, wrapper)
+	broker.RegisterAgent(baseAgent.ID(), wrapper)
 
 	return wrapper
 }
 
-// ID returns the unique ID of this agent
-func (mw *messagingWrapper) ID() uuid.UUID {
-	return mw.id
-}
-
 // SendMessage sends a message to another agent by ID
 func (mw *messagingWrapper) SendMessage(to uuid.UUID, content string) error {
-	return mw.broker.SendMessage(mw.id, to, content)
+	return mw.broker.SendMessage(mw.ID(), to, content)
 }
 
 // GetMessageChannel returns the message channel for this agent
 func (mw *messagingWrapper) GetMessageChannel() (<-chan *Message, error) {
-	return mw.broker.GetMessageChannel(mw.id)
+	return mw.broker.GetMessageChannel(mw.ID())
 }
 
 // Run implements the agent.Agent interface
 func (mw *messagingWrapper) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
 	// Get the base agent's event channel
-	baseEventChan, err := mw.Agent.Run(ctx, invocation)
+	baseEventChan, err := mw.TheAgent.Run(ctx, invocation)
 	if err != nil {
 		return nil, err
 	}
@@ -132,18 +125,18 @@ func (mw *messagingWrapper) messageToEvent(msg *Message) *event.Event {
 
 // Info implements the agent.Agent interface
 func (mw *messagingWrapper) Info() agent.Info {
-	info := mw.Agent.Info()
-	info.Description = fmt.Sprintf("%s (with messaging capabilities, ID: %s)", info.Description, mw.id)
+	info := mw.TheAgent.Info()
+	info.Description = fmt.Sprintf("%s (with messaging capabilities, ID: %s)", info.Description, mw.ID())
 	return info
 }
 
 // Tools implements the agent.Agent interface
 func (mw *messagingWrapper) Tools() []tool.Tool {
 	// Get tools from the base agent
-	baseTools := mw.Agent.Tools()
+	baseTools := mw.TheAgent.Tools()
 
 	// Add our messaging tool
-	messagingTool := NewMessagingTool(mw.broker, mw.id)
+	messagingTool := NewMessagingTool(mw.broker, mw.ID())
 
 	// Convert to the expected tool type
 	tools := make([]tool.Tool, 0, len(baseTools)+1)

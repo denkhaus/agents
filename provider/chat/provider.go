@@ -35,11 +35,11 @@ func (p *chatProviderImpl) GetChat(
 		opt(&options)
 	}
 
-	agent, streaming, err := p.agentProvider.GetAgent(ctx, agentID, options.AgentProviderOptions...)
+	agent, err := p.agentProvider.GetAgent(ctx, agentID, options.AgentProviderOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent with id %s", agentID)
 	}
 
-	chat := NewChat(agent, streaming, options)
+	chat := NewChat(agent, options)
 	return chat, nil
 }

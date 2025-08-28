@@ -4,11 +4,12 @@ model:
   name: "deepseek-chat"
   provider: openai
 agent:
-  active: false
+  active: true
+  description: "The project-manager agent is an integrated agent for project management and coordination with access to project planning tools, that can talk to other agents in the system."
   streaming_enabled: true
   planning_enabled: true
   temperature: 0.5
   channel_buffer_size: 100
   max_tokens: 2000
   role: "project-manager"
-  name: "Project Manager"
+  name: "project-manager"

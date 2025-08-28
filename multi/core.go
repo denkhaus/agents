@@ -12,40 +12,102 @@ import (
 	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
+	"trpc.group/trpc-go/trpc-agent-go/runner"
+	"trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 )
 
+// ChatProcessor defines the interface for managing multi-agent chat interactions.
+// It provides methods for sending messages between agents, retrieving agent information,
+// and setting up message interception for monitoring communication.
 type ChatProcessor interface {
+	// SetMessageInterceptor sets a function to intercept and monitor messages between agents.
+	// The interceptor receives the sender ID, receiver ID, and message content.
 	SetMessageInterceptor(interceptor messaging.Interceptor)
+	
+	// SendMessage sends a message from one agent to another and returns a channel of events.
+	// The caller is responsible for processing the events from the returned channel.
 	SendMessage(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) (<-chan *event.Event, error)
+	
+	// SendMessageWithProcessing sends a message and automatically processes all resulting events.
+	// This is a convenience method that handles event processing internally.
 	SendMessageWithProcessing(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) error
+	
+	// GetAgentInfoByAuthor retrieves agent information by author name or UUID string.
+	// Returns nil if no agent is found with the given identifier.
 	GetAgentInfoByAuthor(author string) *shared.AgentInfo
+	
+	// GetAllAgentInfos returns information for all registered agents in the chat processor.
 	GetAllAgentInfos() []shared.AgentInfo
+	
+	// GetAgentNameByID returns the name of an agent given its UUID.
+	// Returns empty string if no agent is found with the given ID.
 	GetAgentNameByID(agentID uuid.UUID) string
 }
 
+// chatProcessorImpl implements the ChatProcessor interface and manages
+// the lifecycle and communication between multiple AI agents.
 type chatProcessorImpl struct {
 	Options
 	agents map[uuid.UUID]*AgentRunner
 	broker messaging.MessageBroker
 }
 
+// NewChatProcessor creates a new ChatProcessor instance with the given options.
+// It initializes the message broker, sets up default configuration, and registers all agents.
 func NewChatProcessor(opts ...ChatProcessorOption) ChatProcessor {
 	processor := &chatProcessorImpl{
 		agents: make(map[uuid.UUID]*AgentRunner),
 		broker: messaging.NewMessageBroker(),
+		Options: Options{
+			applicationName: "chat-app-default",
+		},
 	}
 
 	for _, opt := range opts {
 		opt(&processor.Options)
 	}
 
+	processor.initAgents()
 	return processor
 }
 
+// initAgents initializes all agents in the processor by creating AgentRunner instances
+// and setting up message processing for each agent.
+func (p *chatProcessorImpl) initAgents() {
+	for _, agent := range p.Options.agents {
+		if _, exists := p.agents[agent.ID()]; exists {
+			logger.Log.Warn("agent already registered in chat processor",
+				zap.String("app_name", p.applicationName),
+				zap.Any("agent_id", agent.ID()),
+			)
+			continue
+		}
+
+		wrapper := messaging.NewMessagingWrapper(agent, p.broker)
+
+		ar := &AgentRunner{
+			wrapper: wrapper,
+			runner: runner.NewRunner(
+				p.applicationName,
+				wrapper,
+				runner.WithSessionService(
+					inmemory.NewSessionService(),
+				),
+			),
+		}
+
+		p.agents[agent.ID()] = ar
+		p.startMessageProcessing(ar)
+	}
+}
+
+// SetMessageInterceptor sets a message interceptor on the underlying message broker.
+// The interceptor function will be called for every message sent between agents.
 func (p *chatProcessorImpl) SetMessageInterceptor(interceptor messaging.Interceptor) {
 	p.broker.SetMessageInterceptor(interceptor)
 }
 
+// GetAllAgentInfos returns a slice containing information about all registered agents.
 func (p *chatProcessorImpl) GetAllAgentInfos() []shared.AgentInfo {
 	var infos []shared.AgentInfo
 	for _, agent := range p.agents {
@@ -55,6 +117,8 @@ func (p *chatProcessorImpl) GetAllAgentInfos() []shared.AgentInfo {
 	return infos
 }
 
+// GetAgentInfoByID retrieves agent information by UUID.
+// Returns nil if no agent is found with the given ID.
 func (p *chatProcessorImpl) GetAgentInfoByID(agentID uuid.UUID) *shared.AgentInfo {
 	if v, ok := p.agents[agentID]; ok {
 		return v.Info()
@@ -63,6 +127,9 @@ func (p *chatProcessorImpl) GetAgentInfoByID(agentID uuid.UUID) *shared.AgentInf
 	return nil
 }
 
+// GetAgentInfoByAuthor retrieves agent information by author identifier.
+// The author can be either a UUID string or an agent name.
+// Returns nil if no agent is found with the given identifier.
 func (p *chatProcessorImpl) GetAgentInfoByAuthor(author string) *shared.AgentInfo {
 	// Try to parse as UUID first
 	if authorID, err := uuid.Parse(author); err == nil {
@@ -105,6 +172,8 @@ func (p *chatProcessorImpl) GetAgentNameByID(agentID uuid.UUID) string {
 	return ""
 }
 
+// startMessageProcessing starts a goroutine to process incoming messages for the given agent.
+// It listens on the agent's message channel and forwards messages to the agent's runner.
 func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 	go func() {
 		// Get the message channel for this agent
@@ -139,6 +208,8 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 	}()
 }
 
+// SendMessage sends a message from one agent to another and returns a channel of events.
+// The caller is responsible for processing the events from the returned channel.
 func (p *chatProcessorImpl) SendMessage(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) (<-chan *event.Event, error) {
 	agent, exists := p.agents[toAgentID]
 	if !exists {
@@ -149,6 +220,8 @@ func (p *chatProcessorImpl) SendMessage(ctx context.Context, fromAgentID, toAgen
 	return agent.Run(ctx, fromAgentID, userMessage)
 }
 
+// SendMessageWithProcessing sends a message to an agent and automatically processes all resulting events.
+// This method handles event processing internally and provides progress updates through callbacks.
 func (p *chatProcessorImpl) SendMessageWithProcessing(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) error {
 	agent, exists := p.agents[toAgentID]
 	if !exists {
@@ -174,6 +247,8 @@ func (p *chatProcessorImpl) SendMessageWithProcessing(ctx context.Context, fromA
 	return nil
 }
 
+// processEvent processes a single event from an agent's response.
+// It handles errors, assistant messages, and tool calls by invoking the appropriate callbacks.
 func (p *chatProcessorImpl) processEvent(event *event.Event) {
 	if event.Error != nil {
 		info := p.GetAgentInfoByAuthor(event.Author)

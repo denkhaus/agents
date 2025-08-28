@@ -33,7 +33,7 @@ func New(i *do.Injector) (provider.SettingsProvider, error) {
 
 // GetActiveAgents returns a list of all available agents with their basic information.
 // This method collects information about all agents that have been configured in the system.
-func (p *agentSettingsProviderImpl) GetActiveAgents() ([]shared.AgentInfo, error) {
+func (p *agentSettingsProviderImpl) GetActiveAgents(includeHumanAgent bool) ([]shared.AgentInfo, error) {
 	// Get all settings from the settings manager
 	allSettings := p.settingsManager.GetAllSettings()
 
@@ -51,7 +51,13 @@ func (p *agentSettingsProviderImpl) GetActiveAgents() ([]shared.AgentInfo, error
 			settings.Agent.Description,
 		)
 
+		agentInfo.InputSchema = settings.Agent.InputSchema
+		agentInfo.OutputSchema = settings.Agent.OutputSchema
 		agents = append(agents, agentInfo)
+	}
+
+	if includeHumanAgent {
+		agents = append(agents, shared.AgentInfoHuman)
 	}
 
 	return agents, nil
