@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,8 +16,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// EnhancedBubbleTeaChatPlugin implements a modern TUI chat interface with real LLM calls
-type EnhancedBubbleTeaChatPlugin struct {
+// bubbleTeaChatPluginImpl implements a modern TUI chat interface with real LLM calls
+type bubbleTeaChatPluginImpl struct {
 	processor multi.ChatProcessor
 	plugins.Options
 }
@@ -74,9 +75,9 @@ var (
 			Padding(0, 1)
 )
 
-// NewEnhancedBubbleTeaChatPlugin creates a new enhanced Bubble Tea chat plugin
-func NewEnhancedBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
-	chat := &EnhancedBubbleTeaChatPlugin{}
+// NewBubbleTeaChatPlugin creates a new enhanced Bubble Tea chat plugin
+func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
+	chat := &bubbleTeaChatPluginImpl{}
 
 	// Apply options
 	for _, opt := range opts {
@@ -92,7 +93,7 @@ func NewEnhancedBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugin
 }
 
 // Start begins the Bubble Tea chat interface
-func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
+func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 	// Create main spinner
 	mainSpinner := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	mainSpinner.Suffix = " Initializing Multi-Agent Chat..."
@@ -210,7 +211,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case readyMsg:
 		m.ready = true
-		
+
 		// Create a single combined welcome message
 		var welcomeMsg strings.Builder
 		welcomeMsg.WriteString("Welcome to Multi-Agent Chat System!\n\n")
@@ -219,7 +220,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			welcomeMsg.WriteString(fmt.Sprintf("- %s (ID: %s)\n", agent.Name, agent.ID().String()))
 		}
 		welcomeMsg.WriteString("\nUse /<agent-name> to select an agent, /help for commands")
-		
+
 		m.addMessage("SYSTEM", welcomeMsg.String(), plugins.MessageTypeSystem)
 		return m, nil
 
@@ -434,7 +435,7 @@ func (m *enhancedChatModel) renderAgentList() string {
 	}
 
 	items = append(items, "")
-	
+
 	// Add current mode indicator
 	if m.inputFocused {
 		items = append(items, "🎯 Mode: INPUT")
@@ -443,7 +444,7 @@ func (m *enhancedChatModel) renderAgentList() string {
 		items = append(items, "📜 Mode: SCROLL")
 		items = append(items, "   (ESC to input)")
 	}
-	
+
 	items = append(items, "")
 	items = append(items, "Commands:")
 	items = append(items, "/help - Show help")
@@ -482,13 +483,13 @@ func (m *enhancedChatModel) renderChatArea() string {
 	// Calculate visible message range based on scroll offset
 	visibleCount := m.getVisibleMessageCount()
 	totalMessages := len(m.messages)
-	
+
 	// Calculate start index (from the end, accounting for scroll offset)
 	start := totalMessages - visibleCount - m.scrollOffset
 	if start < 0 {
 		start = 0
 	}
-	
+
 	// Calculate end index
 	end := start + visibleCount
 	if end > totalMessages {
@@ -498,7 +499,7 @@ func (m *enhancedChatModel) renderChatArea() string {
 	var formattedMessages []string
 	for _, msg := range m.messages[start:end] {
 		timestamp := msg.Timestamp.Format("15:04:05")
-		
+
 		// Create colored box for each message similar to CLI version
 		boxedMessage := m.createColoredMessageBox(msg.Agent, msg.Content, msg.Type, timestamp)
 		formattedMessages = append(formattedMessages, boxedMessage)
@@ -507,7 +508,7 @@ func (m *enhancedChatModel) renderChatArea() string {
 	// Add scroll indicator if there are more messages
 	var scrollInfo string
 	if m.scrollOffset > 0 || start > 0 {
-		scrollInfo = fmt.Sprintf(" [Showing %d-%d of %d messages | ESC to toggle focus, ↑↓ to scroll]", 
+		scrollInfo = fmt.Sprintf(" [Showing %d-%d of %d messages | ESC to toggle focus, ↑↓ to scroll]",
 			start+1, end, totalMessages)
 	}
 
@@ -515,21 +516,21 @@ func (m *enhancedChatModel) renderChatArea() string {
 	if scrollInfo != "" {
 		content = scrollInfo + "\n\n" + content
 	}
-	
+
 	return chatAreaStyle.Width(m.width - 35).Height(m.height - 8).Render(content)
 }
 
 // renderInputArea renders the input field
 func (m *enhancedChatModel) renderInputArea() string {
 	prompt := "💬 "
-	
+
 	if m.currentAgent != nil {
 		prompt = fmt.Sprintf("💬 [%s] ", m.currentAgent.Name)
 	}
 
 	// Build the main input content (prompt + user input)
 	inputContent := fmt.Sprintf("%s%s", prompt, m.input)
-	
+
 	// Add status information on a separate line if agent is busy
 	var fullContent string
 	if m.currentAgent != nil && m.busyAgents[m.currentAgent.ID().String()] {
@@ -542,19 +543,19 @@ func (m *enhancedChatModel) renderInputArea() string {
 	} else {
 		fullContent = inputContent
 	}
-	
+
 	// Ensure proper width calculation to include bottom border
 	inputWidth := m.width - 2 // Account for left and right margins
 	if inputWidth < 20 {
 		inputWidth = 20
 	}
-	
+
 	// Use different border color based on focus
 	style := inputStyle
 	if !m.inputFocused {
 		style = inputStyle.BorderForeground(lipgloss.Color("#666666")) // Dimmed when not focused
 	}
-	
+
 	return style.Width(inputWidth).Render(fullContent)
 }
 
@@ -562,19 +563,19 @@ func (m *enhancedChatModel) renderInputArea() string {
 func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgType plugins.MessageType, timestamp string) string {
 	// Get colors for message type
 	textColor, borderColor := m.getColorsForMessageType(msgType)
-	
+
 	// Calculate available width for the chat area (accounting for agent list and margins)
 	availableWidth := m.width - 35 // Same as chatAreaStyle width
 	if availableWidth < 50 {
 		availableWidth = 50
 	}
-	
+
 	// Calculate content width (accounting for border, padding, and margins)
 	contentWidth := availableWidth - 8 // Account for border (2) + padding (4) + margin (2)
 	if contentWidth < 30 {
 		contentWidth = 30
 	}
-	
+
 	// Header section: Agent name and timestamp in bold
 	headerText := fmt.Sprintf(" %s [%s] ", agent, timestamp)
 	headerStyle := lipgloss.NewStyle().
@@ -582,23 +583,26 @@ func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgTy
 		Foreground(lipgloss.Color("#FAFAFA")).
 		Width(contentWidth).
 		Align(lipgloss.Left)
-	
+
 	// Separator line to match CLI version
 	separatorStyle := lipgloss.NewStyle().
 		Foreground(borderColor).
 		Width(contentWidth)
 	separator := separatorStyle.Render(strings.Repeat("─", contentWidth))
-	
+
+	// Render markdown content
+	renderedMarkdown := markdown.Render(content, contentWidth, 0)
+
 	// Content section with appropriate text color
 	contentStyle := lipgloss.NewStyle().
 		Foreground(textColor).
 		Width(contentWidth).
 		Padding(0, 1) // Small horizontal padding for content
-	
+
 	// Render components
 	renderedHeader := headerStyle.Render(headerText)
-	renderedContent := contentStyle.Render(content)
-	
+	renderedContent := contentStyle.Render(string(renderedMarkdown))
+
 	// Combine all sections
 	boxContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -606,13 +610,13 @@ func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgTy
 		separator,
 		renderedContent,
 	)
-	
+
 	// Create the main box style with colored border - let lipgloss handle the width
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(borderColor).
 		Padding(1, 1) // Add some internal padding
-	
+
 	return boxStyle.Render(boxContent)
 }
 
@@ -620,23 +624,23 @@ func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgTy
 func (m *enhancedChatModel) getColorsForMessageType(msgType plugins.MessageType) (textColor, borderColor lipgloss.Color) {
 	switch msgType {
 	case plugins.MessageTypeReasoningMessage:
-		textColor = lipgloss.Color("#FFFF00")    // Yellow
-		borderColor = lipgloss.Color("#FFFF87")  // Bright yellow
+		textColor = lipgloss.Color("#FFFF00")   // Yellow
+		borderColor = lipgloss.Color("#FFFF87") // Bright yellow
 	case plugins.MessageTypeToolCall:
-		textColor = lipgloss.Color("#5F87FF")    // Blue
-		borderColor = lipgloss.Color("#87AFFF")  // Bright blue
+		textColor = lipgloss.Color("#5F87FF")   // Blue
+		borderColor = lipgloss.Color("#87AFFF") // Bright blue
 	case plugins.MessageTypeIntercept:
-		textColor = lipgloss.Color("#FF5FFF")    // Magenta
-		borderColor = lipgloss.Color("#FF87FF")  // Bright magenta
+		textColor = lipgloss.Color("#FF5FFF")   // Magenta
+		borderColor = lipgloss.Color("#FF87FF") // Bright magenta
 	case plugins.MessageTypeError, plugins.MessageTypeAgentError:
-		textColor = lipgloss.Color("#FF5F5F")    // Red
-		borderColor = lipgloss.Color("#808080")  // Dark gray border
+		textColor = lipgloss.Color("#FF5F5F")   // Red
+		borderColor = lipgloss.Color("#808080") // Dark gray border
 	case plugins.MessageTypeSystem:
-		textColor = lipgloss.Color("#5FFF5F")    // Bright green
-		borderColor = lipgloss.Color("#808080")  // Dark gray border
+		textColor = lipgloss.Color("#5FFF5F")   // Bright green
+		borderColor = lipgloss.Color("#808080") // Dark gray border
 	default: // MessageTypeNormal
-		textColor = lipgloss.Color("#FFFFFF")    // White
-		borderColor = lipgloss.Color("#808080")  // Dark gray
+		textColor = lipgloss.Color("#FFFFFF")   // White
+		borderColor = lipgloss.Color("#808080") // Dark gray
 	}
 	return textColor, borderColor
 }
@@ -654,7 +658,7 @@ func (m *enhancedChatModel) addMessage(agent, content string, msgType plugins.Me
 	if len(m.messages) > 100 {
 		m.messages = m.messages[1:]
 	}
-	
+
 	// Auto-scroll to show new messages (reset scroll offset)
 	m.scrollOffset = 0
 }
@@ -669,7 +673,7 @@ func (m *enhancedChatModel) handleInput() {
 	// Add to input history (avoid duplicates of the most recent entry)
 	if len(m.inputHistory) == 0 || m.inputHistory[len(m.inputHistory)-1] != input {
 		m.inputHistory = append(m.inputHistory, input)
-		
+
 		// Keep only last 50 entries in history
 		if len(m.inputHistory) > 50 {
 			m.inputHistory = m.inputHistory[1:]
