@@ -1,4 +1,4 @@
-package plugins
+package cli
 
 import (
 	"bufio"
@@ -12,6 +12,7 @@ import (
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/acarl005/stripansi"
 	"github.com/denkhaus/agents/multi"
+	"github.com/denkhaus/agents/multi/plugins"
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"github.com/mattn/go-runewidth"
@@ -38,38 +39,19 @@ const (
 	ColorBorderIntercept = "\033[95m" // Bright magenta
 )
 
-// MessageType represents different types of messages for styling
-type MessageType int
-
-const (
-	MessageTypeNormal MessageType = iota
-	MessageTypeReasoningMessage
-	MessageTypeToolCall
-	MessageTypeIntercept
-	MessageTypeError
-	MessageTypeSystem
-	MessageTypeAgentError
-)
-
-// ChatPlugin defines the interface for chat plugins that can be started.
-type ChatPlugin interface {
-	// Start begins the chat plugin operation with the given context.
-	Start(ctx context.Context) error
-}
-
 // ChatSystem manages the multi-agent chat
 type cliMultiAgentChatImpl struct {
-	Options
+	plugins.Options
 	currentAgent *shared.AgentInfo // Track the currently selected agent
 	outputMutex  sync.Mutex        // Mutex to protect concurrent writes to stdout
 }
 
 // NewCLIMultiAgentChat creates a new CLI-based multi-agent chat plugin.
 // It sets up the chat processor with the provided options and configures message handling.
-func NewCLIMultiAgentChat(opts ...MultiAgentChatOption) ChatPlugin {
+func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
 	chat := &cliMultiAgentChatImpl{
-		Options: Options{
-			displayWidth: 120, // Default width
+		Options: plugins.Options{
+			DisplayWidth: 120, // Default width
 		},
 	}
 
@@ -85,8 +67,8 @@ func NewCLIMultiAgentChat(opts ...MultiAgentChatOption) ChatPlugin {
 		multi.WithOnToolCall(chat.handleOnToolCall),
 	}
 
-	processorOptions = append(processorOptions, chat.processorOptions...)
-	chat.processor = multi.NewChatProcessor(processorOptions...)
+	processorOptions = append(processorOptions, chat.ProcessorOptions...)
+	chat.Processor = multi.NewChatProcessor(processorOptions...)
 	chat.setupMessageListener()
 
 	return chat
@@ -95,16 +77,16 @@ func NewCLIMultiAgentChat(opts ...MultiAgentChatOption) ChatPlugin {
 // setupMessageListener configures the message interceptor to display inter-agent communication.
 func (p *cliMultiAgentChatImpl) setupMessageListener() {
 	// Add a message interceptor to the broker
-	p.processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
-		fromName := p.processor.GetAgentNameByID(fromID)
-		toName := p.processor.GetAgentNameByID(toID)
+	p.Processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
+		fromName := p.Processor.GetAgentNameByID(fromID)
+		toName := p.Processor.GetAgentNameByID(toID)
 
 		if fromName != "" && toName != "" {
 			// Format: "FromName (FromID) -> ToName (ToID)"
 			header := fmt.Sprintf("%s (%s) -> %s (%s)",
 				fromName, fromID, toName, toID,
 			)
-			p.printWithBorderColored(header, content, MessageTypeIntercept)
+			p.printWithBorderColored(header, content, plugins.MessageTypeIntercept)
 		}
 	})
 }
@@ -123,7 +105,7 @@ func (p *cliMultiAgentChatImpl) handleOnMessage(info *shared.AgentInfo, content 
 
 // handleOnError handles agent errors by displaying them with a formatted border.
 func (p *cliMultiAgentChatImpl) handleOnError(info *shared.AgentInfo, err error) {
-	p.printWithBorderColored(info.String(), fmt.Sprintf("%+v", err), MessageTypeAgentError)
+	p.printWithBorderColored(info.String(), fmt.Sprintf("%+v", err), plugins.MessageTypeAgentError)
 }
 
 // handleOnToolCall handles tool calls made by agents by displaying them with a formatted border.
@@ -132,12 +114,12 @@ func (p *cliMultiAgentChatImpl) handleOnToolCall(info *shared.AgentInfo, functio
 	if len(functionDef.Arguments) > 0 {
 		toolCallInfo += fmt.Sprintf("\nArguments: %s", string(functionDef.Arguments))
 	}
-	p.printWithBorderColored(info.String()+" [TOOL]", toolCallInfo, MessageTypeToolCall)
+	p.printWithBorderColored(info.String()+" [TOOL]", toolCallInfo, plugins.MessageTypeToolCall)
 }
 
 // handleOnReasoningMessage handles reasoning messages from agents.
 func (p *cliMultiAgentChatImpl) handleOnReasoningMessage(info *shared.AgentInfo, reasoning string) {
-	p.printWithBorderColored(info.String(), reasoning, MessageTypeReasoningMessage)
+	p.printWithBorderColored(info.String(), reasoning, plugins.MessageTypeReasoningMessage)
 }
 
 // Start runs the interactive chat loop, handling user input and agent communication.
@@ -175,7 +157,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 			case "list":
 				var builder strings.Builder
 				builder.WriteString("\n=== Available Agents ===\n")
-				for _, info := range p.processor.GetAllAgentInfos() {
+				for _, info := range p.Processor.GetAllAgentInfos() {
 					marker := ""
 					if p.currentAgent != nil && p.currentAgent.Equal(info) {
 						marker = " (current)"
@@ -198,7 +180,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 							fmt.Println("Minimum width is 40 characters.")
 							width = 40
 						}
-						p.displayWidth = width
+						p.DisplayWidth = width
 						p.printSystemMessage("Display width set to %d characters.", width)
 					} else {
 						fmt.Println("Invalid width. Usage: /width <number>")
@@ -206,7 +188,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 					continue
 				}
 				// Try to find agent by name
-				agentInfo := p.processor.GetAgentInfoByAuthor(command)
+				agentInfo := p.Processor.GetAgentInfoByAuthor(command)
 				if agentInfo != nil {
 					p.currentAgent = agentInfo
 					p.printSystemMessage("Selected agent: %s", agentInfo.Name)
@@ -219,7 +201,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 
 		// Send message to current agent or show help
 		if p.currentAgent != nil {
-			err := p.processor.SendMessageWithProcessing(ctx, shared.AgentIDHuman, p.currentAgent.ID(), input)
+			err := p.Processor.SendMessageWithProcessing(ctx, shared.AgentIDHuman, p.currentAgent.ID(), input)
 			if err != nil {
 				fmt.Printf("ERROR: %v\n", err)
 				continue
@@ -235,19 +217,19 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 // printSystemMessage displays a system message with a standard border.
 func (p *cliMultiAgentChatImpl) printSystemMessage(format string, a ...any) {
 	message := fmt.Sprintf(format, a...)
-	p.printWithBorderColored("SYSTEM", message, MessageTypeSystem)
+	p.printWithBorderColored("SYSTEM", message, plugins.MessageTypeSystem)
 }
 
 // printSystemText displays a pre-formatted system text without additional formatting.
 // Use this for already formatted content like markdown or when the text might contain % characters.
 func (p *cliMultiAgentChatImpl) printSystemText(text string) {
-	p.printWithBorderColored("SYSTEM", text, MessageTypeSystem)
+	p.printWithBorderColored("SYSTEM", text, plugins.MessageTypeSystem)
 }
 
 // showWelcomeMessage displays a welcome message with all available commands and agents.
 func (p *cliMultiAgentChatImpl) showWelcomeMessage() {
-	agents := p.processor.GetAllAgentInfos()
-	welcomeMarkdown := GetWelcomeMessage(agents, p.displayWidth)
+	agents := p.Processor.GetAllAgentInfos()
+	welcomeMarkdown := GetWelcomeMessage(agents, p.DisplayWidth)
 	p.printSystemText(welcomeMarkdown) // Use printSystemText for pre-formatted content
 }
 
@@ -258,7 +240,7 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	builder.WriteString("/help                 - Show this help message\n")
 	builder.WriteString("/list                 - List all available agents\n")
 	builder.WriteString("/clear                - Clear current agent selection\n")
-	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.displayWidth))
+	builder.WriteString(fmt.Sprintf("/width <number>       - Set display width (min: 40, current: %d)\n", p.DisplayWidth))
 	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
 	builder.WriteString("/exit                 - Exit the chat\n")
 	builder.WriteString("\n")
@@ -272,12 +254,12 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 }
 
 // printWithBorderColored prints a message with a decorative colored border for better readability.
-func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, msgType MessageType) {
+func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, msgType plugins.MessageType) {
 	p.outputMutex.Lock()         // Acquire lock
 	defer p.outputMutex.Unlock() // Release lock when function exits
 
 	// Use configurable width
-	width := p.displayWidth
+	width := p.DisplayWidth
 
 	// Get colors for this message type
 	textColor, borderColor := p.getColorsForMessageType(msgType)
@@ -298,7 +280,7 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 	fmt.Printf("%s├%s┤%s\n", borderColor, strings.Repeat("─", width-2), ColorReset)
 
 	// Message content
-	renderedMessage := markdown.Render(message, p.displayWidth-4, 2)
+	renderedMessage := markdown.Render(message, p.DisplayWidth-4, 2)
 	for _, line := range strings.Split(string(renderedMessage), "\n") {
 		// Apply textColor to the line *after* markdown rendering, and ensure it's reset
 		coloredLine := fmt.Sprintf("%s%s%s", textColor, line, ColorReset)
@@ -320,24 +302,24 @@ func (p *cliMultiAgentChatImpl) printWithBorderColored(sender, message string, m
 }
 
 // getColorsForMessageType returns the appropriate text and border colors for a message type.
-func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType MessageType) (textColor, borderColor string) {
+func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType plugins.MessageType) (textColor, borderColor string) {
 	switch msgType {
-	case MessageTypeReasoningMessage:
+	case plugins.MessageTypeReasoningMessage:
 		textColor = ColorReasoning
 		borderColor = ColorBorderReasoning
-	case MessageTypeToolCall:
+	case plugins.MessageTypeToolCall:
 		textColor = ColorTool
 		borderColor = ColorBorderTool
-	case MessageTypeIntercept:
+	case plugins.MessageTypeIntercept:
 		textColor = ColorIntercept
 		borderColor = ColorBorderIntercept
-	case MessageTypeError:
+	case plugins.MessageTypeError:
 		textColor = ColorError
 		borderColor = ColorBorderNormal // Keep normal border for errors
-	case MessageTypeAgentError:
+	case plugins.MessageTypeAgentError:
 		textColor = ColorError
 		borderColor = ColorBorderNormal // Keep normal border for errors
-	case MessageTypeSystem:
+	case plugins.MessageTypeSystem:
 		textColor = ColorSystem
 		borderColor = ColorBorderNormal // Keep normal border for system messages
 	default: // MessageTypeNormal
@@ -348,7 +330,7 @@ func (p *cliMultiAgentChatImpl) getColorsForMessageType(msgType MessageType) (te
 }
 
 // detectMessageType analyzes message content to determine the appropriate message type
-func (p *cliMultiAgentChatImpl) detectMessageType(content string) MessageType {
+func (p *cliMultiAgentChatImpl) detectMessageType(content string) plugins.MessageType {
 	// Check for React planner tags that indicate reasoning/planning content
 	if strings.Contains(content, "/PLANNING/") ||
 		strings.Contains(content, "/REASONING/") ||
@@ -357,7 +339,7 @@ func (p *cliMultiAgentChatImpl) detectMessageType(content string) MessageType {
 		strings.Contains(content, "/*REASONING*/") ||
 		strings.Contains(content, "/*REPLANNING*/") {
 		fmt.Printf("[DEBUG] Detected reasoning content based on planning tags\n")
-		return MessageTypeReasoningMessage
+		return plugins.MessageTypeReasoningMessage
 	}
 
 	// Check for other reasoning indicators
@@ -365,8 +347,8 @@ func (p *cliMultiAgentChatImpl) detectMessageType(content string) MessageType {
 		strings.Contains(content, "/*ACTION*/") {
 		// ACTION sections are still part of reasoning flow
 		fmt.Printf("[DEBUG] Detected reasoning content based on action tags\n")
-		return MessageTypeReasoningMessage
+		return plugins.MessageTypeReasoningMessage
 	}
 
-	return MessageTypeNormal
+	return plugins.MessageTypeNormal
 }

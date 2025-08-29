@@ -7,6 +7,7 @@ import (
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/multi"
 	"github.com/denkhaus/agents/multi/plugins"
+	"github.com/denkhaus/agents/multi/plugins/bubble"
 	"github.com/denkhaus/agents/shared"
 	"github.com/denkhaus/agents/system/agents"
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ func startup(ctx context.Context) error {
 	}
 
 	// Enhanced Bubble Tea Chat with real LLM calls and spinners
-	chat := plugins.NewEnhancedBubbleTeaChatPlugin(
+	chat := bubble.NewEnhancedBubbleTeaChatPlugin(
 		plugins.WithProcessorOptions(
 			multi.WithSessionID(uuid.New()),
 			multi.WithApplicationName("denkhaus-multi-agent"),

@@ -1,4 +1,4 @@
-package plugins
+package bubble
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/denkhaus/agents/multi"
+	"github.com/denkhaus/agents/multi/plugins"
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 )
@@ -17,7 +18,7 @@ import (
 // EnhancedBubbleTeaChatPlugin implements a modern TUI chat interface with real LLM calls
 type EnhancedBubbleTeaChatPlugin struct {
 	processor multi.ChatProcessor
-	Options
+	plugins.Options
 }
 
 // enhancedChatModel represents the Bubble Tea model
@@ -27,6 +28,8 @@ type enhancedChatModel struct {
 	currentAgent  *shared.AgentInfo
 	messages      []chatMessage
 	input         string
+	inputHistory  []string // Store previous user inputs
+	historyIndex  int      // Current position in history (-1 = not navigating)
 	busyAgents    map[string]bool
 	agentSpinners map[string]*spinner.Spinner
 	mainSpinner   *spinner.Spinner
@@ -40,7 +43,7 @@ type enhancedChatModel struct {
 type chatMessage struct {
 	Agent     string
 	Content   string
-	Type      MessageType
+	Type      plugins.MessageType
 	Timestamp time.Time
 }
 
@@ -70,7 +73,7 @@ var (
 )
 
 // NewEnhancedBubbleTeaChatPlugin creates a new enhanced Bubble Tea chat plugin
-func NewEnhancedBubbleTeaChatPlugin(opts ...MultiAgentChatOption) ChatPlugin {
+func NewEnhancedBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
 	chat := &EnhancedBubbleTeaChatPlugin{}
 
 	// Apply options
@@ -80,7 +83,7 @@ func NewEnhancedBubbleTeaChatPlugin(opts ...MultiAgentChatOption) ChatPlugin {
 
 	// Create processor if not provided
 	if chat.processor == nil {
-		chat.processor = multi.NewChatProcessor(chat.processorOptions...)
+		chat.processor = multi.NewChatProcessor(chat.ProcessorOptions...)
 	}
 
 	return chat
@@ -96,6 +99,8 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 		processor:     p.processor,
 		agents:        p.processor.GetAllAgentInfos(),
 		messages:      []chatMessage{},
+		inputHistory:  []string{},
+		historyIndex:  -1,
 		busyAgents:    make(map[string]bool),
 		agentSpinners: make(map[string]*spinner.Spinner),
 		mainSpinner:   mainSpinner,
@@ -115,7 +120,7 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 	p.processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
 		fromName := p.processor.GetAgentNameByID(fromID)
 		toName := p.processor.GetAgentNameByID(toID)
-		model.addMessage(fmt.Sprintf("%s -> %s", fromName, toName), content, MessageTypeIntercept)
+		model.addMessage(fmt.Sprintf("%s -> %s", fromName, toName), content, plugins.MessageTypeIntercept)
 	})
 
 	// Set up callbacks for real LLM responses
@@ -131,7 +136,7 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 			model.busyAgents[info.ID().String()] = false
 		}),
 		multi.WithOnReasoningMessage(func(info *shared.AgentInfo, reasoning string) {
-			model.addMessage(info.Name, reasoning, MessageTypeReasoningMessage)
+			model.addMessage(info.Name, reasoning, plugins.MessageTypeReasoningMessage)
 
 			// Stop spinner for this agent
 			if spinner, exists := model.agentSpinners[info.ID().String()]; exists {
@@ -140,7 +145,7 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 			model.busyAgents[info.ID().String()] = false
 		}),
 		multi.WithOnError(func(info *shared.AgentInfo, err error) {
-			model.addMessage(info.Name, fmt.Sprintf("Error: %v", err), MessageTypeError)
+			model.addMessage(info.Name, fmt.Sprintf("Error: %v", err), plugins.MessageTypeError)
 
 			// Stop spinner for this agent
 			if spinner, exists := model.agentSpinners[info.ID().String()]; exists {
@@ -150,13 +155,13 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 		}),
 		multi.WithOnProgress(func(messageType multi.SystemMessageType, format string, a ...any) {
 			progressMsg := fmt.Sprintf(format, a...)
-			model.addMessage("SYSTEM", progressMsg, MessageTypeSystem)
+			model.addMessage("SYSTEM", progressMsg, plugins.MessageTypeSystem)
 		}),
 	}
 
 	// Apply the processor options if not already set
 	if p.processor == nil {
-		p.processor = multi.NewChatProcessor(append(p.processorOptions, processorOptions...)...)
+		p.processor = multi.NewChatProcessor(append(p.ProcessorOptions, processorOptions...)...)
 		model.processor = p.processor
 	}
 
@@ -172,7 +177,7 @@ type tickMsg time.Time
 type agentResponseMsg struct {
 	agentID string
 	content string
-	msgType MessageType
+	msgType plugins.MessageType
 }
 type agentErrorMsg struct {
 	agentID string
@@ -201,12 +206,17 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case readyMsg:
 		m.ready = true
-		m.addMessage("SYSTEM", "Welcome to Multi-Agent Chat System!", MessageTypeSystem)
-		m.addMessage("SYSTEM", "Available agents:", MessageTypeSystem)
+		
+		// Create a single combined welcome message
+		var welcomeMsg strings.Builder
+		welcomeMsg.WriteString("Welcome to Multi-Agent Chat System!\n\n")
+		welcomeMsg.WriteString("Available agents:\n")
 		for _, agent := range m.agents {
-			m.addMessage("SYSTEM", fmt.Sprintf("- %s (ID: %s)", agent.Name, agent.ID().String()), MessageTypeSystem)
+			welcomeMsg.WriteString(fmt.Sprintf("- %s (ID: %s)\n", agent.Name, agent.ID().String()))
 		}
-		m.addMessage("SYSTEM", "Use /<agent-name> to select an agent, /help for commands", MessageTypeSystem)
+		welcomeMsg.WriteString("\nUse /<agent-name> to select an agent, /help for commands")
+		
+		m.addMessage("SYSTEM", welcomeMsg.String(), plugins.MessageTypeSystem)
 		return m, nil
 
 	case agentResponseMsg:
@@ -230,7 +240,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Get agent name
 		agentName := m.processor.GetAgentNameByID(uuid.MustParse(msg.agentID))
-		m.addMessage(agentName, msg.error, MessageTypeError)
+		m.addMessage(agentName, msg.error, plugins.MessageTypeError)
 		return m, nil
 
 	case tickMsg:
@@ -248,17 +258,61 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.input != "" {
 				m.handleInput()
 				m.input = ""
+				m.historyIndex = -1 // Reset history navigation
 			}
 			return m, nil
 
 		case "backspace":
 			if len(m.input) > 0 {
 				m.input = m.input[:len(m.input)-1]
+				m.historyIndex = -1 // Reset history navigation when editing
+			}
+			return m, nil
+
+		case "up":
+			// Navigate to previous message in history
+			if len(m.inputHistory) > 0 {
+				if m.historyIndex == -1 {
+					// First time navigating, start from the most recent
+					m.historyIndex = len(m.inputHistory) - 1
+				} else if m.historyIndex > 0 {
+					// Go to older message
+					m.historyIndex--
+				}
+				if m.historyIndex >= 0 && m.historyIndex < len(m.inputHistory) {
+					m.input = m.inputHistory[m.historyIndex]
+				}
+			}
+			return m, nil
+
+		case "down":
+			// Navigate to next message in history
+			if len(m.inputHistory) > 0 && m.historyIndex != -1 {
+				if m.historyIndex < len(m.inputHistory)-1 {
+					// Go to newer message
+					m.historyIndex++
+					m.input = m.inputHistory[m.historyIndex]
+				} else {
+					// Go back to empty input (newest)
+					m.historyIndex = -1
+					m.input = ""
+				}
 			}
 			return m, nil
 
 		default:
-			m.input += msg.String()
+			// Filter out unwanted keys (arrow keys, mouse wheel, etc.)
+			key := msg.String()
+			if len(key) == 1 || key == "space" || key == "tab" {
+				if key == "space" {
+					m.input += " "
+				} else if key == "tab" {
+					m.input += "\t"
+				} else {
+					m.input += key
+				}
+				m.historyIndex = -1 // Reset history navigation when typing
+			}
 			return m, nil
 		}
 	}
@@ -339,29 +393,13 @@ func (m *enhancedChatModel) renderChatArea() string {
 	var formattedMessages []string
 	for _, msg := range m.messages[start:] {
 		timestamp := msg.Timestamp.Format("15:04:05")
-
-		// Apply color based on message type
-		var style lipgloss.Style
-		switch msg.Type {
-		case MessageTypeReasoningMessage:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("yellow"))
-		case MessageTypeToolCall:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("blue"))
-		case MessageTypeIntercept:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("magenta"))
-		case MessageTypeSystem:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("green"))
-		case MessageTypeError:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("red"))
-		default:
-			style = lipgloss.NewStyle().Foreground(lipgloss.Color("white"))
-		}
-
-		formattedMsg := fmt.Sprintf("[%s] %s: %s", timestamp, msg.Agent, msg.Content)
-		formattedMessages = append(formattedMessages, style.Render(formattedMsg))
+		
+		// Create colored box for each message similar to CLI version
+		boxedMessage := m.createColoredMessageBox(msg.Agent, msg.Content, msg.Type, timestamp)
+		formattedMessages = append(formattedMessages, boxedMessage)
 	}
 
-	content := strings.Join(formattedMessages, "\n")
+	content := strings.Join(formattedMessages, "\n\n") // Extra spacing between boxes
 	return chatAreaStyle.Width(m.width - 35).Height(m.height - 8).Render(content)
 }
 
@@ -376,8 +414,85 @@ func (m *enhancedChatModel) renderInputArea() string {
 	return inputStyle.Width(m.width - 4).Render(input)
 }
 
+// createColoredMessageBox creates a colored message box similar to CLI version
+func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgType plugins.MessageType, timestamp string) string {
+	// Get colors for message type
+	textColor, borderColor := m.getColorsForMessageType(msgType)
+	
+	// Calculate box width
+	boxWidth := m.width - 40
+	if boxWidth < 40 {
+		boxWidth = 40
+	}
+	
+	// Create the main box style with colored border
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(borderColor).
+		Width(boxWidth)
+	
+	// Header section: Agent name and timestamp in bold
+	headerText := fmt.Sprintf(" %s [%s] ", agent, timestamp)
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FAFAFA")).
+		Width(boxWidth - 2). // Account for border
+		Align(lipgloss.Left)
+	
+	// Separator line to match CLI version
+	separatorStyle := lipgloss.NewStyle().
+		Foreground(borderColor).
+		Width(boxWidth - 2)
+	separator := separatorStyle.Render(strings.Repeat("─", boxWidth-2))
+	
+	// Content section with appropriate text color
+	contentStyle := lipgloss.NewStyle().
+		Foreground(textColor).
+		Width(boxWidth - 2). // Account for border
+		Padding(0, 1)       // Small horizontal padding for content
+	
+	// Render components
+	renderedHeader := headerStyle.Render(headerText)
+	renderedContent := contentStyle.Render(content)
+	
+	// Combine all sections with proper spacing
+	boxContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		renderedHeader,
+		separator,
+		renderedContent,
+	)
+	
+	return boxStyle.Render(boxContent)
+}
+
+// getColorsForMessageType returns appropriate colors for message types (lipgloss compatible)
+func (m *enhancedChatModel) getColorsForMessageType(msgType plugins.MessageType) (textColor, borderColor lipgloss.Color) {
+	switch msgType {
+	case plugins.MessageTypeReasoningMessage:
+		textColor = lipgloss.Color("#FFFF00")    // Yellow
+		borderColor = lipgloss.Color("#FFFF87")  // Bright yellow
+	case plugins.MessageTypeToolCall:
+		textColor = lipgloss.Color("#5F87FF")    // Blue
+		borderColor = lipgloss.Color("#87AFFF")  // Bright blue
+	case plugins.MessageTypeIntercept:
+		textColor = lipgloss.Color("#FF5FFF")    // Magenta
+		borderColor = lipgloss.Color("#FF87FF")  // Bright magenta
+	case plugins.MessageTypeError, plugins.MessageTypeAgentError:
+		textColor = lipgloss.Color("#FF5F5F")    // Red
+		borderColor = lipgloss.Color("#808080")  // Dark gray border
+	case plugins.MessageTypeSystem:
+		textColor = lipgloss.Color("#5FFF5F")    // Bright green
+		borderColor = lipgloss.Color("#808080")  // Dark gray border
+	default: // MessageTypeNormal
+		textColor = lipgloss.Color("#FFFFFF")    // White
+		borderColor = lipgloss.Color("#808080")  // Dark gray
+	}
+	return textColor, borderColor
+}
+
 // addMessage adds a message to the chat
-func (m *enhancedChatModel) addMessage(agent, content string, msgType MessageType) {
+func (m *enhancedChatModel) addMessage(agent, content string, msgType plugins.MessageType) {
 	m.messages = append(m.messages, chatMessage{
 		Agent:     agent,
 		Content:   content,
@@ -398,7 +513,7 @@ func (m *enhancedChatModel) handleInput() {
 		return
 	}
 
-	m.addMessage("YOU", input, MessageTypeNormal)
+	m.addMessage("YOU", input, plugins.MessageTypeNormal)
 
 	// Handle commands
 	if strings.HasPrefix(input, "/") {
@@ -410,7 +525,7 @@ func (m *enhancedChatModel) handleInput() {
 	if m.currentAgent != nil {
 		m.sendToAgent(input)
 	} else {
-		m.addMessage("ERROR", "Please select an agent first using /<agent-name>", MessageTypeError)
+		m.addMessage("ERROR", "Please select an agent first using /<agent-name>", plugins.MessageTypeError)
 	}
 }
 
@@ -444,14 +559,14 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 				spinner.Stop()
 			}
 			m.busyAgents[agentID] = false
-			m.addMessage(m.currentAgent.Name, fmt.Sprintf("Error: %v", err), MessageTypeError)
+			m.addMessage(m.currentAgent.Name, fmt.Sprintf("Error: %v", err), plugins.MessageTypeError)
 			return
 		}
 
 		// Process events manually
 		for event := range events {
 			if event.Error != nil {
-				m.addMessage(m.currentAgent.Name, fmt.Sprintf("Error: %v", event.Error.Message), MessageTypeError)
+				m.addMessage(m.currentAgent.Name, fmt.Sprintf("Error: %v", event.Error.Message), plugins.MessageTypeError)
 				continue
 			}
 
@@ -460,7 +575,7 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 
 				// Handle reasoning content
 				if choice.Message.ReasoningContent != "" {
-					m.addMessage(m.currentAgent.Name, choice.Message.ReasoningContent, MessageTypeReasoningMessage)
+					m.addMessage(m.currentAgent.Name, choice.Message.ReasoningContent, plugins.MessageTypeReasoningMessage)
 				}
 
 				// Handle normal content
@@ -473,7 +588,7 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 				if len(choice.Message.ToolCalls) > 0 {
 					for _, toolCall := range choice.Message.ToolCalls {
 						toolMsg := fmt.Sprintf("Tool Call: %s", toolCall.Function.Name)
-						m.addMessage(m.currentAgent.Name+" [TOOL]", toolMsg, MessageTypeToolCall)
+						m.addMessage(m.currentAgent.Name+" [TOOL]", toolMsg, plugins.MessageTypeToolCall)
 					}
 				}
 			}
@@ -488,7 +603,7 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 }
 
 // detectMessageType analyzes message content to determine the appropriate message type
-func (m *enhancedChatModel) detectMessageType(content string) MessageType {
+func (m *enhancedChatModel) detectMessageType(content string) plugins.MessageType {
 	// Check for React planner tags that indicate reasoning/planning content
 	if strings.Contains(content, "/PLANNING/") ||
 		strings.Contains(content, "/REASONING/") ||
@@ -496,40 +611,40 @@ func (m *enhancedChatModel) detectMessageType(content string) MessageType {
 		strings.Contains(content, "/*PLANNING*/") ||
 		strings.Contains(content, "/*REASONING*/") ||
 		strings.Contains(content, "/*REPLANNING*/") {
-		return MessageTypeReasoningMessage
+		return plugins.MessageTypeReasoningMessage
 	}
 
 	// Check for other reasoning indicators
 	if strings.Contains(content, "/ACTION/") ||
 		strings.Contains(content, "/*ACTION*/") {
-		return MessageTypeReasoningMessage
+		return plugins.MessageTypeReasoningMessage
 	}
 
-	return MessageTypeNormal
+	return plugins.MessageTypeNormal
 }
 
 // handleCommand processes commands
 func (m *enhancedChatModel) handleCommand(command string) {
 	switch command {
 	case "help":
-		m.addMessage("HELP", "Available commands: /help, /list, /clear, /<agent-name>", MessageTypeSystem)
+		m.addMessage("HELP", "Available commands: /help, /list, /clear, /<agent-name>", plugins.MessageTypeSystem)
 	case "list":
-		m.addMessage("AGENTS", "Available agents:", MessageTypeSystem)
+		m.addMessage("AGENTS", "Available agents:", plugins.MessageTypeSystem)
 		for _, agent := range m.agents {
-			m.addMessage("AGENTS", fmt.Sprintf("  - %s", agent.Name), MessageTypeSystem)
+			m.addMessage("AGENTS", fmt.Sprintf("  - %s", agent.Name), plugins.MessageTypeSystem)
 		}
 	case "clear":
 		m.currentAgent = nil
-		m.addMessage("SYSTEM", "Agent selection cleared", MessageTypeSystem)
+		m.addMessage("SYSTEM", "Agent selection cleared", plugins.MessageTypeSystem)
 	default:
 		// Try to select agent
 		for _, agent := range m.agents {
 			if agent.Name == command {
 				m.currentAgent = &agent
-				m.addMessage("SYSTEM", fmt.Sprintf("Selected agent: %s", agent.Name), MessageTypeSystem)
+				m.addMessage("SYSTEM", fmt.Sprintf("Selected agent: %s", agent.Name), plugins.MessageTypeSystem)
 				return
 			}
 		}
-		m.addMessage("ERROR", fmt.Sprintf("Unknown command or agent: %s", command), MessageTypeError)
+		m.addMessage("ERROR", fmt.Sprintf("Unknown command or agent: %s", command), plugins.MessageTypeError)
 	}
 }
