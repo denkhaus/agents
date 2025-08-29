@@ -30,6 +30,8 @@ type enhancedChatModel struct {
 	input         string
 	inputHistory  []string // Store previous user inputs
 	historyIndex  int      // Current position in history (-1 = not navigating)
+	scrollOffset  int      // Offset for scrolling through messages
+	inputFocused  bool     // Whether input field has focus (for scroll control)
 	busyAgents    map[string]bool
 	agentSpinners map[string]*spinner.Spinner
 	mainSpinner   *spinner.Spinner
@@ -101,6 +103,8 @@ func (p *EnhancedBubbleTeaChatPlugin) Start(ctx context.Context) error {
 		messages:      []chatMessage{},
 		inputHistory:  []string{},
 		historyIndex:  -1,
+		scrollOffset:  0,
+		inputFocused:  true, // Start with input focused
 		busyAgents:    make(map[string]bool),
 		agentSpinners: make(map[string]*spinner.Spinner),
 		mainSpinner:   mainSpinner,
@@ -254,64 +258,122 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
+		case "esc":
+			// Toggle focus between input and chat area
+			m.inputFocused = !m.inputFocused
+			return m, nil
+
 		case "enter":
-			if m.input != "" {
+			if m.inputFocused && m.input != "" {
 				m.handleInput()
 				m.input = ""
 				m.historyIndex = -1 // Reset history navigation
+				m.scrollOffset = 0  // Reset scroll to show latest messages
 			}
 			return m, nil
 
 		case "backspace":
-			if len(m.input) > 0 {
+			if m.inputFocused && len(m.input) > 0 {
 				m.input = m.input[:len(m.input)-1]
 				m.historyIndex = -1 // Reset history navigation when editing
 			}
 			return m, nil
 
 		case "up":
-			// Navigate to previous message in history
-			if len(m.inputHistory) > 0 {
-				if m.historyIndex == -1 {
-					// First time navigating, start from the most recent
-					m.historyIndex = len(m.inputHistory) - 1
-				} else if m.historyIndex > 0 {
-					// Go to older message
-					m.historyIndex--
+			if m.inputFocused {
+				// Navigate to previous message in input history
+				if len(m.inputHistory) > 0 {
+					if m.historyIndex == -1 {
+						// First time navigating, start from the most recent
+						m.historyIndex = len(m.inputHistory) - 1
+					} else if m.historyIndex > 0 {
+						// Go to older message
+						m.historyIndex--
+					}
+					if m.historyIndex >= 0 && m.historyIndex < len(m.inputHistory) {
+						m.input = m.inputHistory[m.historyIndex]
+					}
 				}
-				if m.historyIndex >= 0 && m.historyIndex < len(m.inputHistory) {
-					m.input = m.inputHistory[m.historyIndex]
+			} else {
+				// Scroll up in chat area
+				maxScroll := len(m.messages) - m.getVisibleMessageCount()
+				if maxScroll > 0 && m.scrollOffset < maxScroll {
+					m.scrollOffset++
 				}
 			}
 			return m, nil
 
 		case "down":
-			// Navigate to next message in history
-			if len(m.inputHistory) > 0 && m.historyIndex != -1 {
-				if m.historyIndex < len(m.inputHistory)-1 {
-					// Go to newer message
-					m.historyIndex++
-					m.input = m.inputHistory[m.historyIndex]
-				} else {
-					// Go back to empty input (newest)
-					m.historyIndex = -1
-					m.input = ""
+			if m.inputFocused {
+				// Navigate to next message in input history
+				if len(m.inputHistory) > 0 && m.historyIndex != -1 {
+					if m.historyIndex < len(m.inputHistory)-1 {
+						// Go to newer message
+						m.historyIndex++
+						m.input = m.inputHistory[m.historyIndex]
+					} else {
+						// Go back to empty input (newest)
+						m.historyIndex = -1
+						m.input = ""
+					}
+				}
+			} else {
+				// Scroll down in chat area
+				if m.scrollOffset > 0 {
+					m.scrollOffset--
 				}
 			}
 			return m, nil
 
-		default:
-			// Filter out unwanted keys (arrow keys, mouse wheel, etc.)
-			key := msg.String()
-			if len(key) == 1 || key == "space" || key == "tab" {
-				if key == "space" {
-					m.input += " "
-				} else if key == "tab" {
-					m.input += "\t"
-				} else {
-					m.input += key
+		case "pageup":
+			// Page up in chat area (regardless of focus)
+			pageSize := m.getVisibleMessageCount() / 2
+			maxScroll := len(m.messages) - m.getVisibleMessageCount()
+			if maxScroll > 0 {
+				m.scrollOffset += pageSize
+				if m.scrollOffset > maxScroll {
+					m.scrollOffset = maxScroll
 				}
-				m.historyIndex = -1 // Reset history navigation when typing
+			}
+			return m, nil
+
+		case "pagedown":
+			// Page down in chat area (regardless of focus)
+			pageSize := m.getVisibleMessageCount() / 2
+			m.scrollOffset -= pageSize
+			if m.scrollOffset < 0 {
+				m.scrollOffset = 0
+			}
+			return m, nil
+
+		case "home":
+			// Go to top of chat (oldest messages)
+			maxScroll := len(m.messages) - m.getVisibleMessageCount()
+			if maxScroll > 0 {
+				m.scrollOffset = maxScroll
+			}
+			return m, nil
+
+		case "end":
+			// Go to bottom of chat (newest messages)
+			m.scrollOffset = 0
+			return m, nil
+
+		default:
+			// Only accept text input when input is focused
+			if m.inputFocused {
+				// Filter out unwanted keys (arrow keys, mouse wheel, etc.)
+				key := msg.String()
+				if len(key) == 1 || key == "space" || key == "tab" {
+					if key == "space" {
+						m.input += " "
+					} else if key == "tab" {
+						m.input += "\t"
+					} else {
+						m.input += key
+					}
+					m.historyIndex = -1 // Reset history navigation when typing
+				}
 			}
 			return m, nil
 		}
@@ -377,21 +439,53 @@ func (m *enhancedChatModel) renderAgentList() string {
 	items = append(items, "/list - List agents")
 	items = append(items, "/clear - Clear selection")
 	items = append(items, "q - Quit")
+	items = append(items, "")
+	items = append(items, "Navigation:")
+	items = append(items, "ESC - Toggle input/scroll mode")
+	items = append(items, "↑↓ - Scroll/History")
+	items = append(items, "PgUp/PgDn - Page scroll")
+	items = append(items, "Home/End - Top/Bottom")
 
 	content := strings.Join(items, "\n")
 	return agentListStyle.Height(m.height - 8).Render(content)
 }
 
-// renderChatArea renders the chat messages
+// getVisibleMessageCount calculates how many messages can fit in the chat area
+func (m *enhancedChatModel) getVisibleMessageCount() int {
+	// Estimate based on chat area height - each message box takes roughly 6-8 lines
+	// Being conservative with 8 lines per message
+	chatHeight := m.height - 8 // Account for title and input area
+	if chatHeight < 8 {
+		return 1
+	}
+	return chatHeight / 8
+}
+
+// renderChatArea renders the chat messages with scrolling support
 func (m *enhancedChatModel) renderChatArea() string {
-	// Show last 20 messages
-	start := 0
-	if len(m.messages) > 20 {
-		start = len(m.messages) - 20
+	if len(m.messages) == 0 {
+		content := "No messages yet..."
+		return chatAreaStyle.Width(m.width - 35).Height(m.height - 8).Render(content)
+	}
+
+	// Calculate visible message range based on scroll offset
+	visibleCount := m.getVisibleMessageCount()
+	totalMessages := len(m.messages)
+	
+	// Calculate start index (from the end, accounting for scroll offset)
+	start := totalMessages - visibleCount - m.scrollOffset
+	if start < 0 {
+		start = 0
+	}
+	
+	// Calculate end index
+	end := start + visibleCount
+	if end > totalMessages {
+		end = totalMessages
 	}
 
 	var formattedMessages []string
-	for _, msg := range m.messages[start:] {
+	for _, msg := range m.messages[start:end] {
 		timestamp := msg.Timestamp.Format("15:04:05")
 		
 		// Create colored box for each message similar to CLI version
@@ -399,7 +493,18 @@ func (m *enhancedChatModel) renderChatArea() string {
 		formattedMessages = append(formattedMessages, boxedMessage)
 	}
 
+	// Add scroll indicator if there are more messages
+	var scrollInfo string
+	if m.scrollOffset > 0 || start > 0 {
+		scrollInfo = fmt.Sprintf(" [Showing %d-%d of %d messages | ESC to toggle focus, ↑↓ to scroll]", 
+			start+1, end, totalMessages)
+	}
+
 	content := strings.Join(formattedMessages, "\n\n") // Extra spacing between boxes
+	if scrollInfo != "" {
+		content = scrollInfo + "\n\n" + content
+	}
+	
 	return chatAreaStyle.Width(m.width - 35).Height(m.height - 8).Render(content)
 }
 
@@ -407,6 +512,14 @@ func (m *enhancedChatModel) renderChatArea() string {
 func (m *enhancedChatModel) renderInputArea() string {
 	prompt := "💬 "
 	statusText := ""
+	
+	// Show focus indicator
+	focusIndicator := ""
+	if m.inputFocused {
+		focusIndicator = " [INPUT MODE]"
+	} else {
+		focusIndicator = " [SCROLL MODE - ESC to switch]"
+	}
 	
 	if m.currentAgent != nil {
 		prompt = fmt.Sprintf("💬 [%s] ", m.currentAgent.Name)
@@ -419,11 +532,8 @@ func (m *enhancedChatModel) renderInputArea() string {
 		}
 	}
 
-	// Combine input and status
-	inputContent := fmt.Sprintf("%s%s", prompt, m.input)
-	if statusText != "" {
-		inputContent = fmt.Sprintf("%s%s", inputContent, statusText)
-	}
+	// Combine input, status, and focus indicator
+	inputContent := fmt.Sprintf("%s%s%s%s", prompt, m.input, statusText, focusIndicator)
 	
 	// Ensure proper width calculation to include bottom border
 	inputWidth := m.width - 2 // Account for left and right margins
@@ -431,7 +541,13 @@ func (m *enhancedChatModel) renderInputArea() string {
 		inputWidth = 20
 	}
 	
-	return inputStyle.Width(inputWidth).Render(inputContent)
+	// Use different border color based on focus
+	style := inputStyle
+	if !m.inputFocused {
+		style = inputStyle.BorderForeground(lipgloss.Color("#666666")) // Dimmed when not focused
+	}
+	
+	return style.Width(inputWidth).Render(inputContent)
 }
 
 // createColoredMessageBox creates a colored message box similar to CLI version
@@ -530,6 +646,9 @@ func (m *enhancedChatModel) addMessage(agent, content string, msgType plugins.Me
 	if len(m.messages) > 100 {
 		m.messages = m.messages[1:]
 	}
+	
+	// Auto-scroll to show new messages (reset scroll offset)
+	m.scrollOffset = 0
 }
 
 // handleInput processes user input
