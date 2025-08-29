@@ -27,8 +27,8 @@ func startup(ctx context.Context) error {
 		return err
 	}
 
-	chat := plugins.NewCLIMultiAgentChat(
-		plugins.WithDisplayWidth(120),
+	// Enhanced Bubble Tea Chat with real LLM calls and spinners
+	chat := plugins.NewEnhancedBubbleTeaChatPlugin(
 		plugins.WithProcessorOptions(
 			multi.WithSessionID(uuid.New()),
 			multi.WithApplicationName("denkhaus-multi-agent"),
