@@ -406,12 +406,32 @@ func (m *enhancedChatModel) renderChatArea() string {
 // renderInputArea renders the input field
 func (m *enhancedChatModel) renderInputArea() string {
 	prompt := "💬 "
+	statusText := ""
+	
 	if m.currentAgent != nil {
 		prompt = fmt.Sprintf("💬 [%s] ", m.currentAgent.Name)
+		
+		// Check if current agent is busy and show spinner
+		if m.busyAgents[m.currentAgent.ID().String()] {
+			if spinner, exists := m.agentSpinners[m.currentAgent.ID().String()]; exists {
+				statusText = fmt.Sprintf(" %s", spinner.Suffix)
+			}
+		}
 	}
 
-	input := fmt.Sprintf("%s%s", prompt, m.input)
-	return inputStyle.Width(m.width - 4).Render(input)
+	// Combine input and status
+	inputContent := fmt.Sprintf("%s%s", prompt, m.input)
+	if statusText != "" {
+		inputContent = fmt.Sprintf("%s%s", inputContent, statusText)
+	}
+	
+	// Ensure proper width calculation to include bottom border
+	inputWidth := m.width - 2 // Account for left and right margins
+	if inputWidth < 20 {
+		inputWidth = 20
+	}
+	
+	return inputStyle.Width(inputWidth).Render(inputContent)
 }
 
 // createColoredMessageBox creates a colored message box similar to CLI version
@@ -419,49 +439,55 @@ func (m *enhancedChatModel) createColoredMessageBox(agent, content string, msgTy
 	// Get colors for message type
 	textColor, borderColor := m.getColorsForMessageType(msgType)
 	
-	// Calculate box width
-	boxWidth := m.width - 40
-	if boxWidth < 40 {
-		boxWidth = 40
+	// Calculate available width for the chat area (accounting for agent list and margins)
+	availableWidth := m.width - 35 // Same as chatAreaStyle width
+	if availableWidth < 50 {
+		availableWidth = 50
 	}
 	
-	// Create the main box style with colored border
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(borderColor).
-		Width(boxWidth)
+	// Calculate content width (accounting for border, padding, and margins)
+	contentWidth := availableWidth - 8 // Account for border (2) + padding (4) + margin (2)
+	if contentWidth < 30 {
+		contentWidth = 30
+	}
 	
 	// Header section: Agent name and timestamp in bold
 	headerText := fmt.Sprintf(" %s [%s] ", agent, timestamp)
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#FAFAFA")).
-		Width(boxWidth - 2). // Account for border
+		Width(contentWidth).
 		Align(lipgloss.Left)
 	
 	// Separator line to match CLI version
 	separatorStyle := lipgloss.NewStyle().
 		Foreground(borderColor).
-		Width(boxWidth - 2)
-	separator := separatorStyle.Render(strings.Repeat("─", boxWidth-2))
+		Width(contentWidth)
+	separator := separatorStyle.Render(strings.Repeat("─", contentWidth))
 	
 	// Content section with appropriate text color
 	contentStyle := lipgloss.NewStyle().
 		Foreground(textColor).
-		Width(boxWidth - 2). // Account for border
-		Padding(0, 1)       // Small horizontal padding for content
+		Width(contentWidth).
+		Padding(0, 1) // Small horizontal padding for content
 	
 	// Render components
 	renderedHeader := headerStyle.Render(headerText)
 	renderedContent := contentStyle.Render(content)
 	
-	// Combine all sections with proper spacing
+	// Combine all sections
 	boxContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		renderedHeader,
 		separator,
 		renderedContent,
 	)
+	
+	// Create the main box style with colored border - let lipgloss handle the width
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(borderColor).
+		Padding(1, 1) // Add some internal padding
 	
 	return boxStyle.Render(boxContent)
 }
@@ -511,6 +537,16 @@ func (m *enhancedChatModel) handleInput() {
 	input := strings.TrimSpace(m.input)
 	if input == "" {
 		return
+	}
+
+	// Add to input history (avoid duplicates of the most recent entry)
+	if len(m.inputHistory) == 0 || m.inputHistory[len(m.inputHistory)-1] != input {
+		m.inputHistory = append(m.inputHistory, input)
+		
+		// Keep only last 50 entries in history
+		if len(m.inputHistory) > 50 {
+			m.inputHistory = m.inputHistory[1:]
+		}
 	}
 
 	m.addMessage("YOU", input, plugins.MessageTypeNormal)
