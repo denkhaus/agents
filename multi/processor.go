@@ -68,6 +68,33 @@ func NewChatProcessor(opts ...ChatProcessorOption) ChatProcessor {
 		opt(&processor.Options)
 	}
 
+	// Ensure all callbacks have default implementations to prevent nil panics.
+	if processor.onProgress == nil {
+		processor.onProgress = func(messageType SystemMessageType, format string, a ...any) {
+			logger.Log.Warn("onProgress callback not initialized", zap.String("app_name", processor.applicationName))
+		}
+	}
+	if processor.onMessage == nil {
+		processor.onMessage = func(info *shared.AgentInfo, content string) {
+			logger.Log.Warn("onMessage callback not initialized", zap.String("app_name", processor.applicationName))
+		}
+	}
+	if processor.onReasoningMessage == nil {
+		processor.onReasoningMessage = func(info *shared.AgentInfo, content string) {
+			logger.Log.Warn("onReasoningMessage callback not initialized", zap.String("app_name", processor.applicationName))
+		}
+	}
+	if processor.onToolCall == nil {
+		processor.onToolCall = func(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
+			logger.Log.Warn("onToolCall callback not initialized", zap.String("app_name", processor.applicationName))
+		}
+	}
+	if processor.onError == nil {
+		processor.onError = func(info *shared.AgentInfo, err error) {
+			logger.Log.Warn("onError callback not initialized", zap.String("app_name", processor.applicationName), zap.Error(err))
+		}
+	}
+
 	processor.initAgents()
 	return processor
 }

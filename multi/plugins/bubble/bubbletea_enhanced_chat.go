@@ -434,6 +434,17 @@ func (m *enhancedChatModel) renderAgentList() string {
 	}
 
 	items = append(items, "")
+	
+	// Add current mode indicator
+	if m.inputFocused {
+		items = append(items, "🎯 Mode: INPUT")
+		items = append(items, "   (ESC to scroll)")
+	} else {
+		items = append(items, "📜 Mode: SCROLL")
+		items = append(items, "   (ESC to input)")
+	}
+	
+	items = append(items, "")
 	items = append(items, "Commands:")
 	items = append(items, "/help - Show help")
 	items = append(items, "/list - List agents")
@@ -511,29 +522,26 @@ func (m *enhancedChatModel) renderChatArea() string {
 // renderInputArea renders the input field
 func (m *enhancedChatModel) renderInputArea() string {
 	prompt := "💬 "
-	statusText := ""
-	
-	// Show focus indicator
-	focusIndicator := ""
-	if m.inputFocused {
-		focusIndicator = " [INPUT MODE]"
-	} else {
-		focusIndicator = " [SCROLL MODE - ESC to switch]"
-	}
 	
 	if m.currentAgent != nil {
 		prompt = fmt.Sprintf("💬 [%s] ", m.currentAgent.Name)
-		
-		// Check if current agent is busy and show spinner
-		if m.busyAgents[m.currentAgent.ID().String()] {
-			if spinner, exists := m.agentSpinners[m.currentAgent.ID().String()]; exists {
-				statusText = fmt.Sprintf(" %s", spinner.Suffix)
-			}
-		}
 	}
 
-	// Combine input, status, and focus indicator
-	inputContent := fmt.Sprintf("%s%s%s%s", prompt, m.input, statusText, focusIndicator)
+	// Build the main input content (prompt + user input)
+	inputContent := fmt.Sprintf("%s%s", prompt, m.input)
+	
+	// Add status information on a separate line if agent is busy
+	var fullContent string
+	if m.currentAgent != nil && m.busyAgents[m.currentAgent.ID().String()] {
+		if spinner, exists := m.agentSpinners[m.currentAgent.ID().String()]; exists {
+			statusLine := fmt.Sprintf("Status: %s", spinner.Suffix)
+			fullContent = fmt.Sprintf("%s\n%s", inputContent, statusLine)
+		} else {
+			fullContent = inputContent
+		}
+	} else {
+		fullContent = inputContent
+	}
 	
 	// Ensure proper width calculation to include bottom border
 	inputWidth := m.width - 2 // Account for left and right margins
@@ -547,7 +555,7 @@ func (m *enhancedChatModel) renderInputArea() string {
 		style = inputStyle.BorderForeground(lipgloss.Color("#666666")) // Dimmed when not focused
 	}
 	
-	return style.Width(inputWidth).Render(inputContent)
+	return style.Width(inputWidth).Render(fullContent)
 }
 
 // createColoredMessageBox creates a colored message box similar to CLI version
