@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/denkhaus/agents/utils"
 )
 
 func (p *promptEntry) GetDescription() string {
@@ -19,9 +19,9 @@ func (p *promptEntry) GetName() string {
 func (p *promptEntry) GetGlobalInstruction() string {
 	return p.metadata.GlobalInstruction
 }
+
 func (p *promptEntry) GetInstruction(data interface{}) (string, error) {
-	dataLoader := gojsonschema.NewGoLoader(data)
-	result, err := p.schema.Validate(dataLoader)
+	processedData, result, err := utils.ValidateJSON(data, p.schema)
 	if err != nil {
 		return "", &PromptError{
 			Message: "prompt data validation failed",
@@ -41,7 +41,7 @@ func (p *promptEntry) GetInstruction(data interface{}) (string, error) {
 	}
 
 	var buf bytes.Buffer
-	if err := p.template.Execute(&buf, data); err != nil {
+	if err := p.template.Execute(&buf, processedData); err != nil {
 		return "", &PromptError{
 			Message: "failed to render prompt",
 			AgentID: p.metadata.AgentID,

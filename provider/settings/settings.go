@@ -179,15 +179,21 @@ func (p *agentSettingsImpl) GetDefaultOptions(
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 
 	//TODO: make the includeHumanAgent setting configurable
-	availableAgents, err := p.settingsProvider.GetActiveAgents(true)
+	availableAgentsVal, err := p.settingsProvider.GetActiveAgents(true) // Renamed to avoid conflict
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active agents: %w", err)
+	}
+
+	// Convert []shared.AgentInfo to []*shared.AgentInfo
+	availableAgentsPtr := make([]*shared.AgentInfo, len(availableAgentsVal))
+	for i := range availableAgentsVal {
+		availableAgentsPtr[i] = &availableAgentsVal[i]
 	}
 
 	// prepare context for prompt renderring
 	promptContext := map[string]interface{}{
 		shared.ContextKeyToolInfo:  utils.GetToolInfo(tools...),
-		shared.ContextKeyAgentInfo: utils.GetAgentInfoForAgent(p.AgentID, availableAgents...),
+		shared.ContextKeyAgentInfo: utils.GetAgentInfoForAgent(p.AgentID, availableAgentsPtr...), // Pass pointers
 	}
 
 	instruction, err := p.promptProvider.GetInstruction(promptContext)

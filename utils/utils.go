@@ -42,9 +42,9 @@ func GetToolInfo(tools ...tool.Tool) []shared.ToolInfo {
 	return toolInfos
 }
 
-func GetAgentInfoForAgent(agentID uuid.UUID, availableAgents ...shared.AgentInfo) []shared.AgentInfo {
-	var info []shared.AgentInfo = []shared.AgentInfo{
-		shared.AgentInfoHuman,
+func GetAgentInfoForAgent(agentID uuid.UUID, availableAgents ...*shared.AgentInfo) []*shared.AgentInfo {
+	var info []*shared.AgentInfo = []*shared.AgentInfo{
+		&shared.AgentInfoHuman,
 	}
 
 	for _, agent := range availableAgents {
