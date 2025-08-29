@@ -9,5 +9,4 @@ import (
 func provideTools(i *do.Injector) {
 	do.ProvideNamed(i, calculator.ToolName, calculator.NewTool)
 	do.ProvideNamed(i, time.ToolName, time.NewTool)
-
 }

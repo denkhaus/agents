@@ -28,6 +28,11 @@ func startup(ctx context.Context) error {
 		return err
 	}
 
+	researcher, err := agents.CreateResearcherAgent(ctx, injector)
+	if err != nil {
+		return err
+	}
+
 	// Enhanced Bubble Tea Chat with real LLM calls and spinners
 	chat := cli.NewCLIMultiAgentChat(
 		plugins.WithProcessorOptions(
@@ -35,6 +40,7 @@ func startup(ctx context.Context) error {
 			multi.WithApplicationName("denkhaus-multi-agent"),
 			multi.WithAgents(
 				shared.NewHumanAgent(shared.AgentInfoHuman),
+				researcher,
 				projectManager,
 				coder,
 			),
