@@ -7,7 +7,9 @@ import (
 	"github.com/denkhaus/agents/provider"
 	"github.com/denkhaus/agents/provider/agent"
 	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/tools/calculator"
 	shelltoolset "github.com/denkhaus/agents/tools/shell"
+	"github.com/denkhaus/agents/tools/time"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -38,8 +40,12 @@ func CreateCoderAgent(ctx context.Context, injector *do.Injector) (shared.TheAge
 		return nil, fmt.Errorf("failed to create shell toolset: %w", err)
 	}
 
+	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
+	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
+
 	coderAgent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
+			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool}),
 			llmagent.WithToolSets([]tool.ToolSet{shellToolSet, fileToolSet}),
 		),
 	)

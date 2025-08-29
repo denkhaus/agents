@@ -7,7 +7,9 @@ import (
 	"github.com/denkhaus/agents/provider"
 	"github.com/denkhaus/agents/provider/agent"
 	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/tools/calculator"
 	"github.com/denkhaus/agents/tools/project"
+	"github.com/denkhaus/agents/tools/time"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -38,8 +40,12 @@ func CreateProjectManagerAgent(ctx context.Context, injector *do.Injector) (shar
 		return nil, fmt.Errorf("failed to create project manager toolset: %w", err)
 	}
 
+	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
+	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
+
 	projectManagerAgent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
+			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool}),
 			llmagent.WithToolSets([]tool.ToolSet{projectManagerToolSet, fileToolSet}),
 		),
 	)

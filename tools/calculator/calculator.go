@@ -68,7 +68,7 @@ func calculate(ctx context.Context, args calculatorArgs) (calculatorResult, erro
 	}, nil
 }
 
-func NewTool(i *do.Injector) (tool.CallableTool, error) {
+func NewTool(i *do.Injector) (tool.Tool, error) {
 	// Create calculator tool for mathematical operations.
 	calculatorTool := function.NewFunctionTool(
 		calculate,

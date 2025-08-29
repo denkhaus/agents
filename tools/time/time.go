@@ -49,7 +49,7 @@ func getCurrentTime(ctx context.Context, args timeArgs) (timeResult, error) {
 	}, nil
 }
 
-func NewTool(i *do.Injector) (tool.CallableTool, error) {
+func NewTool(i *do.Injector) (tool.Tool, error) {
 	// Create time tool for timezone queries.
 	timeTool := function.NewFunctionTool(
 		getCurrentTime,
