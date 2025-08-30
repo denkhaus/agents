@@ -8,6 +8,8 @@ import (
 	"github.com/denkhaus/agents/provider/agent"
 	"github.com/denkhaus/agents/shared"
 	"github.com/denkhaus/agents/tools/calculator"
+	"github.com/denkhaus/agents/tools/fetch"
+	"github.com/denkhaus/agents/tools/project"
 	shelltoolset "github.com/denkhaus/agents/tools/shell"
 	"github.com/denkhaus/agents/tools/time"
 	"github.com/samber/do"
@@ -40,13 +42,25 @@ func CreateCoderAgent(ctx context.Context, injector *do.Injector) (shared.TheAge
 		return nil, fmt.Errorf("failed to create shell toolset: %w", err)
 	}
 
+	readOnlyProjectManagerToolSet, err := project.NewToolSet(
+		project.WithReadOnly(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project manager toolset: %w", err)
+	}
+
 	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
 	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
+	fetchTool := do.MustInvokeNamed[tool.Tool](injector, fetch.ToolName)
 
 	coderAgent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
-			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool}),
-			llmagent.WithToolSets([]tool.ToolSet{shellToolSet, fileToolSet}),
+			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool, fetchTool}),
+			llmagent.WithToolSets([]tool.ToolSet{
+				shellToolSet,
+				fileToolSet,
+				readOnlyProjectManagerToolSet,
+			}),
 		),
 	)
 

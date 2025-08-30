@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
 )
@@ -49,7 +48,7 @@ func getCurrentTime(ctx context.Context, args timeArgs) (timeResult, error) {
 	}, nil
 }
 
-func NewTool(i *do.Injector) (tool.Tool, error) {
+func NewTool() (tool.Tool, error) {
 	// Create time tool for timezone queries.
 	timeTool := function.NewFunctionTool(
 		getCurrentTime,

@@ -127,7 +127,8 @@ func (t *shellToolSet) validateArgument(arg string) error {
 	}
 
 	// Check for path traversal in arguments
-	if strings.Contains(arg, "..") {
+	// Allow "./..." pattern which is common in Go for recursive package operations
+	if strings.Contains(arg, "..") && arg != "./..." {
 		return fmt.Errorf("path traversal detected")
 	}
 

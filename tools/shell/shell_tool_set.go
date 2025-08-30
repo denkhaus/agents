@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	ToolSetName = "shell_toolset"
 	// defaultBaseDir is the default base directory for file operations.
 	defaultBaseDir = "."
 )
@@ -147,7 +148,8 @@ func (f *shellToolSet) resolvePath(relativePath string) (string, error) {
 	}
 
 	// Check for path traversal attempts
-	if strings.Contains(cleanPath, "..") {
+	// Allow "./..." pattern which is common in Go for recursive package operations
+	if strings.Contains(cleanPath, "..") && cleanPath != "./..." {
 		return "", fmt.Errorf("path traversal detected: %s", relativePath)
 	}
 

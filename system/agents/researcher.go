@@ -6,33 +6,27 @@ import (
 
 	"github.com/denkhaus/agents/provider"
 	"github.com/denkhaus/agents/provider/agent"
+	"github.com/denkhaus/agents/provider/tools"
 	"github.com/denkhaus/agents/shared"
-	"github.com/denkhaus/agents/tools/calculator"
-	"github.com/denkhaus/agents/tools/tavily"
-	"github.com/denkhaus/agents/tools/time"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
-	"trpc.group/trpc-go/trpc-agent-go/tool"
-	"trpc.group/trpc-go/trpc-agent-go/tool/duckduckgo"
 )
 
 func CreateResearcherAgent(ctx context.Context, injector *do.Injector) (shared.TheAgent, error) {
 	agentID := shared.AgentIDResearcher
 	agentProvider := do.MustInvoke[provider.AgentProvider](injector)
+	toolProvider := do.MustInvoke[tools.ToolProvider](injector)
 
-	searchDuckDuckTool := duckduckgo.NewTool()
-	searchTavilyToolSet, err := tavily.NewToolSet()
+	// Get tools from ToolProvider based on agent ID
+	agentTools, agentToolSets, err := toolProvider.GetToolsForAgent(ctx, agentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tavily search toolset: %w", err)
+		return nil, fmt.Errorf("failed to get tools for researcher agent: %w", err)
 	}
-
-	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
-	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
 
 	agent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
-			llmagent.WithTools([]tool.Tool{searchDuckDuckTool, timeTool, calculatorTool}),
-			llmagent.WithToolSets([]tool.ToolSet{searchTavilyToolSet}),
+			llmagent.WithTools(agentTools),
+			llmagent.WithToolSets(agentToolSets),
 		),
 	)
 

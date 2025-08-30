@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
 )
@@ -68,7 +67,7 @@ func calculate(ctx context.Context, args calculatorArgs) (calculatorResult, erro
 	}, nil
 }
 
-func NewTool(i *do.Injector) (tool.Tool, error) {
+func NewTool() (tool.Tool, error) {
 	// Create calculator tool for mathematical operations.
 	calculatorTool := function.NewFunctionTool(
 		calculate,

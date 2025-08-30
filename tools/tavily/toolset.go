@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	ToolSetName            = "tavily_toolset"
 	DefaultSearchToolName  = "tavily_search"
 	DefaultCrawlToolName   = "tavily_crawl"
 	DefaultExtractToolName = "tavily_extract"
@@ -92,8 +93,8 @@ type searchArgs struct {
 
 func (t *tavilyToolSet) search(ctx context.Context, args searchArgs) (*tavily.SearchResponse, error) {
 	opts := &tavily.SearchOptions{
-		SearchDepth:   args.SearchDepth,
-		IncludeAnswer: args.IncludeAnswer,
+		SearchDepth:    args.SearchDepth,
+		IncludeAnswer:  args.IncludeAnswer,
 		IncludeDomains: args.IncludeDomains,
 		ExcludeDomains: args.ExcludeDomains,
 	}

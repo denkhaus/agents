@@ -16,49 +16,10 @@ const (
 
 // projectTaskToolSet implements the ToolSet interface for project task management
 type projectTaskToolSet struct {
-	manager ProjectManager
-	logger  *zap.Logger
-	tools   []tool.CallableTool
-}
-
-// Option is a functional option for configuring the project task tool set
-type Option func(*projectTaskToolSet)
-
-// WithManager sets a custom manager instance
-func WithManager(manager ProjectManager) Option {
-	return func(pts *projectTaskToolSet) {
-		pts.manager = manager
-	}
-}
-
-// WithRepository sets a custom repository instance
-func WithRepository(repo Repository) Option {
-	return func(pts *projectTaskToolSet) {
-		// Create a new manager with the custom repository
-		config := DefaultConfig()
-		if pts.manager != nil {
-			config = pts.manager.GetConfig()
-		}
-		pts.manager = NewManagerWithRepository(repo, config)
-	}
-}
-
-// WithConfig sets a custom configuration
-func WithConfig(config *Config) Option {
-	return func(pts *projectTaskToolSet) {
-		if pts.manager != nil {
-			pts.manager.UpdateConfig(config)
-		}
-	}
-}
-
-// WithLogger sets a custom logger
-// It' neccessary to switch the logger off while in chat
-// since log messages interfere with chat output.
-func WithLogger(logger *zap.Logger) Option {
-	return func(pts *projectTaskToolSet) {
-		pts.logger = logger
-	}
+	manager    ProjectManager
+	logger     *zap.Logger
+	isReadOnly bool
+	tools      []tool.CallableTool
 }
 
 // NewToolSet creates a new project task management tool set
@@ -77,36 +38,55 @@ func NewToolSet(opts ...Option) (tool.ToolSet, error) {
 		return nil, fmt.Errorf("manager cannot be nil")
 	}
 
-	// Initialize tools
-	toolSet.tools = []tool.CallableTool{
-		toolSet.createProjectTool(),
-		toolSet.getProjectTool(),
-		toolSet.updateProjectDescriptionTool(), // Add this line
-		toolSet.listProjectsTool(),
-		toolSet.createTaskTool(),
-		toolSet.getTaskTool(),
-		toolSet.updateTaskDescriptionTool(), // Add this line
-		toolSet.updateTaskStateTool(),
-		toolSet.getProjectProgressTool(),
-		toolSet.getChildTasksTool(),
-		toolSet.getParentTaskTool(),
-		toolSet.findNextActionableTaskTool(),
-		toolSet.findTasksNeedingBreakdownTool(),
-		toolSet.getRootTasksTool(),
-		toolSet.listTasksByStateTool(),
-		toolSet.deleteTaskSubtreeTool(),
-		toolSet.updateTaskTool(),
-		toolSet.deleteTaskTool(),
-		toolSet.updateProjectTool(),
-		toolSet.deleteProjectTool(),
-		toolSet.listTasksForProjectTool(),
-		toolSet.bulkUpdateTasksTool(),
-		toolSet.duplicateTaskTool(),
-		toolSet.setTaskEstimateTool(),
-		toolSet.addTaskDependencyTool(),
-		toolSet.removeTaskDependencyTool(),
-		toolSet.getTaskDependenciesTool(),
-		toolSet.getDependentTasksTool(),
+	if toolSet.isReadOnly {
+		// Initialize readonly tools
+		toolSet.tools = []tool.CallableTool{
+			toolSet.getProjectTool(),
+			toolSet.listProjectsTool(),
+			toolSet.getTaskTool(),
+			toolSet.getProjectProgressTool(),
+			toolSet.getChildTasksTool(),
+			toolSet.getParentTaskTool(),
+			toolSet.findNextActionableTaskTool(),
+			toolSet.findTasksNeedingBreakdownTool(),
+			toolSet.getRootTasksTool(),
+			toolSet.listTasksByStateTool(),
+			toolSet.listTasksForProjectTool(),
+			toolSet.getTaskDependenciesTool(),
+			toolSet.getDependentTasksTool(),
+		}
+	} else {
+		// Initialize all tools
+		toolSet.tools = []tool.CallableTool{
+			toolSet.createProjectTool(),
+			toolSet.getProjectTool(),
+			toolSet.updateProjectDescriptionTool(), // Add this line
+			toolSet.listProjectsTool(),
+			toolSet.createTaskTool(),
+			toolSet.getTaskTool(),
+			toolSet.updateTaskDescriptionTool(), // Add this line
+			toolSet.updateTaskStateTool(),
+			toolSet.getProjectProgressTool(),
+			toolSet.getChildTasksTool(),
+			toolSet.getParentTaskTool(),
+			toolSet.findNextActionableTaskTool(),
+			toolSet.findTasksNeedingBreakdownTool(),
+			toolSet.getRootTasksTool(),
+			toolSet.listTasksByStateTool(),
+			toolSet.deleteTaskSubtreeTool(),
+			toolSet.updateTaskTool(),
+			toolSet.deleteTaskTool(),
+			toolSet.updateProjectTool(),
+			toolSet.deleteProjectTool(),
+			toolSet.listTasksForProjectTool(),
+			toolSet.bulkUpdateTasksTool(),
+			toolSet.duplicateTaskTool(),
+			toolSet.setTaskEstimateTool(),
+			toolSet.addTaskDependencyTool(),
+			toolSet.removeTaskDependencyTool(),
+			toolSet.getTaskDependenciesTool(),
+			toolSet.getDependentTasksTool(),
+		}
 	}
 
 	return toolSet, nil
