@@ -10,7 +10,7 @@ import (
 
 // AgentConfig represents a complete agent configuration
 type AgentConfig struct {
-	AgentID     uuid.UUID      `json:"agent_id"`
+	AgentID     string      `json:"agent_id"`  // UUID as string for CUE compatibility
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	Type        shared.AgentType `json:"type"`
@@ -21,7 +21,7 @@ type AgentConfig struct {
 
 // PromptConfig represents prompt configuration
 type PromptConfig struct {
-	AgentID           uuid.UUID              `json:"agent_id"`
+	AgentID           string              `json:"agent_id"`  // UUID as string for CUE compatibility
 	Name              string                 `json:"name"`
 	Description       string                 `json:"description,omitempty"`
 	GlobalInstruction string                 `json:"global_instruction,omitempty"`
@@ -31,7 +31,7 @@ type PromptConfig struct {
 
 // SettingsConfig represents agent settings
 type SettingsConfig struct {
-	AgentID     uuid.UUID     `json:"agent_id"`
+	AgentID     string     `json:"agent_id"`  // UUID as string for CUE compatibility
 	Name        string        `json:"name"`
 	Description string        `json:"description,omitempty"`
 	Agent       AgentSettings `json:"agent"`
@@ -50,7 +50,7 @@ type AgentSettings struct {
 	Temperature       float64     `json:"temperature"`
 	LLM               LLMSettings `json:"llm"`
 	// Fields specific to different agent types
-	SubAgents         []uuid.UUID `json:"sub_agents,omitempty"`
+	SubAgents         []string `json:"sub_agents,omitempty"` // UUIDs as strings for CUE compatibility
 	InputSchema       map[string]interface{} `json:"input_schema,omitempty"`
 	OutputSchema      map[string]interface{} `json:"output_schema,omitempty"`
 	OutputKey         string      `json:"output_key,omitempty"`

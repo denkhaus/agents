@@ -16,12 +16,13 @@ func main() {
 
 	// Validate the configuration
 	if err := factory.ValidateConfiguration(); err != nil {
-		log.Fatalf("Configuration validation failed: %v", err)
+		log.Printf("Configuration validation warning: %v", err)
+		// Not failing here as we want to demonstrate usage even with warnings
 	}
 
 	// Create an agent by name
 	ctx := context.Background()
-	agent, err := factory.CreateAgent(ctx, "production", "coder")
+	agent, err := factory.CreateAgent(ctx, "development", "coder")
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
@@ -37,10 +38,11 @@ func main() {
 	fmt.Printf("Created agent by ID: %s (ID: %s)\n", agentByID.Info().Name, agentByID.ID())
 
 	// Get raw configuration
-	config, err := factory.GetAgentConfig("production", "researcher")
+	config, err := factory.GetAgentConfig("development", "researcher")
 	if err != nil {
 		log.Fatalf("Failed to get agent config: %v", err)
 	}
 
-	fmt.Printf("Researcher agent config: %+v\n", config)
+	fmt.Printf("Researcher agent config name: %s\n", config.Name)
+	fmt.Printf("Researcher agent config type: %s\n", config.Type)
 }

@@ -64,13 +64,15 @@ func TestUnifiedAgentFactory_CreateAgent(t *testing.T) {
 	// Set up test data
 	agentID := uuid.New()
 	agentConfig := &AgentConfig{
-		AgentID: agentID,
+		AgentID: agentID.String(), // Convert to string
 		Name:    "test-agent",
 		Type:    shared.AgentTypeDefault,
 		Prompt: PromptConfig{
+			AgentID: agentID.String(), // Convert to string
 			Content: "Test prompt",
 		},
 		Settings: SettingsConfig{
+			AgentID: agentID.String(), // Convert to string
 			Agent: AgentSettings{
 				LLM: LLMSettings{
 					Model:    "gpt-3.5-turbo",
@@ -111,13 +113,15 @@ func TestUnifiedAgentFactory_CreateAgentByID(t *testing.T) {
 	// Set up test data
 	agentID := shared.AgentIDCoder
 	agentConfig := &AgentConfig{
-		AgentID: agentID,
+		AgentID: agentID.String(), // Convert to string
 		Name:    "coder",
 		Type:    shared.AgentTypeDefault,
 		Prompt: PromptConfig{
+			AgentID: agentID.String(), // Convert to string
 			Content: "Coder prompt",
 		},
 		Settings: SettingsConfig{
+			AgentID: agentID.String(), // Convert to string
 			Agent: AgentSettings{
 				LLM: LLMSettings{
 					Model:    "gpt-3.5-turbo",
