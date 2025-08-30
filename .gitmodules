@@ -1,0 +1,3 @@
+[submodule "config"]
+	path = config
+	url = git@denkhaus.github.com:denkhaus/agent-config.git
