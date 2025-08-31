@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
@@ -68,8 +69,8 @@ func calculate(ctx context.Context, args calculatorArgs) (calculatorResult, erro
 	}, nil
 }
 
-func NewWithDI(injector *do.Injector) (func() (tool.Tool, error), error) {
-	return func() (tool.Tool, error) {
+func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.Tool, error) {
 		return New()
 	}, nil
 }
@@ -80,7 +81,6 @@ func New() (tool.Tool, error) {
 		calculate,
 		function.WithName(ToolName),
 		function.WithDescription(
-			// Perform basic mathematical calculations (add, subtract, multiply, divide).
 			"Perform basic mathematical calculations (add, subtract, multiply, divide)",
 		),
 	)

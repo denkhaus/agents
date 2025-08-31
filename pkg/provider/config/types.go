@@ -10,7 +10,7 @@ import (
 
 // AgentConfig represents a complete agent configuration
 type AgentConfig struct {
-	AgentID     string           `json:"agent_id"` // UUID as string for CUE compatibility
+	AgentID     uuid.UUID        `json:"agent_id"`
 	Name        string           `json:"name"`
 	Description string           `json:"description,omitempty"`
 	Type        shared.AgentType `json:"type"`
@@ -21,7 +21,7 @@ type AgentConfig struct {
 
 // PromptConfig represents prompt configuration
 type PromptConfig struct {
-	AgentID           string                 `json:"agent_id"` // UUID as string for CUE compatibility
+	AgentID           uuid.UUID              `json:"agent_id"`
 	Name              string                 `json:"name"`
 	Description       string                 `json:"description,omitempty"`
 	GlobalInstruction string                 `json:"global_instruction,omitempty"`
@@ -31,7 +31,7 @@ type PromptConfig struct {
 
 // SettingsConfig represents agent settings
 type SettingsConfig struct {
-	AgentID     string        `json:"agent_id"` // UUID as string for CUE compatibility
+	AgentID     uuid.UUID     `json:"agent_id"`
 	Name        string        `json:"name"`
 	Description string        `json:"description,omitempty"`
 	Agent       AgentSettings `json:"agent"`
@@ -39,20 +39,18 @@ type SettingsConfig struct {
 
 // AgentSettings represents the agent runtime settings
 type AgentSettings struct {
-	ApplicationName   string `json:"application_name"`
-	PlanningEnabled   bool   `json:"planning_enabled"`
-	ReactEnabled      bool   `json:"react_enabled"`
-	MaxIterations     int    `json:"max_iterations"`
-	Timeout           int    `json:"timeout"`
-	StreamingEnabled  bool   `json:"streaming_enabled"`
-	ChannelBufferSize int    `json:"channel_buffer_size"`
-
-	LLM LLMSettings `json:"llm"`
-	// Fields specific to different agent types
-	SubAgents    []string               `json:"sub_agents,omitempty"` // UUIDs as strings for CUE compatibility
-	InputSchema  map[string]interface{} `json:"input_schema,omitempty"`
-	OutputSchema map[string]interface{} `json:"output_schema,omitempty"`
-	OutputKey    string                 `json:"output_key,omitempty"`
+	ApplicationName   string                 `json:"application_name"`
+	PlanningEnabled   bool                   `json:"planning_enabled"`
+	ReactEnabled      bool                   `json:"react_enabled"`
+	MaxIterations     int                    `json:"max_iterations"`
+	Timeout           int                    `json:"timeout"`
+	StreamingEnabled  bool                   `json:"streaming_enabled"`
+	ChannelBufferSize int                    `json:"channel_buffer_size"`
+	LLM               LLMSettings            `json:"llm"`
+	SubAgents         []uuid.UUID            `json:"sub_agents,omitempty"`
+	InputSchema       map[string]interface{} `json:"input_schema,omitempty"`
+	OutputSchema      map[string]interface{} `json:"output_schema,omitempty"`
+	OutputKey         string                 `json:"output_key,omitempty"`
 }
 
 // LLMSettings represents LLM configuration

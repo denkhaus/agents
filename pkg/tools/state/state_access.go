@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -90,8 +91,29 @@ func (t *StateAccessTool) Call(ctx context.Context, jsonArgs []byte) (any, error
 	}, nil
 }
 
-func NewWithDI(injector *do.Injector) (func(opts ...Option) (tool.Tool, error), error) {
-	return func(opts ...Option) (tool.Tool, error) {
+func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.Tool, error) {
+		// Extract configuration and convert to options
+		var settings StateAccessTool
+		if err := config.Bind(&settings); err != nil {
+			return nil, err
+		}
+		
+		// Create options from settings
+		var opts []Option
+		if settings.sessionService != nil {
+			opts = append(opts, WithSessionService(settings.sessionService))
+		}
+		if settings.appName != "" {
+			opts = append(opts, WithAppName(settings.appName))
+		}
+		if settings.userID != "" {
+			opts = append(opts, WithUserID(settings.userID))
+		}
+		if settings.sessionID != "" {
+			opts = append(opts, WithSessionID(settings.sessionID))
+		}
+		
 		return New(opts...)
 	}, nil
 }

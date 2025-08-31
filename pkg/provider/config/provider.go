@@ -347,9 +347,9 @@ func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig
 	}
 
 	for _, subAgentID := range subAgents {
-		subAgentName := GetAgentNameFromID(uuid.MustParse(subAgentID))
+		subAgentName := GetAgentNameFromID(subAgentID)
 		if subAgentName == "unknown" {
-			logger.Log.Warn("Failed to resolve sub-agent name from ID", zap.String("sub_agent_id", subAgentID))
+			logger.Log.Warn("Failed to resolve sub-agent name from ID", zap.Any("sub_agent_id", subAgentID))
 			continue
 		}
 
@@ -358,12 +358,7 @@ func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig
 			return nil, fmt.Errorf("failed to load agent compositionparse agentID from %q: %w", agentConfig.AgentID, err)
 		}
 
-		agentUUID, err := uuid.Parse(subAgentConfig.AgentID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse agentID from %q: %w", agentConfig.AgentID, err)
-		}
-
-		result[agentUUID] = subAgentConfig.ToAgentInfo()
+		result[subAgentConfig.AgentID] = subAgentConfig.ToAgentInfo()
 	}
 
 	return result, nil
@@ -430,13 +425,8 @@ func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string) ([]*s
 			}
 		}
 
-		agentUUID, err := uuid.Parse(agentConfig.AgentID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse agentID from %q: %w", agentConfig.AgentID, err)
-		}
-
-		if _, exists := agentMap[agentUUID]; !exists {
-			agentMap[agentUUID] = agentConfig.ToAgentInfo()
+		if _, exists := agentMap[agentConfig.AgentID]; !exists {
+			agentMap[agentConfig.AgentID] = agentConfig.ToAgentInfo()
 		}
 	}
 

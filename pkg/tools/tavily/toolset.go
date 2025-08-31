@@ -2,9 +2,11 @@ package tavily
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/iamwavecut/go-tavily"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -19,59 +21,55 @@ const (
 	DefaultMapToolName     = "tavily_map"
 )
 
-// tavilyToolSet implements the ToolSet interface for Tavily API.
-type tavilyToolSet struct {
+// TavilyToolSet implements the ToolSet interface for Tavily API.
+type TavilyToolSet struct {
 	client         *tavily.Client
-	apiKey         string
-	searchEnabled  bool
-	crawlEnabled   bool
-	extractEnabled bool
-	mapEnabled     bool
 	tools          []tool.CallableTool
+	ApiKey         string
+	SearchEnabled  bool
+	CrawlEnabled   bool
+	ExtractEnabled bool
+	MapEnabled     bool
 }
 
-func NewWithDI(injector *do.Injector) (func(opts ...Option) (tool.ToolSet, error), error) {
-	return func(opts ...Option) (tool.ToolSet, error) {
-		return New(opts...)
+func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+
+		var settings TavilyToolSet
+		if err := config.Bind(&settings); err != nil {
+			return nil, fmt.Errorf("failed to bind config to settings: %w", err)
+		}
+
+		return newFromSettings(&settings)
 	}, nil
 }
 
-// NewToolSet creates a new Tavily tool set with the provided options.
-func New(opts ...Option) (tool.ToolSet, error) {
-	t := &tavilyToolSet{
-		searchEnabled:  true,
-		crawlEnabled:   true,
-		extractEnabled: true,
-		mapEnabled:     true,
+// newFromSettings creates a new Tavily tool set with the provided settings.
+func newFromSettings(t *TavilyToolSet) (tool.ToolSet, error) {
+
+	if t.ApiKey == "" {
+		t.ApiKey = os.Getenv("TAVILY_API_KEY")
 	}
 
-	for _, opt := range opts {
-		opt(t)
-	}
-
-	if t.apiKey == "" {
-		t.apiKey = os.Getenv("TAVILY_API_KEY")
-	}
-
-	if t.apiKey == "" {
-		return nil, fmt.Errorf("Tavily API key not provided. Set TAVILY_API_KEY environment variable or use WithAPIKey option.")
+	if t.ApiKey == "" {
+		return nil, errors.New("tavily API key not provided. Set TAVILY_API_KEY environment variable or use WithAPIKey option")
 	}
 
 	if t.client == nil {
-		t.client = tavily.New(t.apiKey, nil)
+		t.client = tavily.New(t.ApiKey, nil)
 	}
 
 	var tools []tool.CallableTool
-	if t.searchEnabled {
+	if t.SearchEnabled {
 		tools = append(tools, t.searchTool())
 	}
-	if t.crawlEnabled {
+	if t.CrawlEnabled {
 		tools = append(tools, t.crawlTool())
 	}
-	if t.extractEnabled {
+	if t.ExtractEnabled {
 		tools = append(tools, t.extractTool())
 	}
-	if t.mapEnabled {
+	if t.MapEnabled {
 		tools = append(tools, t.mapTool())
 	}
 	t.tools = tools
@@ -79,13 +77,29 @@ func New(opts ...Option) (tool.ToolSet, error) {
 	return t, nil
 }
 
+// NewToolSet creates a new Tavily tool set with the provided options.
+func New(opts ...Option) (tool.ToolSet, error) {
+	t := TavilyToolSet{
+		SearchEnabled:  true,
+		CrawlEnabled:   true,
+		ExtractEnabled: true,
+		MapEnabled:     true,
+	}
+
+	for _, opt := range opts {
+		opt(&t)
+	}
+
+	return newFromSettings(&t)
+}
+
 // Tools implements the ToolSet interface.
-func (t *tavilyToolSet) Tools(ctx context.Context) []tool.CallableTool {
+func (t *TavilyToolSet) Tools(ctx context.Context) []tool.CallableTool {
 	return t.tools
 }
 
 // Close implements the ToolSet interface.
-func (t *tavilyToolSet) Close() error {
+func (t *TavilyToolSet) Close() error {
 	return nil
 }
 
@@ -98,7 +112,7 @@ type searchArgs struct {
 	ExcludeDomains []string `json:"exclude_domains,omitempty" description:"A list of domains to exclude from the search."`
 }
 
-func (t *tavilyToolSet) search(ctx context.Context, args searchArgs) (*tavily.SearchResponse, error) {
+func (t *TavilyToolSet) search(ctx context.Context, args searchArgs) (*tavily.SearchResponse, error) {
 	opts := &tavily.SearchOptions{
 		SearchDepth:    args.SearchDepth,
 		IncludeAnswer:  args.IncludeAnswer,
@@ -108,7 +122,7 @@ func (t *tavilyToolSet) search(ctx context.Context, args searchArgs) (*tavily.Se
 	return t.client.Search(ctx, args.Query, opts)
 }
 
-func (t *tavilyToolSet) searchTool() tool.CallableTool {
+func (t *TavilyToolSet) searchTool() tool.CallableTool {
 	return function.NewFunctionTool(
 		t.search,
 		function.WithName(DefaultSearchToolName),
@@ -124,14 +138,14 @@ type crawlArgs struct {
 	MaxDepth int    `json:"max_depth,omitempty" description:"The maximum depth to crawl."`
 }
 
-func (t *tavilyToolSet) crawl(ctx context.Context, args crawlArgs) (*tavily.CrawlResponse, error) {
+func (t *TavilyToolSet) crawl(ctx context.Context, args crawlArgs) (*tavily.CrawlResponse, error) {
 	opts := &tavily.CrawlOptions{
 		MaxDepth: args.MaxDepth,
 	}
 	return t.client.Crawl(ctx, args.URL, opts)
 }
 
-func (t *tavilyToolSet) crawlTool() tool.CallableTool {
+func (t *TavilyToolSet) crawlTool() tool.CallableTool {
 	return function.NewFunctionTool(
 		t.crawl,
 		function.WithName(DefaultCrawlToolName),
@@ -146,11 +160,11 @@ type extractArgs struct {
 	URLs []string `json:"urls" description:"The URLs to extract content from."`
 }
 
-func (t *tavilyToolSet) extract(ctx context.Context, args extractArgs) (*tavily.ExtractResponse, error) {
+func (t *TavilyToolSet) extract(ctx context.Context, args extractArgs) (*tavily.ExtractResponse, error) {
 	return t.client.Extract(ctx, args.URLs, nil)
 }
 
-func (t *tavilyToolSet) extractTool() tool.CallableTool {
+func (t *TavilyToolSet) extractTool() tool.CallableTool {
 	return function.NewFunctionTool(
 		t.extract,
 		function.WithName(DefaultExtractToolName),
@@ -166,7 +180,7 @@ type mapArgs struct {
 	MaxDepth int    `json:"max_depth,omitempty" description:"The maximum depth to map."`
 }
 
-func (t *tavilyToolSet) mapTool() tool.CallableTool {
+func (t *TavilyToolSet) mapTool() tool.CallableTool {
 	return function.NewFunctionTool(
 		t.mapFunc,
 		function.WithName(DefaultMapToolName),
@@ -176,7 +190,7 @@ When not to use: When you need to search for general information (use the `+Defa
 	)
 }
 
-func (t *tavilyToolSet) mapFunc(ctx context.Context, args mapArgs) (*tavily.MapResponse, error) {
+func (t *TavilyToolSet) mapFunc(ctx context.Context, args mapArgs) (*tavily.MapResponse, error) {
 	opts := &tavily.MapOptions{
 		MaxDepth: args.MaxDepth,
 	}

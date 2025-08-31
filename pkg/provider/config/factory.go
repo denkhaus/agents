@@ -46,12 +46,6 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 		return nil, fmt.Errorf("failed to load agent config: %w", err)
 	}
 
-	// Parse the main agent ID
-	agentID, err := uuid.Parse(agentConfig.AgentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse agent ID: %w", err)
-	}
-
 	// Create tools based on configuration
 	tools, toolsets, err := f.toolFactory.CreateTools(agentConfig.Tools)
 	if err != nil {
@@ -88,7 +82,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 
 	return shared.NewAgent(
 		ag,
-		agentID, // Use the parsed UUID
+		agentConfig.AgentID,
 		agentConfig.Settings.Agent.StreamingEnabled,
 	), nil
 }
@@ -366,19 +360,14 @@ func (f *UnifiedAgentFactory) getModel(agentConfig *AgentConfig) (model.Model, e
 }
 
 // getSubAgents creates sub-agent instances based on their UUIDs
-func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, subAgentIDs []string) ([]agent.Agent, error) {
+func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, subAgentIDs []uuid.UUID) ([]agent.Agent, error) {
 	var subAgents []agent.Agent
-	for _, idStr := range subAgentIDs {
-		// Parse the UUID string
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse sub-agent UUID %s: %w", idStr, err)
-		}
+	for _, id := range subAgentIDs {
 
 		// Recursively create the sub-agent
 		subAgent, err := f.CreateAgentByID(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create sub-agent %s: %w", idStr, err)
+			return nil, fmt.Errorf("failed to create sub-agent %s: %w", id, err)
 		}
 		subAgents = append(subAgents, subAgent)
 	}
@@ -390,7 +379,7 @@ func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
 	agent := p.Settings.Agent
 
 	agentInfo := shared.NewAgentInfo(
-		uuid.MustParse(p.AgentID),
+		p.AgentID,
 		shared.AgentRole(p.Name),
 		agent.StreamingEnabled,
 		p.Name,

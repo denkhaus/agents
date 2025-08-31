@@ -1,6 +1,7 @@
 package file
 
 import (
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/file"
@@ -10,36 +11,32 @@ const (
 	ToolSetName = "file_toolset"
 )
 
-type fileToolSetWrapperImpl struct {
-	workspacePath string
-	readOnly      bool
+type FileToolSet struct {
+	WorkspacePath string
+	ReadOnly      bool
 }
 
-// Option is a configuration function for the file ToolSet.
-type Option func(*fileToolSetWrapperImpl)
+func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+		// Extract configuration and convert to options
+		var settings FileToolSet
+		if err := config.Bind(&settings); err != nil {
+			return nil, err
+		}
 
-func WithReadOnly(readOnly bool) Option {
-	return func(t *fileToolSetWrapperImpl) {
-		t.readOnly = readOnly
-	}
-}
+		// Create options from settings
+		var opts []Option
+		if settings.WorkspacePath != "" {
+			opts = append(opts, WithWorkspacePath(settings.WorkspacePath))
+		}
+		opts = append(opts, WithReadOnly(settings.ReadOnly))
 
-func WithWorkspacePath(workspacePath string) Option {
-	return func(t *fileToolSetWrapperImpl) {
-		t.workspacePath = workspacePath
-	}
-}
-
-type FactoryFunc func(opts ...Option) (tool.ToolSet, error)
-
-func NewWithDI(injector *do.Injector) (FactoryFunc, error) {
-	return func(opts ...Option) (tool.ToolSet, error) {
 		return New(opts...)
 	}, nil
 }
 
 func New(opts ...Option) (tool.ToolSet, error) {
-	wrapper := fileToolSetWrapperImpl{}
+	wrapper := FileToolSet{}
 
 	for _, opt := range opts {
 		opt(&wrapper)
@@ -48,12 +45,12 @@ func New(opts ...Option) (tool.ToolSet, error) {
 	return wrapper.create()
 }
 
-func (p *fileToolSetWrapperImpl) create() (toolset tool.ToolSet, err error) {
+func (p *FileToolSet) create() (toolset tool.ToolSet, err error) {
 	options := []file.Option{
-		file.WithBaseDir(p.workspacePath),
+		file.WithBaseDir(p.WorkspacePath),
 	}
 
-	if p.readOnly {
+	if p.ReadOnly {
 		// Create readonly file operation tools.
 		options = append(options,
 			file.WithListFileEnabled(true),

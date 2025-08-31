@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
@@ -28,10 +29,30 @@ type shellToolSet struct {
 	maxOutputSize         int64
 	currentWorkDir        string // Current working directory for cd command
 }
-type FactoryFunc func(opts ...Option) (tool.ToolSet, error)
-
-func NewWithDI(injector *do.Injector) (FactoryFunc, error) {
-	return func(opts ...Option) (tool.ToolSet, error) {
+func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+		// Extract configuration and convert to options
+		var settings shellToolSet
+		if err := config.Bind(&settings); err != nil {
+			return nil, err
+		}
+		
+		// Create options from settings
+		var opts []Option
+		if settings.baseDir != "" {
+			opts = append(opts, WithBaseDir(settings.baseDir))
+		}
+		opts = append(opts, WithExecuteCommandEnabled(settings.executeCommandEnabled))
+		if len(settings.allowedCommands) > 0 {
+			opts = append(opts, WithAllowedCommands(settings.allowedCommands))
+		}
+		if settings.timeout > 0 {
+			opts = append(opts, WithTimeout(settings.timeout))
+		}
+		if settings.maxOutputSize > 0 {
+			opts = append(opts, WithMaxOutputSize(settings.maxOutputSize))
+		}
+		
 		return New(opts...)
 	}, nil
 }

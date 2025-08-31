@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
@@ -49,8 +50,8 @@ func getCurrentTime(ctx context.Context, args timeArgs) (timeResult, error) {
 	}, nil
 }
 
-func NewWithDI(injector *do.Injector) (func() (tool.Tool, error), error) {
-	return func() (tool.Tool, error) {
+func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.Tool, error) {
 		return New()
 	}, nil
 }

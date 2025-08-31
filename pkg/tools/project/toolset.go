@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 	"go.uber.org/zap" // Add this import
@@ -23,10 +24,24 @@ type projectTaskToolSet struct {
 	tools      []tool.CallableTool
 }
 
-type FactoryFunc func(opts ...Option) (tool.ToolSet, error)
+func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
+	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+		// Extract configuration and convert to options
+		var settings projectTaskToolSet
+		if err := config.Bind(&settings); err != nil {
+			return nil, err
+		}
 
-func NewWithDI(injector *do.Injector) (FactoryFunc, error) {
-	return func(opts ...Option) (tool.ToolSet, error) {
+		// Create options from settings
+		var opts []Option
+		if settings.manager != nil {
+			opts = append(opts, WithManager(settings.manager))
+		}
+		if settings.logger != nil {
+			opts = append(opts, WithLogger(settings.logger))
+		}
+		opts = append(opts, WithReadOnly(settings.isReadOnly))
+
 		return New(opts...)
 	}, nil
 }

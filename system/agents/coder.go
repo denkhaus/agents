@@ -7,6 +7,7 @@ import (
 	"github.com/denkhaus/agents/pkg/config"
 	"github.com/denkhaus/agents/pkg/provider"
 	"github.com/denkhaus/agents/pkg/provider/agent"
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/denkhaus/agents/pkg/tools/calculator"
 	"github.com/denkhaus/agents/pkg/tools/fetch"
 	"github.com/denkhaus/agents/pkg/tools/file"
@@ -24,7 +25,7 @@ func CreateCoderAgent(ctx context.Context, injector *do.Injector) (shared.TheAge
 	agentProvider := do.MustInvoke[provider.AgentProvider](injector)
 	configProvider := do.MustInvoke[config.Service](injector)
 
-	fileFactory, err := do.InvokeNamed[file.FactoryFunc](injector, file.ToolSetName)
+	fileFactory, err := do.InvokeNamed[tools.ToolSetFactoryFunc](injector, file.ToolSetName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve file factory from di for agent [%s]: %w", agentID, err)
 	}
@@ -34,40 +35,57 @@ func CreateCoderAgent(ctx context.Context, injector *do.Injector) (shared.TheAge
 		return nil, err
 	}
 
-	fileToolSet, err := fileFactory(
-		file.WithReadOnly(false),
-		file.WithWorkspacePath(workspacePath),
-	)
+	fileToolSet, err := fileFactory(tools.ConfigPayload{
+		"WorkspacePath": workspacePath,
+		"ReadOnly":      false,
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	shellFactory, err := do.InvokeNamed[shell.FactoryFunc](injector, shell.ToolSetName)
+	shellFactory, err := do.InvokeNamed[tools.ToolSetFactoryFunc](injector, shell.ToolSetName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve shell factory from di for agent [%s]: %w", agentID, err)
 	}
 
-	shellToolSet, err := shellFactory()
+	shellToolSet, err := shellFactory(tools.ConfigPayload{
+		"baseDir":               workspacePath,
+		"executeCommandEnabled": true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create shell toolset: %w", err)
 	}
 
-	projectFactory, err := do.InvokeNamed[project.FactoryFunc](injector, project.ToolSetName)
+	projectFactory, err := do.InvokeNamed[tools.ToolSetFactoryFunc](injector, project.ToolSetName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve project factory from di for agent [%s]: %w", agentID, err)
 	}
 
-	readOnlyProjectManagerToolSet, err := projectFactory(
-		project.WithReadOnly(true),
-	)
+	readOnlyProjectManagerToolSet, err := projectFactory(tools.ConfigPayload{
+		"isReadOnly": true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project manager toolset: %w", err)
 	}
 
-	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
-	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
-	fetchTool := do.MustInvokeNamed[tool.Tool](injector, fetch.ToolName)
+	timeFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, time.ToolName)
+	timeTool, err := timeFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create time tool: %w", err)
+	}
+
+	calculatorFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, calculator.ToolName)
+	calculatorTool, err := calculatorFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create calculator tool: %w", err)
+	}
+
+	fetchFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, fetch.ToolName)
+	fetchTool, err := fetchFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fetch tool: %w", err)
+	}
 
 	coderAgent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(

@@ -6,6 +6,7 @@ import (
 
 	"github.com/denkhaus/agents/pkg/provider"
 	"github.com/denkhaus/agents/pkg/provider/agent"
+	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/denkhaus/agents/pkg/tools/calculator"
 	"github.com/denkhaus/agents/pkg/tools/fetch"
 	"github.com/denkhaus/agents/pkg/tools/tavily"
@@ -20,15 +21,34 @@ func CreateResearcherAgent(ctx context.Context, injector *do.Injector) (shared.T
 	agentID := shared.AgentIDResearcher
 	agentProvider := do.MustInvoke[provider.AgentProvider](injector)
 
-	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)
-	calculatorTool := do.MustInvokeNamed[tool.Tool](injector, calculator.ToolName)
-	fetchTool := do.MustInvokeNamed[tool.Tool](injector, fetch.ToolName)
-	tavilyTool := do.MustInvokeNamed[tool.ToolSet](injector, tavily.ToolSetName)
+	timeFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, time.ToolName)
+	timeTool, err := timeFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create time tool: %w", err)
+	}
+
+	calculatorFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, calculator.ToolName)
+	calculatorTool, err := calculatorFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create calculator tool: %w", err)
+	}
+
+	fetchFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, fetch.ToolName)
+	fetchTool, err := fetchFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fetch tool: %w", err)
+	}
+
+	tavilyFactory := do.MustInvokeNamed[tools.ToolSetFactoryFunc](injector, tavily.ToolSetName)
+	tavilyToolSet, err := tavilyFactory(tools.ConfigPayload{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tavily toolset: %w", err)
+	}
 
 	agent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
 			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool, fetchTool}),
-			llmagent.WithToolSets([]tool.ToolSet{tavilyTool}),
+			llmagent.WithToolSets([]tool.ToolSet{tavilyToolSet}),
 		),
 	)
 
