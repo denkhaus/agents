@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -21,10 +22,16 @@ func createReleaseFile(version string) error {
 		return nil
 	}
 
+	// Get component versions based on actual changes
+	componentVersions, err := getComponentVersions(version)
+	if err != nil {
+		return fmt.Errorf("failed to determine component versions: %v", err)
+	}
+
 	// Get current date
 	currentDate := time.Now().Format("2006-01-02")
 
-	// Create release file content
+	// Create release file content with independent component versions
 	content := fmt.Sprintf(`package releases
 
 import (
@@ -36,7 +43,7 @@ import (
     release_date: "%s"
     description: "Release %s"
 
-    // Component versions
+    // Component versions - set independently based on actual changes
     components: {
         prompts: "%s"
         tools: "%s"
@@ -58,10 +65,147 @@ import (
         supported_environments: ["development", "production"]
     }
 }
-`, strings.ReplaceAll(version, ".", "_"), version, currentDate, version, version, version, version, version)
+`, strings.ReplaceAll(version, ".", "_"), version, currentDate, version,
+   componentVersions.Prompts, componentVersions.Tools,
+   componentVersions.Settings, componentVersions.Compositions)
 
 	// Write release file
 	return os.WriteFile(releaseFile, []byte(content), 0644)
+}
+
+// ComponentVersions holds version information for each component
+type ComponentVersions struct {
+	Prompts      string
+	Tools        string
+	Settings     string
+	Compositions string
+}
+
+// getComponentVersions determines component versions based on actual changes
+func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
+	versions := &ComponentVersions{
+		Prompts:      "v1.0.0",
+		Tools:        "v1.0.0",
+		Settings:     "v1.0.0",
+		Compositions: "v1.0.0",
+	}
+
+	// Get the last tag
+	lastTag, err := getLastTag()
+	if err != nil {
+		// If we can't get the last tag, use target version for all components
+		versions.Prompts = targetVersion
+		versions.Tools = targetVersion
+		versions.Settings = targetVersion
+		versions.Compositions = targetVersion
+		return versions, nil
+	}
+
+	// If there's no previous tag, all components are at target version
+	if lastTag == "" {
+		versions.Prompts = targetVersion
+		versions.Tools = targetVersion
+		versions.Settings = targetVersion
+		versions.Compositions = targetVersion
+		return versions, nil
+	}
+
+	// Get the list of changed files between the last tag and HEAD
+	cmd := exec.Command("git", "diff", "--name-only", lastTag, "HEAD")
+	cmd.Dir = "config"
+	output, err := cmd.Output()
+	if err != nil {
+		// If git diff fails, use target version for all components
+		versions.Prompts = targetVersion
+		versions.Tools = targetVersion
+		versions.Settings = targetVersion
+		versions.Compositions = targetVersion
+		return versions, nil
+	}
+
+	changedFiles := strings.Split(string(output), "\n")
+	
+	// Track which components have changed
+	componentsChanged := map[string]bool{
+		"prompts":      false,
+		"tools":        false,
+		"settings":     false,
+		"compositions": false,
+	}
+
+	// Analyze which components have changed
+	for _, file := range changedFiles {
+		if file == "" {
+			continue
+		}
+		
+		// Determine which component this file belongs to
+		switch {
+		case strings.HasPrefix(file, "prompts/"):
+			componentsChanged["prompts"] = true
+		case strings.HasPrefix(file, "tools/"):
+			componentsChanged["tools"] = true
+		case strings.HasPrefix(file, "settings/"):
+			componentsChanged["settings"] = true
+		case strings.HasPrefix(file, "compositions/"):
+			componentsChanged["compositions"] = true
+		}
+	}
+
+	// For components that changed, use the target version
+	// For components that didn't change, keep the previous version
+	if componentsChanged["prompts"] {
+		versions.Prompts = targetVersion
+	} else {
+		versions.Prompts = getComponentVersionFromTag(lastTag, "prompts")
+	}
+	
+	if componentsChanged["tools"] {
+		versions.Tools = targetVersion
+	} else {
+		versions.Tools = getComponentVersionFromTag(lastTag, "tools")
+	}
+	
+	if componentsChanged["settings"] {
+		versions.Settings = targetVersion
+	} else {
+		versions.Settings = getComponentVersionFromTag(lastTag, "settings")
+	}
+	
+	if componentsChanged["compositions"] {
+		versions.Compositions = targetVersion
+	} else {
+		versions.Compositions = getComponentVersionFromTag(lastTag, "compositions")
+	}
+
+	return versions, nil
+}
+
+// getLastTag gets the most recent Git tag
+func getLastTag() (string, error) {
+	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
+	cmd.Dir = "config"
+	output, err := cmd.Output()
+	if err != nil {
+		// No tags found
+		return "", nil
+	}
+	
+	return strings.TrimSpace(string(output)), nil
+}
+
+// getComponentVersionFromTag gets a component's version from a release tag
+// In a real implementation, this would parse the actual release file
+// For now, we'll use a simplified approach
+func getComponentVersionFromTag(tag, component string) string {
+	// This is a simplified implementation
+	// In a real system, you would:
+	// 1. Find the release file for the given tag
+	// 2. Parse it to get the component versions
+	// 3. Return the version for the specific component
+	
+	// For now, we'll just return the tag itself
+	return tag
 }
 
 // restructureDirectories moves versioned directories to flattened structure
