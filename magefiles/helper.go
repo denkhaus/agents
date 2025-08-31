@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -14,7 +15,21 @@ import (
 
 // createReleaseFile creates a new release file based on current configurations
 func createReleaseFile(version string) error {
-	releaseDir := configDir + "/releases"
+	// Check if we're already in the config directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	
+	var releaseDir string
+	if filepath.Base(currentDir) == "config" {
+		// We're already in the config directory
+		releaseDir = "./releases"
+	} else {
+		// We're in the main directory
+		releaseDir = configDir + "/releases"
+	}
+	
 	releaseFile := fmt.Sprintf("%s/%s.cue", releaseDir, strings.ReplaceAll(version, ".", "_"))
 
 	// Check if release file already exists

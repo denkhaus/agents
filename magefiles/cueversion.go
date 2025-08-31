@@ -63,6 +63,12 @@ func (CueVersion) Tag(version string) error {
 
 	fmt.Printf("Creating new release tag: %s\n", version)
 
+	// Change to config directory for release creation and git operations
+	if err := os.Chdir("config"); err != nil {
+		return err
+	}
+	defer os.Chdir("..")
+
 	// Create release file
 	if err := createReleaseFile(version); err != nil {
 		return err
@@ -83,7 +89,17 @@ func (CueVersion) Tag(version string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully created tag %s\n", version)
+	// Push changes and tags
+	fmt.Printf("Pushing changes and tags for %s\n", version)
+	if err := sh.RunV("git", "push", "origin", "main"); err != nil {
+		fmt.Printf("Warning: Failed to push changes: %v\n", err)
+	}
+	
+	if err := sh.RunV("git", "push", "origin", version); err != nil {
+		fmt.Printf("Warning: Failed to push tag: %v\n", err)
+	}
+
+	fmt.Printf("Successfully created and pushed tag %s\n", version)
 	return nil
 }
 
