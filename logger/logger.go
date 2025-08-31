@@ -24,6 +24,6 @@ func init() {
 }
 
 // NewWithDI creates a new logger instance
-func New(i *do.Injector) (*zap.Logger, error) {
+func NewWithDI(i *do.Injector) (*zap.Logger, error) {
 	return Log, nil
 }

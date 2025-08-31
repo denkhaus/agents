@@ -5,14 +5,21 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/denkhaus/agents/provider/config"
+	"github.com/denkhaus/agents/di"
+	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/shared"
 )
 
 func main() {
 	// Create a new agent factory
 	// Assuming your CUE configurations are in the ./config directory
-	factory := config.NewUnifiedAgentFactory("./config")
+
+	container := di.NewContainer()
+
+	factory, err := config.NewUnifiedAgentFactory(container)
+	if err != nil {
+		log.Fatalf("Failed to create agent factory: %v", err)
+	}
 
 	// Validate the configuration
 	if err := factory.ValidateConfiguration(); err != nil {

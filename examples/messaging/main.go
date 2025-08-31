@@ -16,10 +16,10 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/model/openai"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
-	sessioninmemory "trpc.group/trpc-go/trpc-agent-go/session/inmemory"
+	"trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 
 	"github.com/denkhaus/agents/logger"
-	"github.com/denkhaus/agents/messaging"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/shared"
 )
 
@@ -191,7 +191,7 @@ func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction strin
 		cs.applicationName,
 		wrapper,
 		runner.WithSessionService(
-			sessioninmemory.NewSessionService(),
+			inmemory.NewSessionService(),
 		),
 	)
 

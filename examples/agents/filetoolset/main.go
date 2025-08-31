@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	shelltoolset "github.com/denkhaus/agents/tools/shell"
+	"github.com/denkhaus/agents/pkg/tools/shell"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -77,7 +77,7 @@ func (c *fileChat) run() error {
 }
 
 // setup creates the runner with LLM agent and file operation tools.
-func (c *fileChat) setup(ctx context.Context) error {
+func (c *fileChat) setup(_ context.Context) error {
 	// Create OpenAI model.
 	modelInstance := openai.New(c.modelName, openai.WithChannelBufferSize(512))
 
@@ -85,12 +85,15 @@ func (c *fileChat) setup(ctx context.Context) error {
 	fileToolSet, err := file.NewToolSet(
 		file.WithBaseDir(c.baseDir),
 	)
-
-	shellToolSet, err := shelltoolset.NewToolSet(
-		shelltoolset.WithBaseDir(c.baseDir),
-	)
 	if err != nil {
 		return fmt.Errorf("create file tool set: %w", err)
+	}
+
+	shellToolSet, err := shell.New(
+		shell.WithBaseDir(c.baseDir),
+	)
+	if err != nil {
+		return fmt.Errorf("create shell tool set: %w", err)
 	}
 
 	// Create LLM agent with file operation tools.

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/denkhaus/agents/provider"
-	"github.com/denkhaus/agents/provider/agent"
+	"github.com/denkhaus/agents/pkg/config"
+	"github.com/denkhaus/agents/pkg/provider"
+	"github.com/denkhaus/agents/pkg/provider/agent"
+	"github.com/denkhaus/agents/pkg/tools/calculator"
+	"github.com/denkhaus/agents/pkg/tools/file"
+	"github.com/denkhaus/agents/pkg/tools/project"
+	"github.com/denkhaus/agents/pkg/tools/time"
 	"github.com/denkhaus/agents/shared"
-	"github.com/denkhaus/agents/tools/calculator"
-	"github.com/denkhaus/agents/tools/project"
-	"github.com/denkhaus/agents/tools/time"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -18,26 +20,35 @@ import (
 func CreateProjectManagerAgent(ctx context.Context, injector *do.Injector) (shared.TheAgent, error) {
 	agentID := shared.AgentIDProjectManager
 	agentProvider := do.MustInvoke[provider.AgentProvider](injector)
-	workspaceProvider := do.MustInvoke[provider.WorkspaceProvider](injector)
+	configProvider := do.MustInvoke[config.Service](injector)
 
-	wkspce, err := workspaceProvider.GetWorkspace(agentID)
+	fileFactory, err := do.InvokeNamed[file.FactoryFunc](injector, file.ToolSetName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workspace for agent [%s]: %w", agentID, err)
+		return nil, fmt.Errorf("failed to retrieve file factory from di for agent [%s]: %w", agentID, err)
 	}
 
-	workspacePath, err := wkspce.GetPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get workspacePath for agent [%s]: %w", agentID, err)
-	}
-
-	fileToolSet, err := CreateFileToolset(workspacePath, true)
+	workspacePath, err := configProvider.GetWorkspacePath()
 	if err != nil {
 		return nil, err
 	}
 
-	projectManagerToolSet, err := project.NewToolSet()
+	fileToolSet, err := fileFactory(
+		file.WithReadOnly(true),
+		file.WithWorkspacePath(workspacePath),
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create project manager toolset: %w", err)
+		return nil, err
+	}
+
+	projectFactory, err := do.InvokeNamed[project.FactoryFunc](injector, project.ToolSetName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve project factory from di for agent [%s]: %w", agentID, err)
+	}
+
+	projectManagerToolSet, err := projectFactory()
+	if err != nil {
+		return nil, err
 	}
 
 	timeTool := do.MustInvokeNamed[tool.Tool](injector, time.ToolName)

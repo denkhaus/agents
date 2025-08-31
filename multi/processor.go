@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/denkhaus/agents/logger"
-	"github.com/denkhaus/agents/messaging"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
