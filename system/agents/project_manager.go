@@ -7,69 +7,60 @@ import (
 	"github.com/denkhaus/agents/pkg/config"
 	"github.com/denkhaus/agents/pkg/provider"
 	"github.com/denkhaus/agents/pkg/provider/agent"
-	"github.com/denkhaus/agents/pkg/tools"
-	"github.com/denkhaus/agents/pkg/tools/calculator"
-	"github.com/denkhaus/agents/pkg/tools/file"
-	"github.com/denkhaus/agents/pkg/tools/project"
-	"github.com/denkhaus/agents/pkg/tools/time"
+	providerConfig "github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/shared"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
-	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
 func CreateProjectManagerAgent(ctx context.Context, injector *do.Injector) (shared.TheAgent, error) {
 	agentID := shared.AgentIDProjectManager
 	agentProvider := do.MustInvoke[provider.AgentProvider](injector)
 	configProvider := do.MustInvoke[config.Service](injector)
+	cueConfigProvider := do.MustInvoke[providerConfig.ConfigProvider](injector)
 
-	fileFactory, err := do.InvokeNamed[tools.ToolSetFactoryFunc](injector, file.ToolSetName)
+	// Load tool profile configuration
+	toolsConfig, err := cueConfigProvider.LoadToolProfile("project_manager")
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve file factory from di for agent [%s]: %w", agentID, err)
+		return nil, fmt.Errorf("failed to load project_manager tool profile: %w", err)
 	}
 
+	// Get workspace path for relative path resolution
 	workspacePath, err := configProvider.GetWorkspacePath()
 	if err != nil {
 		return nil, err
 	}
 
-	fileToolSet, err := fileFactory(tools.ConfigPayload{
-		"WorkspacePath": workspacePath,
-		"ReadOnly":      true,
-	})
-
-	if err != nil {
-		return nil, err
+	// Resolve workspace paths in tool configuration
+	resolvedToolsConfig := *toolsConfig
+	for toolSetName, toolSetConfig := range resolvedToolsConfig.ToolSets {
+		if toolSetConfig.Config != nil {
+			config := make(map[string]interface{})
+			for k, v := range toolSetConfig.Config {
+				if k == "workspace_path" && v == "./workspace" {
+					config[k] = workspacePath
+				} else if k == "base_dir" && v == "./workspace" {
+					config[k] = workspacePath
+				} else {
+					config[k] = v
+				}
+			}
+			toolSetConfig.Config = config
+			resolvedToolsConfig.ToolSets[toolSetName] = toolSetConfig
+		}
 	}
 
-	projectFactory, err := do.InvokeNamed[tools.ToolSetFactoryFunc](injector, project.ToolSetName)
+	// Create tools and toolsets using the tool factory
+	toolFactory := do.MustInvoke[providerConfig.ToolFactory](injector)
+	enabledTools, enabledToolSets, err := toolFactory.CreateTools(resolvedToolsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve project factory from di for agent [%s]: %w", agentID, err)
-	}
-
-	projectManagerToolSet, err := projectFactory(tools.ConfigPayload{
-		"isReadOnly": false,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	timeFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, time.ToolName)
-	timeTool, err := timeFactory(tools.ConfigPayload{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create time tool: %w", err)
-	}
-
-	calculatorFactory := do.MustInvokeNamed[tools.ToolFactoryFunc](injector, calculator.ToolName)
-	calculatorTool, err := calculatorFactory(tools.ConfigPayload{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create calculator tool: %w", err)
+		return nil, fmt.Errorf("failed to create tools from configuration: %w", err)
 	}
 
 	projectManagerAgent, err := agentProvider.GetAgent(ctx, agentID,
 		agent.WithLLMAgentOptions(
-			llmagent.WithTools([]tool.Tool{timeTool, calculatorTool}),
-			llmagent.WithToolSets([]tool.ToolSet{projectManagerToolSet, fileToolSet}),
+			llmagent.WithTools(enabledTools),
+			llmagent.WithToolSets(enabledToolSets),
 		),
 	)
 
