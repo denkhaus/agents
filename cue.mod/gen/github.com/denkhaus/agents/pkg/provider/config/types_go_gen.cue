@@ -16,8 +16,8 @@ import (
 	description?: string            @go(Description)
 	type:         shared.#AgentType @go(Type)
 	prompt:       #PromptConfig     @go(Prompt)
-	settings:     #SettingsConfig   @go(Settings)
-	tools:        #ToolsConfig      @go(Tools)
+	setting:      #SettingsConfig   @go(Setting)
+	tool:         #ToolsConfig      @go(Tool)
 }
 
 // PromptConfig represents prompt configuration
