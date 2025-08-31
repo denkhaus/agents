@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -83,41 +84,37 @@ type ComponentVersions struct {
 
 // getComponentVersions determines component versions based on actual changes
 func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
+	// Initialize with target version for all components
 	versions := &ComponentVersions{
-		Prompts:      "v1.0.0",
-		Tools:        "v1.0.0",
-		Settings:     "v1.0.0",
-		Compositions: "v1.0.0",
+		Prompts:      targetVersion,
+		Tools:        targetVersion,
+		Settings:     targetVersion,
+		Compositions: targetVersion,
 	}
 
-	// Get the last tag
-	lastTag, err := getLastTag()
+	// Get the last tag in the config submodule
+	lastTag, err := getLastConfigTag()
 	if err != nil {
 		// If we can't get the last tag, use target version for all components
-		versions.Prompts = targetVersion
-		versions.Tools = targetVersion
-		versions.Settings = targetVersion
-		versions.Compositions = targetVersion
 		return versions, nil
 	}
 
 	// If there's no previous tag, all components are at target version
 	if lastTag == "" {
-		versions.Prompts = targetVersion
-		versions.Tools = targetVersion
-		versions.Settings = targetVersion
-		versions.Compositions = targetVersion
 		return versions, nil
 	}
 
-	// Get the list of changed files between the last tag and HEAD
-	changedFiles, err := getChangedFiles(lastTag)
+	// Get previous component versions from the last release file
+	prevVersions, err := getPreviousComponentVersions(lastTag)
+	if err != nil {
+		// If we can't get previous versions, use target version for all components
+		return versions, nil
+	}
+
+	// Get the list of changed files between the last tag and HEAD in the config submodule
+	changedFiles, err := getChangedConfigFiles(lastTag)
 	if err != nil {
 		// If we can't get changed files, use target version for all components
-		versions.Prompts = targetVersion
-		versions.Tools = targetVersion
-		versions.Settings = targetVersion
-		versions.Compositions = targetVersion
 		return versions, nil
 	}
 
@@ -148,42 +145,33 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 		}
 	}
 
-	// For components that changed, use the target version
-	// For components that didn't change, keep the previous version (v1.0.0 for now)
-	if componentsChanged["prompts"] {
-		versions.Prompts = targetVersion
-	} else {
-		versions.Prompts = "v1.0.0"
+	// For components that didn't change, keep the previous version
+	if !componentsChanged["prompts"] {
+		versions.Prompts = prevVersions.Prompts
 	}
 	
-	if componentsChanged["tools"] {
-		versions.Tools = targetVersion
-	} else {
-		versions.Tools = "v1.0.0"
+	if !componentsChanged["tools"] {
+		versions.Tools = prevVersions.Tools
 	}
 	
-	if componentsChanged["settings"] {
-		versions.Settings = targetVersion
-	} else {
-		versions.Settings = "v1.0.0"
+	if !componentsChanged["settings"] {
+		versions.Settings = prevVersions.Settings
 	}
 	
-	if componentsChanged["compositions"] {
-		versions.Compositions = targetVersion
-	} else {
-		versions.Compositions = "v1.0.0"
+	if !componentsChanged["compositions"] {
+		versions.Compositions = prevVersions.Compositions
 	}
 
 	return versions, nil
 }
 
-// getChangedFiles gets the list of changed files between two commits
-func getChangedFiles(sinceTag string) ([]string, error) {
+// getChangedConfigFiles gets the list of changed files between two commits in the config submodule
+func getChangedConfigFiles(sinceTag string) ([]string, error) {
 	cmd := exec.Command("git", "diff", "--name-only", sinceTag, "HEAD")
 	cmd.Dir = "config"
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get git diff: %v", err)
+		return nil, fmt.Errorf("failed to get git diff in config submodule: %v", err)
 	}
 
 	// Split output into lines
@@ -200,10 +188,54 @@ func getChangedFiles(sinceTag string) ([]string, error) {
 	return files, nil
 }
 
-// getLastTag gets the most recent Git tag
-func getLastTag() (string, error) {
+// getPreviousComponentVersions extracts component versions from the last release file
+func getPreviousComponentVersions(lastTag string) (*ComponentVersions, error) {
+	// Convert tag to filename format (v1.0.0 -> v1_0_0.cue)
+	tagParts := strings.Split(strings.TrimPrefix(lastTag, "v"), ".")
+	if len(tagParts) != 3 {
+		return nil, fmt.Errorf("invalid tag format: %s", lastTag)
+	}
+	
+	filename := fmt.Sprintf("v%s_%s_%s.cue", tagParts[0], tagParts[1], tagParts[2])
+	releaseFile := fmt.Sprintf("config/releases/%s", filename)
+	
+	// Read the release file
+	content, err := os.ReadFile(releaseFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read release file %s: %v", releaseFile, err)
+	}
+	
+	// Parse component versions from the file
+	versions := &ComponentVersions{}
+	contentStr := string(content)
+	
+	// Extract prompts version
+	if matches := regexp.MustCompile(`prompts:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
+		versions.Prompts = matches[1]
+	}
+	
+	// Extract tools version
+	if matches := regexp.MustCompile(`tools:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
+		versions.Tools = matches[1]
+	}
+	
+	// Extract settings version
+	if matches := regexp.MustCompile(`settings:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
+		versions.Settings = matches[1]
+	}
+	
+	// Extract compositions version
+	if matches := regexp.MustCompile(`compositions:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
+		versions.Compositions = matches[1]
+	}
+	
+	return versions, nil
+}
+
+// getLastConfigTag gets the most recent Git tag in the config submodule
+func getLastConfigTag() (string, error) {
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
-	cmd.Dir = "."
+	cmd.Dir = "config"
 	output, err := cmd.Output()
 	if err != nil {
 		// No tags found
