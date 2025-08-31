@@ -28,7 +28,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.30.0
-	gopkg.in/yaml.v2 v2.4.0
 	trpc.group/trpc-go/trpc-a2a-go v0.2.3
 	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f
 	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250827071733-e6ae6aa6e9d6

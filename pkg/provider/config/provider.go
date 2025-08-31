@@ -69,37 +69,114 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName stri
 	}
 
 	// Extract specific agent configuration
-	agentPath := fmt.Sprintf("%s.agents.%s", environment, agentName)
+	agentPath := fmt.Sprintf("%s.agents[%q]", environment, agentName)
 	agentValue := value.LookupPath(cue.ParsePath(agentPath))
 
 	if !agentValue.Exists() {
 		return nil, fmt.Errorf("agent %s not found in environment %s", agentName, environment)
 	}
 
-	// Decode the agent configuration
-	var config AgentConfig
-	if err := agentValue.Decode(&config); err != nil {
-		return nil, fmt.Errorf("failed to decode agent config: %w", err)
+	// First, decode the basic agent configuration to get the references
+	var basicConfig struct {
+		AgentID     uuid.UUID `json:"agent_id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description,omitempty"`
+		Type        string    `json:"type"`
+		Prompt      struct {
+			Source  cue.Value `json:"source"`
+			Version string    `json:"version"`
+		} `json:"prompt"`
+		Setting struct {
+			Source  cue.Value `json:"source"`
+			Version string    `json:"version"`
+		} `json:"setting"`
+		Tool struct {
+			Source  cue.Value `json:"source"`
+			Version string    `json:"version"`
+		} `json:"tool"`
+	}
+	
+	if err := agentValue.Decode(&basicConfig); err != nil {
+		return nil, fmt.Errorf("failed to decode basic agent config: %w", err)
+	}
+
+	// Create the final config with resolved references
+	config := &AgentConfig{
+		AgentID:     basicConfig.AgentID,
+		Name:        basicConfig.Name,
+		Description: basicConfig.Description,
+		Type:        shared.AgentType(basicConfig.Type),
+	}
+
+	// Resolve prompt reference
+	if basicConfig.Prompt.Source.Exists() {
+		// Use the agent name to load the prompt, handling naming conventions
+		// The prompt files use hyphens in their names
+		promptName := strings.ReplaceAll(agentName, "_", "-")
+		promptConfig, err := p.LoadPrompt(promptName, basicConfig.Prompt.Version)
+		if err != nil {
+			// Try with underscores instead of hyphens
+			promptName = strings.ReplaceAll(agentName, "-", "_")
+			promptConfig, err = p.LoadPrompt(promptName, basicConfig.Prompt.Version)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load prompt for agent %s: %w", agentName, err)
+			}
+		}
+		config.Prompt = *promptConfig
+	}
+
+	// Resolve settings reference
+	if basicConfig.Setting.Source.Exists() {
+		// Use the agent name to load the settings, handling naming conventions
+		// The settings files use hyphens in their names
+		settingsName := strings.ReplaceAll(agentName, "_", "-")
+		settingsConfig, err := p.LoadSettings(settingsName, basicConfig.Setting.Version)
+		if err != nil {
+			// Try with underscores instead of hyphens
+			settingsName = strings.ReplaceAll(agentName, "-", "_")
+			settingsConfig, err = p.LoadSettings(settingsName, basicConfig.Setting.Version)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load settings for agent %s: %w", agentName, err)
+			}
+		}
+		config.Setting = *settingsConfig
+	}
+
+	// Resolve tools reference
+	if basicConfig.Tool.Source.Exists() {
+		// Use the agent name to load the tools, handling naming conventions
+		// The tools files use hyphens in their names
+		toolsName := strings.ReplaceAll(agentName, "_", "-")
+		toolsConfig, err := p.LoadToolProfile(toolsName)
+		if err != nil {
+			// Try with underscores instead of hyphens
+			toolsName = strings.ReplaceAll(agentName, "-", "_")
+			toolsConfig, err = p.LoadToolProfile(toolsName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load tools for agent %s: %w", agentName, err)
+			}
+		}
+		config.Tool = *toolsConfig
 	}
 
 	// Resolve environment variables in the configuration
-	if err := p.resolveEnvironmentVariables(&config); err != nil {
+	if err := p.resolveEnvironmentVariables(config); err != nil {
 		return nil, fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 // LoadPrompt loads a specific prompt configuration
 func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptConfig, error) {
-	promptPath := filepath.Join(p.configPath, "prompts", version, fmt.Sprintf("%s.cue", agentName))
+	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentName))
 
 	instances := load.Instances([]string{promptPath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for prompt: %s/%s", version, agentName)
+		return nil, fmt.Errorf("no CUE instances found for prompt: %s", agentName)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
@@ -115,9 +192,11 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptCo
 	}
 
 	// Extract prompt configuration
-	promptValue := value.LookupPath(cue.ParsePath(agentName))
+	// CUE field names use underscores, but file names use hyphens
+	fieldName := strings.ReplaceAll(agentName, "-", "_")
+	promptValue := value.LookupPath(cue.ParsePath(fieldName))
 	if !promptValue.Exists() {
-		return nil, fmt.Errorf("prompt %s not found", agentName)
+		return nil, fmt.Errorf("prompt %s not found (looking for field %s)", agentName, fieldName)
 	}
 
 	var prompt PromptConfig
@@ -130,14 +209,14 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptCo
 
 // LoadSettings loads agent settings
 func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*SettingsConfig, error) {
-	settingsPath := filepath.Join(p.configPath, "settings", profile, fmt.Sprintf("%s.cue", agentName))
+	settingsPath := filepath.Join(p.configPath, "settings", fmt.Sprintf("%s.cue", agentName))
 
 	instances := load.Instances([]string{settingsPath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for settings: %s/%s", profile, agentName)
+		return nil, fmt.Errorf("no CUE instances found for settings: %s", agentName)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
@@ -153,9 +232,11 @@ func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*Settin
 	}
 
 	// Extract settings configuration
-	settingsValue := value.LookupPath(cue.ParsePath(agentName))
+	// CUE field names use underscores, but file names use hyphens
+	fieldName := strings.ReplaceAll(agentName, "-", "_")
+	settingsValue := value.LookupPath(cue.ParsePath(fieldName))
 	if !settingsValue.Exists() {
-		return nil, fmt.Errorf("settings %s not found", agentName)
+		return nil, fmt.Errorf("settings %s not found (looking for field %s)", agentName, fieldName)
 	}
 
 	var settings SettingsConfig
@@ -168,7 +249,7 @@ func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*Settin
 
 // LoadToolProfile loads tool profile configuration
 func (p *cueConfigProviderImpl) LoadToolProfile(profileName string) (*ToolsConfig, error) {
-	toolsPath := filepath.Join(p.configPath, "tools", "profiles", fmt.Sprintf("%s.cue", profileName))
+	toolsPath := filepath.Join(p.configPath, "tools", fmt.Sprintf("%s.cue", profileName))
 
 	instances := load.Instances([]string{toolsPath}, &load.Config{
 		Dir: p.configPath,
@@ -191,9 +272,11 @@ func (p *cueConfigProviderImpl) LoadToolProfile(profileName string) (*ToolsConfi
 	}
 
 	// Extract tools configuration
-	toolsValue := value.LookupPath(cue.ParsePath(profileName))
+	// CUE field names use underscores, but file names use hyphens
+	fieldName := strings.ReplaceAll(profileName, "-", "_")
+	toolsValue := value.LookupPath(cue.ParsePath(fieldName))
 	if !toolsValue.Exists() {
-		return nil, fmt.Errorf("tool profile %s not found", profileName)
+		return nil, fmt.Errorf("tool profile %s not found (looking for field %s)", profileName, fieldName)
 	}
 
 	var tools ToolsConfig

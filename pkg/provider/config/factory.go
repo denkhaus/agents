@@ -112,7 +112,7 @@ func (f *UnifiedAgentFactory) GetAgentConfig(environment, agentName string) (*Ag
 func GetAgentNameFromID(agentID uuid.UUID) string {
 	agentMap := map[uuid.UUID]string{
 		shared.AgentIDCoder:          "coder",
-		shared.AgentIDProjectManager: "project-manager",
+		shared.AgentIDProjectManager: "project_manager",
 		shared.AgentIDResearcher:     "researcher",
 	}
 
@@ -169,7 +169,7 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 
 	// Prepare prompt context for rendering
 	promptContext := map[string]interface{}{
-		shared.ContextKeyToolInfo:  tools,
+		shared.ContextKeyToolInfo:  utils.GetToolInfo(tools...),
 		shared.ContextKeyAgentInfo: agentInfo,
 	}
 
