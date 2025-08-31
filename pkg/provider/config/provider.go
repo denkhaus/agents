@@ -232,7 +232,7 @@ func (p *cueConfigProviderImpl) ValidateConfiguration() error {
 
 // resolveEnvironmentVariables resolves environment variables in the agent configuration
 func (p *cueConfigProviderImpl) resolveEnvironmentVariables(config *AgentConfig) error {
-	return p.resolveToolEnvironmentVariables(&config.Tools)
+	return p.resolveToolEnvironmentVariables(&config.Tool)
 }
 
 // resolveToolEnvironmentVariables resolves environment variables in tool configurations
@@ -339,7 +339,7 @@ func (p *cueConfigProviderImpl) resolveSliceValue(value []interface{}) (interfac
 }
 
 func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig *AgentConfig) (map[uuid.UUID]*shared.AgentInfo, error) {
-	subAgents := agentConfig.Settings.Agent.SubAgents
+	subAgents := agentConfig.Setting.Agent.SubAgents
 	result := make(map[uuid.UUID]*shared.AgentInfo)
 
 	if len(subAgents) == 0 {

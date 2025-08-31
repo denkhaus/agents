@@ -15,8 +15,8 @@ type AgentConfig struct {
 	Description string           `json:"description,omitempty"`
 	Type        shared.AgentType `json:"type"`
 	Prompt      PromptConfig     `json:"prompt"`
-	Settings    SettingsConfig   `json:"settings"`
-	Tools       ToolsConfig      `json:"tools"`
+	Setting     SettingsConfig   `json:"setting"`
+	Tool        ToolsConfig      `json:"tool"`
 }
 
 // PromptConfig represents prompt configuration

@@ -47,7 +47,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 	}
 
 	// Create tools based on configuration
-	tools, toolsets, err := f.toolFactory.CreateTools(agentConfig.Tools)
+	tools, toolsets, err := f.toolFactory.CreateTools(agentConfig.Tool)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tools: %w", err)
 	}
@@ -83,7 +83,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 	return shared.NewAgent(
 		ag,
 		agentConfig.AgentID,
-		agentConfig.Settings.Agent.StreamingEnabled,
+		agentConfig.Setting.Agent.StreamingEnabled,
 	), nil
 }
 
@@ -153,9 +153,9 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 
 	// Add generation config
 	generationConfig := model.GenerationConfig{
-		MaxTokens:   utils.IntPtr(agentConfig.Settings.Agent.LLM.MaxTokens),
-		Temperature: utils.FloatPtr(agentConfig.Settings.Agent.LLM.Temperature),
-		Stream:      agentConfig.Settings.Agent.StreamingEnabled,
+		MaxTokens:   utils.IntPtr(agentConfig.Setting.Agent.LLM.MaxTokens),
+		Temperature: utils.FloatPtr(agentConfig.Setting.Agent.LLM.Temperature),
+		Stream:      agentConfig.Setting.Agent.StreamingEnabled,
 	}
 
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
@@ -191,14 +191,14 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 	options = append(options, llmagent.WithGlobalInstruction(agentConfig.Prompt.GlobalInstruction))
 
 	// Add planner if enabled
-	if agentConfig.Settings.Agent.PlanningEnabled {
+	if agentConfig.Setting.Agent.PlanningEnabled {
 		reactPlanner := react.New()
 		options = append(options, llmagent.WithPlanner(reactPlanner))
 	}
 
 	// Add sub-agents if any
-	if len(agentConfig.Settings.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Settings.Agent.SubAgents)
+	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
+		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -208,20 +208,20 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 	}
 
 	// Add schemas and other configurations
-	if agentConfig.Settings.Agent.InputSchema != nil {
-		options = append(options, llmagent.WithInputSchema(agentConfig.Settings.Agent.InputSchema))
+	if agentConfig.Setting.Agent.InputSchema != nil {
+		options = append(options, llmagent.WithInputSchema(agentConfig.Setting.Agent.InputSchema))
 	}
 
-	if agentConfig.Settings.Agent.OutputSchema != nil {
-		options = append(options, llmagent.WithOutputSchema(agentConfig.Settings.Agent.OutputSchema))
+	if agentConfig.Setting.Agent.OutputSchema != nil {
+		options = append(options, llmagent.WithOutputSchema(agentConfig.Setting.Agent.OutputSchema))
 	}
 
-	if agentConfig.Settings.Agent.OutputKey != "" {
-		options = append(options, llmagent.WithOutputKey(agentConfig.Settings.Agent.OutputKey))
+	if agentConfig.Setting.Agent.OutputKey != "" {
+		options = append(options, llmagent.WithOutputKey(agentConfig.Setting.Agent.OutputKey))
 	}
 
-	if agentConfig.Settings.Agent.ChannelBufferSize > 0 {
-		options = append(options, llmagent.WithChannelBufferSize(agentConfig.Settings.Agent.ChannelBufferSize))
+	if agentConfig.Setting.Agent.ChannelBufferSize > 0 {
+		options = append(options, llmagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
 	// Add tools
@@ -238,8 +238,8 @@ func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, agentConfig 
 	options := []chainagent.Option{}
 
 	// Add sub-agents
-	if len(agentConfig.Settings.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Settings.Agent.SubAgents)
+	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
+		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -249,8 +249,8 @@ func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, agentConfig 
 	}
 
 	// Add channel buffer size if specified
-	if agentConfig.Settings.Agent.ChannelBufferSize > 0 {
-		options = append(options, chainagent.WithChannelBufferSize(agentConfig.Settings.Agent.ChannelBufferSize))
+	if agentConfig.Setting.Agent.ChannelBufferSize > 0 {
+		options = append(options, chainagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
 	if len(tools) > 0 {
@@ -266,8 +266,8 @@ func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, agentConfig 
 	options := []cycleagent.Option{}
 
 	// Add sub-agents
-	if len(agentConfig.Settings.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Settings.Agent.SubAgents)
+	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
+		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -277,13 +277,13 @@ func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, agentConfig 
 	}
 
 	// Add max iterations if specified
-	if agentConfig.Settings.Agent.MaxIterations > 0 {
-		options = append(options, cycleagent.WithMaxIterations(agentConfig.Settings.Agent.MaxIterations))
+	if agentConfig.Setting.Agent.MaxIterations > 0 {
+		options = append(options, cycleagent.WithMaxIterations(agentConfig.Setting.Agent.MaxIterations))
 	}
 
 	// Add channel buffer size if specified
-	if agentConfig.Settings.Agent.ChannelBufferSize > 0 {
-		options = append(options, cycleagent.WithChannelBufferSize(agentConfig.Settings.Agent.ChannelBufferSize))
+	if agentConfig.Setting.Agent.ChannelBufferSize > 0 {
+		options = append(options, cycleagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
 	if len(tools) > 0 {
@@ -299,8 +299,8 @@ func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, agentConf
 	options := []parallelagent.Option{}
 
 	// Add sub-agents
-	if len(agentConfig.Settings.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Settings.Agent.SubAgents)
+	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
+		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -310,8 +310,8 @@ func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, agentConf
 	}
 
 	// Add channel buffer size if specified
-	if agentConfig.Settings.Agent.ChannelBufferSize > 0 {
-		options = append(options, parallelagent.WithChannelBufferSize(agentConfig.Settings.Agent.ChannelBufferSize))
+	if agentConfig.Setting.Agent.ChannelBufferSize > 0 {
+		options = append(options, parallelagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
 	if len(tools) > 0 {
@@ -324,39 +324,39 @@ func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, agentConf
 
 // getModel creates a model instance based on the configuration
 func (f *UnifiedAgentFactory) getModel(agentConfig *AgentConfig) (model.Model, error) {
-	switch agentConfig.Settings.Agent.LLM.Provider {
+	switch agentConfig.Setting.Agent.LLM.Provider {
 	case shared.ModelProviderOpenAI:
 		modelOptions := []openai.Option{}
 
-		if len(agentConfig.Settings.Agent.LLM.BaseURL) > 0 {
+		if len(agentConfig.Setting.Agent.LLM.BaseURL) > 0 {
 			modelOptions = append(modelOptions,
 				openai.WithBaseURL(
-					agentConfig.Settings.Agent.LLM.BaseURL,
+					agentConfig.Setting.Agent.LLM.BaseURL,
 				),
 			)
 		}
 
-		if len(agentConfig.Settings.Agent.LLM.APIKey) > 0 {
+		if len(agentConfig.Setting.Agent.LLM.APIKey) > 0 {
 			modelOptions = append(modelOptions,
 				openai.WithAPIKey(
-					agentConfig.Settings.Agent.LLM.APIKey,
+					agentConfig.Setting.Agent.LLM.APIKey,
 				),
 			)
 		}
 
-		if agentConfig.Settings.Agent.LLM.ChannelBufferSize > 0 {
+		if agentConfig.Setting.Agent.LLM.ChannelBufferSize > 0 {
 			modelOptions = append(modelOptions,
 				openai.WithChannelBufferSize(
-					agentConfig.Settings.Agent.LLM.ChannelBufferSize,
+					agentConfig.Setting.Agent.LLM.ChannelBufferSize,
 				),
 			)
 		}
 
-		modelInstance := openai.New(agentConfig.Settings.Agent.LLM.Model, modelOptions...)
+		modelInstance := openai.New(agentConfig.Setting.Agent.LLM.Model, modelOptions...)
 		return modelInstance, nil
 	}
 
-	return nil, fmt.Errorf("model provider %s is unknown", agentConfig.Settings.Agent.LLM.Provider)
+	return nil, fmt.Errorf("model provider %s is unknown", agentConfig.Setting.Agent.LLM.Provider)
 }
 
 // getSubAgents creates sub-agent instances based on their UUIDs
@@ -376,7 +376,7 @@ func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, subAgentIDs []uu
 }
 
 func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
-	agent := p.Settings.Agent
+	agent := p.Setting.Agent
 
 	agentInfo := shared.NewAgentInfo(
 		p.AgentID,
