@@ -111,11 +111,9 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 	}
 
 	// Get the list of changed files between the last tag and HEAD
-	cmd := exec.Command("git", "diff", "--name-only", lastTag, "HEAD")
-	cmd.Dir = "config"
-	output, err := cmd.Output()
+	changedFiles, err := getChangedFiles(lastTag)
 	if err != nil {
-		// If git diff fails, use target version for all components
+		// If we can't get changed files, use target version for all components
 		versions.Prompts = targetVersion
 		versions.Tools = targetVersion
 		versions.Settings = targetVersion
@@ -123,8 +121,6 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 		return versions, nil
 	}
 
-	changedFiles := strings.Split(string(output), "\n")
-	
 	// Track which components have changed
 	componentsChanged := map[string]bool{
 		"prompts":      false,
@@ -141,50 +137,73 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 		
 		// Determine which component this file belongs to
 		switch {
-		case strings.HasPrefix(file, "prompts/"):
+		case strings.HasPrefix(file, "prompts/") || strings.Contains(file, "prompts"):
 			componentsChanged["prompts"] = true
-		case strings.HasPrefix(file, "tools/"):
+		case strings.HasPrefix(file, "tools/") || strings.Contains(file, "tools"):
 			componentsChanged["tools"] = true
-		case strings.HasPrefix(file, "settings/"):
+		case strings.HasPrefix(file, "settings/") || strings.Contains(file, "settings"):
 			componentsChanged["settings"] = true
-		case strings.HasPrefix(file, "compositions/"):
+		case strings.HasPrefix(file, "compositions/") || strings.Contains(file, "compositions"):
 			componentsChanged["compositions"] = true
 		}
 	}
 
 	// For components that changed, use the target version
-	// For components that didn't change, keep the previous version
+	// For components that didn't change, keep the previous version (v1.0.0 for now)
 	if componentsChanged["prompts"] {
 		versions.Prompts = targetVersion
 	} else {
-		versions.Prompts = getComponentVersionFromTag(lastTag, "prompts")
+		versions.Prompts = "v1.0.0"
 	}
 	
 	if componentsChanged["tools"] {
 		versions.Tools = targetVersion
 	} else {
-		versions.Tools = getComponentVersionFromTag(lastTag, "tools")
+		versions.Tools = "v1.0.0"
 	}
 	
 	if componentsChanged["settings"] {
 		versions.Settings = targetVersion
 	} else {
-		versions.Settings = getComponentVersionFromTag(lastTag, "settings")
+		versions.Settings = "v1.0.0"
 	}
 	
 	if componentsChanged["compositions"] {
 		versions.Compositions = targetVersion
 	} else {
-		versions.Compositions = getComponentVersionFromTag(lastTag, "compositions")
+		versions.Compositions = "v1.0.0"
 	}
 
 	return versions, nil
 }
 
+// getChangedFiles gets the list of changed files between two commits
+func getChangedFiles(sinceTag string) ([]string, error) {
+	cmd := exec.Command("git", "diff", "--name-only", sinceTag, "HEAD")
+	cmd.Dir = "config"
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get git diff: %v", err)
+	}
+
+	// Split output into lines
+	lines := strings.Split(string(output), "\n")
+	
+	// Filter out empty lines
+	var files []string
+	for _, line := range lines {
+		if line != "" {
+			files = append(files, line)
+		}
+	}
+	
+	return files, nil
+}
+
 // getLastTag gets the most recent Git tag
 func getLastTag() (string, error) {
 	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0")
-	cmd.Dir = "config"
+	cmd.Dir = "."
 	output, err := cmd.Output()
 	if err != nil {
 		// No tags found
@@ -192,20 +211,6 @@ func getLastTag() (string, error) {
 	}
 	
 	return strings.TrimSpace(string(output)), nil
-}
-
-// getComponentVersionFromTag gets a component's version from a release tag
-// In a real implementation, this would parse the actual release file
-// For now, we'll use a simplified approach
-func getComponentVersionFromTag(tag, component string) string {
-	// This is a simplified implementation
-	// In a real system, you would:
-	// 1. Find the release file for the given tag
-	// 2. Parse it to get the component versions
-	// 3. Return the version for the specific component
-	
-	// For now, we'll just return the tag itself
-	return tag
 }
 
 // restructureDirectories moves versioned directories to flattened structure
