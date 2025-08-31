@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/project
+
 package project
 
 import (
@@ -15,6 +17,11 @@ import (
 const (
 	ToolSetName = "project_toolset"
 )
+
+// ToolSetConfig holds configuration for the project management toolset
+type ToolSetConfig struct {
+	ReadOnly bool `json:"read_only"`
+}
 
 // projectTaskToolSet implements the ToolSet interface for project task management
 type projectTaskToolSet struct {

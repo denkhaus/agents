@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/time
+
 package time
 
 import (
@@ -13,6 +15,11 @@ import (
 const (
 	ToolName = "current_time"
 )
+
+// ToolConfig holds configuration for the time tool
+type ToolConfig struct {
+	DefaultTimezone string `json:"default_timezone,omitempty"`
+}
 
 // timeArgs holds the input for the time tool.
 type timeArgs struct {

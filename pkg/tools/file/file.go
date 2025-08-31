@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/file
+
 package file
 
 import (
@@ -11,15 +13,16 @@ const (
 	ToolSetName = "file_toolset"
 )
 
-type FileToolSet struct {
-	WorkspacePath string
-	ReadOnly      bool
+// ToolSetConfig represents the file toolset configuration
+type ToolSetConfig struct {
+	WorkspacePath string `json:"workspace_path"`
+	ReadOnly      bool   `json:"read_only"`
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
 		// Extract configuration and convert to options
-		var settings FileToolSet
+		var settings ToolSetConfig
 		if err := config.Bind(&settings); err != nil {
 			return nil, err
 		}
@@ -36,7 +39,7 @@ func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 }
 
 func New(opts ...Option) (tool.ToolSet, error) {
-	wrapper := FileToolSet{}
+	wrapper := ToolSetConfig{}
 
 	for _, opt := range opts {
 		opt(&wrapper)
@@ -45,7 +48,7 @@ func New(opts ...Option) (tool.ToolSet, error) {
 	return wrapper.create()
 }
 
-func (p *FileToolSet) create() (toolset tool.ToolSet, err error) {
+func (p *ToolSetConfig) create() (toolset tool.ToolSet, err error) {
 	options := []file.Option{
 		file.WithBaseDir(p.WorkspacePath),
 	}

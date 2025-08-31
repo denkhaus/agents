@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/fetch
+
 package fetch
 
 import (
@@ -18,6 +20,13 @@ import (
 const (
 	ToolName = "fetch"
 )
+
+// ToolConfig holds configuration for the fetch tool
+type ToolConfig struct {
+	DefaultTimeout int               `json:"default_timeout,omitempty"`
+	DefaultHeaders map[string]string `json:"default_headers,omitempty"`
+	MaxRetries     int               `json:"max_retries,omitempty"`
+}
 
 // fetchArgs holds the input for the fetch tool.
 type fetchArgs struct {

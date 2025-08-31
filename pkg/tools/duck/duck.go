@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/duck
+
 package duck
 
 import (
@@ -10,6 +12,11 @@ import (
 const (
 	ToolName = "duckduckgo_search"
 )
+
+// ToolConfig holds configuration for the DuckDuckGo search tool
+type ToolConfig struct {
+	// Currently no configurable options, but struct exists for consistency
+}
 
 func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
 	return func(config tools.ConfigPayload) (tool.Tool, error) {

@@ -21,27 +21,46 @@ const (
 	DefaultMapToolName     = "tavily_map"
 )
 
+// ToolSetConfig represents the tavily toolset configuration
+type ToolSetConfig struct {
+	ApiKey         string `json:"api_key"`
+	SearchEnabled  bool   `json:"search_enabled"`
+	CrawlEnabled   bool   `json:"crawl_enabled"`
+	ExtractEnabled bool   `json:"extract_enabled"`
+	MapEnabled     bool   `json:"map_enabled"`
+}
+
 // TavilyToolSet implements the ToolSet interface for Tavily API.
 type TavilyToolSet struct {
-	client         *tavily.Client
-	tools          []tool.CallableTool
-	ApiKey         string
-	SearchEnabled  bool
-	CrawlEnabled   bool
-	ExtractEnabled bool
-	MapEnabled     bool
+	ToolSetConfig
+	client *tavily.Client
+	tools  []tool.CallableTool
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
 
-		var settings TavilyToolSet
+		var settings ToolSetConfig
 		if err := config.Bind(&settings); err != nil {
 			return nil, fmt.Errorf("failed to bind config to settings: %w", err)
 		}
 
-		return newFromSettings(&settings)
+		return newFromConfig(&settings)
 	}, nil
+}
+
+// newFromConfig creates a new Tavily tool set with the provided configuration.
+func newFromConfig(config *ToolSetConfig) (tool.ToolSet, error) {
+	t := &TavilyToolSet{
+		ToolSetConfig: ToolSetConfig{
+			ApiKey:         config.ApiKey,
+			SearchEnabled:  config.SearchEnabled,
+			CrawlEnabled:   config.CrawlEnabled,
+			ExtractEnabled: config.ExtractEnabled,
+			MapEnabled:     config.MapEnabled,
+		},
+	}
+	return newFromSettings(t)
 }
 
 // newFromSettings creates a new Tavily tool set with the provided settings.
@@ -80,10 +99,12 @@ func newFromSettings(t *TavilyToolSet) (tool.ToolSet, error) {
 // NewToolSet creates a new Tavily tool set with the provided options.
 func New(opts ...Option) (tool.ToolSet, error) {
 	t := TavilyToolSet{
-		SearchEnabled:  true,
-		CrawlEnabled:   true,
-		ExtractEnabled: true,
-		MapEnabled:     true,
+		ToolSetConfig: ToolSetConfig{
+			SearchEnabled:  true,
+			CrawlEnabled:   true,
+			ExtractEnabled: true,
+			MapEnabled:     true,
+		},
 	}
 
 	for _, opt := range opts {

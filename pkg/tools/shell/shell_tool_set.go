@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/shell
+
 package shell
 
 import (
@@ -18,6 +20,15 @@ const (
 	// defaultBaseDir is the default base directory for file operations.
 	defaultBaseDir = "."
 )
+
+// ToolSetConfig holds configuration for the shell toolset
+type ToolSetConfig struct {
+	BaseDir               string        `json:"base_dir,omitempty"`
+	ExecuteCommandEnabled bool          `json:"execute_command_enabled"`
+	AllowedCommands       []string      `json:"allowed_commands,omitempty"`
+	Timeout               time.Duration `json:"timeout,omitempty"`
+	MaxOutputSize         int64         `json:"max_output_size,omitempty"`
+}
 
 // shellToolSet implements the ToolSet interface for shell operations.
 type shellToolSet struct {

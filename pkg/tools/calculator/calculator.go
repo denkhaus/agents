@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/calculator
+
 package calculator
 
 import (
@@ -16,6 +18,11 @@ import (
 const (
 	ToolName = "calculator"
 )
+
+// ToolConfig holds configuration for the calculator tool
+type ToolConfig struct {
+	// Currently no configurable options, but struct exists for consistency
+}
 
 type Calculator interface {
 }

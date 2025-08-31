@@ -1,3 +1,5 @@
+//cue:generate cue get go github.com/denkhaus/agents/pkg/tools/state
+
 package state
 
 import (
@@ -14,6 +16,13 @@ import (
 const (
 	ToolName = "get_session_state"
 )
+
+// ToolConfig holds configuration for the state access tool
+type ToolConfig struct {
+	AppName   string `json:"app_name"`
+	UserID    string `json:"user_id"`
+	SessionID string `json:"session_id"`
+}
 
 // StateAccessTool provides access to session state data.
 type StateAccessTool struct {
