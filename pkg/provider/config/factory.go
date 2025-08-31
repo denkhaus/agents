@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/utils"
-	"github.com/denkhaus/agents/shared"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/agent"

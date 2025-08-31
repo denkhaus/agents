@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 
-	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )

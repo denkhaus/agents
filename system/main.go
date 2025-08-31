@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/multi"
 	"github.com/denkhaus/agents/multi/plugins"
 	"github.com/denkhaus/agents/multi/plugins/cli"
-	"github.com/denkhaus/agents/shared"
-	"github.com/denkhaus/agents/system/agents"
+	"github.com/denkhaus/agents/pkg/provider/config"
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
+	"github.com/samber/do"
 	"go.uber.org/zap"
 )
 
@@ -18,19 +20,21 @@ func startup(ctx context.Context) error {
 
 	injector := di.NewContainer()
 
-	projectManager, err := agents.CreateProjectManagerAgent(ctx, injector)
+	agentFactory := do.MustInvoke[config.AgentFactory](injector)
+
+	researcherAgent, err := agentFactory.CreateAgent(ctx, "production", "researcher")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create researcher agent: %w", err)
 	}
 
-	coder, err := agents.CreateCoderAgent(ctx, injector)
+	projectManagerAgent, err := agentFactory.CreateAgent(ctx, "production", "project_manager")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create project manager agent: %w", err)
 	}
 
-	researcher, err := agents.CreateResearcherAgent(ctx, injector)
+	coderAgent, err := agentFactory.CreateAgent(ctx, "production", "coder")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create coder agent: %w", err)
 	}
 
 	// Enhanced Bubble Tea Chat with real LLM calls and spinners
@@ -40,9 +44,9 @@ func startup(ctx context.Context) error {
 			multi.WithApplicationName("denkhaus-multi-agent"),
 			multi.WithAgents(
 				shared.NewHumanAgent(shared.AgentInfoHuman),
-				researcher,
-				projectManager,
-				coder,
+				researcherAgent,
+				projectManagerAgent,
+				coderAgent,
 			),
 		),
 	)

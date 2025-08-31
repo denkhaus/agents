@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/pkg/shared"
 )
 
 // GetWelcomeMessage returns a properly formatted welcome message as markdown

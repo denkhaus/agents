@@ -11,7 +11,7 @@ import (
 	"cuelang.org/go/cue/load"
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/config"
-	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"github.com/samber/do"
 	"go.uber.org/zap"
@@ -95,7 +95,7 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName stri
 			Version string    `json:"version"`
 		} `json:"tool"`
 	}
-	
+
 	if err := agentValue.Decode(&basicConfig); err != nil {
 		return nil, fmt.Errorf("failed to decode basic agent config: %w", err)
 	}
@@ -110,51 +110,27 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName stri
 
 	// Resolve prompt reference
 	if basicConfig.Prompt.Source.Exists() {
-		// Use the agent name to load the prompt, handling naming conventions
-		// The prompt files use hyphens in their names
-		promptName := strings.ReplaceAll(agentName, "_", "-")
-		promptConfig, err := p.LoadPrompt(promptName, basicConfig.Prompt.Version)
+		promptConfig, err := p.LoadPrompt(agentName, basicConfig.Prompt.Version)
 		if err != nil {
-			// Try with underscores instead of hyphens
-			promptName = strings.ReplaceAll(agentName, "-", "_")
-			promptConfig, err = p.LoadPrompt(promptName, basicConfig.Prompt.Version)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load prompt for agent %s: %w", agentName, err)
-			}
+			return nil, fmt.Errorf("failed to load prompt for agent %s: %w", agentName, err)
 		}
 		config.Prompt = *promptConfig
 	}
 
 	// Resolve settings reference
 	if basicConfig.Setting.Source.Exists() {
-		// Use the agent name to load the settings, handling naming conventions
-		// The settings files use hyphens in their names
-		settingsName := strings.ReplaceAll(agentName, "_", "-")
-		settingsConfig, err := p.LoadSettings(settingsName, basicConfig.Setting.Version)
+		settingsConfig, err := p.LoadSettings(agentName, basicConfig.Setting.Version)
 		if err != nil {
-			// Try with underscores instead of hyphens
-			settingsName = strings.ReplaceAll(agentName, "-", "_")
-			settingsConfig, err = p.LoadSettings(settingsName, basicConfig.Setting.Version)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load settings for agent %s: %w", agentName, err)
-			}
+			return nil, fmt.Errorf("failed to load settings for agent %s: %w", agentName, err)
 		}
 		config.Setting = *settingsConfig
 	}
 
 	// Resolve tools reference
 	if basicConfig.Tool.Source.Exists() {
-		// Use the agent name to load the tools, handling naming conventions
-		// The tools files use hyphens in their names
-		toolsName := strings.ReplaceAll(agentName, "_", "-")
-		toolsConfig, err := p.LoadToolProfile(toolsName)
+		toolsConfig, err := p.LoadToolProfile(agentName)
 		if err != nil {
-			// Try with underscores instead of hyphens
-			toolsName = strings.ReplaceAll(agentName, "-", "_")
-			toolsConfig, err = p.LoadToolProfile(toolsName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load tools for agent %s: %w", agentName, err)
-			}
+			return nil, fmt.Errorf("failed to load tools for agent %s: %w", agentName, err)
 		}
 		config.Tool = *toolsConfig
 	}
@@ -192,11 +168,9 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptCo
 	}
 
 	// Extract prompt configuration
-	// CUE field names use underscores, but file names use hyphens
-	fieldName := strings.ReplaceAll(agentName, "-", "_")
-	promptValue := value.LookupPath(cue.ParsePath(fieldName))
+	promptValue := value.LookupPath(cue.ParsePath(agentName))
 	if !promptValue.Exists() {
-		return nil, fmt.Errorf("prompt %s not found (looking for field %s)", agentName, fieldName)
+		return nil, fmt.Errorf("prompt %s not found in file", agentName)
 	}
 
 	var prompt PromptConfig
@@ -232,11 +206,9 @@ func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*Settin
 	}
 
 	// Extract settings configuration
-	// CUE field names use underscores, but file names use hyphens
-	fieldName := strings.ReplaceAll(agentName, "-", "_")
-	settingsValue := value.LookupPath(cue.ParsePath(fieldName))
+	settingsValue := value.LookupPath(cue.ParsePath(agentName))
 	if !settingsValue.Exists() {
-		return nil, fmt.Errorf("settings %s not found (looking for field %s)", agentName, fieldName)
+		return nil, fmt.Errorf("settings %s not found in file", agentName)
 	}
 
 	var settings SettingsConfig
@@ -272,11 +244,9 @@ func (p *cueConfigProviderImpl) LoadToolProfile(profileName string) (*ToolsConfi
 	}
 
 	// Extract tools configuration
-	// CUE field names use underscores, but file names use hyphens
-	fieldName := strings.ReplaceAll(profileName, "-", "_")
-	toolsValue := value.LookupPath(cue.ParsePath(fieldName))
+	toolsValue := value.LookupPath(cue.ParsePath(profileName))
 	if !toolsValue.Exists() {
-		return nil, fmt.Errorf("tool profile %s not found (looking for field %s)", profileName, fieldName)
+		return nil, fmt.Errorf("tool profile %s not found in file", profileName)
 	}
 
 	var tools ToolsConfig

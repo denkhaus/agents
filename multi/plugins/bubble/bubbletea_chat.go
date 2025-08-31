@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/denkhaus/agents/multi"
 	"github.com/denkhaus/agents/multi/plugins"
-	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 )
 

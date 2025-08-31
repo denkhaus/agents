@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/denkhaus/agents/shared/resource"
+	"github.com/denkhaus/agents/pkg/shared/resource"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 )

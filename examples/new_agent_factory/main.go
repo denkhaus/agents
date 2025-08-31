@@ -7,7 +7,7 @@ import (
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/pkg/provider/config"
-	"github.com/denkhaus/agents/shared"
+	"github.com/denkhaus/agents/pkg/shared"
 )
 
 func main() {
