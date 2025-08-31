@@ -40,7 +40,7 @@ func NewCUEConfigProvider(injector *do.Injector) (ConfigProvider, error) {
 }
 
 // LoadAgentComposition loads a complete agent configuration from environment
-func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName string) (*AgentConfig, error) {
+func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRole shared.AgentRole) (*AgentConfig, error) {
 	// Load environment-specific composition
 	envPath := filepath.Join(p.configPath, "compositions", "environments", fmt.Sprintf("%s.cue", environment))
 
@@ -68,69 +68,106 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName stri
 		return nil, fmt.Errorf("failed to build CUE instance: %w", value.Err())
 	}
 
-	// Extract specific agent configuration
-	agentPath := fmt.Sprintf("%s.agents[%q]", environment, agentName)
-	agentValue := value.LookupPath(cue.ParsePath(agentPath))
-
-	if !agentValue.Exists() {
-		return nil, fmt.Errorf("agent %s not found in environment %s", agentName, environment)
+	// Iterate through agents in the environment to find the one with the matching role
+	agentsValue := value.LookupPath(cue.ParsePath(fmt.Sprintf("%s.agents", environment)))
+	if !agentsValue.Exists() {
+		return nil, fmt.Errorf("no agents defined in environment %s", environment)
 	}
 
-	// First, decode the basic agent configuration to get the references
+	iter, err := agentsValue.Fields()
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate over agents in environment %s: %w", environment, err)
+	}
+
+	var foundAgentValue cue.Value
+
+	for iter.Next() {
+		agentName := iter.Selector().String() // Keep agentName for logging/error messages if needed
+		currentAgentValue := iter.Value()
+
+		var basicConfig struct {
+			Role shared.AgentRole `json:"role"`
+		}
+		if err := currentAgentValue.Decode(&basicConfig); err != nil {
+			logger.Log.Warn("Failed to decode basic agent config for role lookup", zap.String("agentName", agentName), zap.Error(err))
+			continue
+		}
+
+		if basicConfig.Role == agentRole {
+			foundAgentValue = currentAgentValue
+			// foundAgentName = agentName // Removed unused variable assignment
+			break
+		}
+	}
+
+	if !foundAgentValue.Exists() {
+		return nil, fmt.Errorf("agent with role %s not found in environment %s", agentRole, environment)
+	}
+
+	// Now decode the full agent configuration
 	var basicConfig struct {
-		AgentID     uuid.UUID `json:"agent_id"`
-		Name        string    `json:"name"`
-		Description string    `json:"description,omitempty"`
-		Type        string    `json:"type"`
+		AgentID     uuid.UUID        `json:"agent_id"`
+		Name        string           `json:"name"`
+		Description string           `json:"description,omitempty"`
+		Type        string           `json:"type"`
 		Prompt      struct {
-			Source  cue.Value `json:"source"`
-			Version string    `json:"version"`
-		} `json:"prompt"`
+			Source cue.Value `json:"source"`
+		}`json:"prompt"`
 		Setting struct {
-			Source  cue.Value `json:"source"`
-			Version string    `json:"version"`
-		} `json:"setting"`
+			Source cue.Value `json:"source"`
+		}`json:"setting"`
 		Tool struct {
-			Source  cue.Value `json:"source"`
-			Version string    `json:"version"`
-		} `json:"tool"`
+			Source cue.Value `json:"source"`
+		}`json:"tool"`
 	}
 
-	if err := agentValue.Decode(&basicConfig); err != nil {
-		return nil, fmt.Errorf("failed to decode basic agent config: %w", err)
+	// Decode the basic configuration
+	if err := foundAgentValue.Decode(&basicConfig); err != nil {
+		return nil, fmt.Errorf("failed to decode basic agent config for role %s: %w", agentRole, err)
+	}
+
+	// Explicitly get the role value
+	roleValue := foundAgentValue.LookupPath(cue.ParsePath("role"))
+	if !roleValue.Exists() {
+		return nil, fmt.Errorf("role field not found for agent %s", agentRole)
+	}
+	var decodedRole shared.AgentRole
+	if err := roleValue.Decode(&decodedRole); err != nil {
+		return nil, fmt.Errorf("failed to decode role for agent %s: %w", agentRole, err)
 	}
 
 	// Create the final config with resolved references
 	config := &AgentConfig{
 		AgentID:     basicConfig.AgentID,
 		Name:        basicConfig.Name,
+		Role:        decodedRole, // Use the explicitly decoded role
 		Description: basicConfig.Description,
 		Type:        shared.AgentType(basicConfig.Type),
 	}
 
 	// Resolve prompt reference
 	if basicConfig.Prompt.Source.Exists() {
-		promptConfig, err := p.LoadPrompt(agentName, basicConfig.Prompt.Version)
+		promptConfig, err := p.LoadPrompt(decodedRole) // Use decodedRole for prompt lookup
 		if err != nil {
-			return nil, fmt.Errorf("failed to load prompt for agent %s: %w", agentName, err)
+			return nil, fmt.Errorf("failed to load prompt for agent role %s: %w", decodedRole, err)
 		}
 		config.Prompt = *promptConfig
 	}
 
 	// Resolve settings reference
 	if basicConfig.Setting.Source.Exists() {
-		settingsConfig, err := p.LoadSettings(agentName, basicConfig.Setting.Version)
+		settingsConfig, err := p.LoadSettings(decodedRole) // Use decodedRole for settings lookup
 		if err != nil {
-			return nil, fmt.Errorf("failed to load settings for agent %s: %w", agentName, err)
+			return nil, fmt.Errorf("failed to load settings for agent role %s: %w", decodedRole, err)
 		}
 		config.Setting = *settingsConfig
 	}
 
 	// Resolve tools reference
 	if basicConfig.Tool.Source.Exists() {
-		toolsConfig, err := p.LoadToolProfile(agentName)
+		toolsConfig, err := p.LoadToolProfile(decodedRole) // Use decodedRole for tool profile lookup
 		if err != nil {
-			return nil, fmt.Errorf("failed to load tools for agent %s: %w", agentName, err)
+			return nil, fmt.Errorf("failed to load tools for agent role %s: %w", decodedRole, err)
 		}
 		config.Tool = *toolsConfig
 	}
@@ -144,15 +181,15 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment, agentName stri
 }
 
 // LoadPrompt loads a specific prompt configuration
-func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptConfig, error) {
-	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentName))
+func (p *cueConfigProviderImpl) LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error) {
+	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentRole))
 
 	instances := load.Instances([]string{promptPath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for prompt: %s", agentName)
+		return nil, fmt.Errorf("no CUE instances found for prompt: %s", agentRole)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
@@ -168,9 +205,9 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptCo
 	}
 
 	// Extract prompt configuration
-	promptValue := value.LookupPath(cue.ParsePath(agentName))
+	promptValue := value.LookupPath(cue.ParsePath(string(agentRole)))
 	if !promptValue.Exists() {
-		return nil, fmt.Errorf("prompt %s not found in file", agentName)
+		return nil, fmt.Errorf("prompt %s not found in file", agentRole)
 	}
 
 	var prompt PromptConfig
@@ -182,15 +219,15 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentName, version string) (*PromptCo
 }
 
 // LoadSettings loads agent settings
-func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*SettingsConfig, error) {
-	settingsPath := filepath.Join(p.configPath, "settings", fmt.Sprintf("%s.cue", agentName))
+func (p *cueConfigProviderImpl) LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error) {
+	settingsPath := filepath.Join(p.configPath, "settings", fmt.Sprintf("%s.cue", agentRole))
 
 	instances := load.Instances([]string{settingsPath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for settings: %s", agentName)
+		return nil, fmt.Errorf("no CUE instances found for settings: %s", agentRole)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
@@ -206,9 +243,9 @@ func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*Settin
 	}
 
 	// Extract settings configuration
-	settingsValue := value.LookupPath(cue.ParsePath(agentName))
+	settingsValue := value.LookupPath(cue.ParsePath(string(agentRole)))
 	if !settingsValue.Exists() {
-		return nil, fmt.Errorf("settings %s not found in file", agentName)
+		return nil, fmt.Errorf("settings %s not found in file", agentRole)
 	}
 
 	var settings SettingsConfig
@@ -220,15 +257,15 @@ func (p *cueConfigProviderImpl) LoadSettings(agentName, profile string) (*Settin
 }
 
 // LoadToolProfile loads tool profile configuration
-func (p *cueConfigProviderImpl) LoadToolProfile(profileName string) (*ToolsConfig, error) {
-	toolsPath := filepath.Join(p.configPath, "tools", fmt.Sprintf("%s.cue", profileName))
+func (p *cueConfigProviderImpl) LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error) {
+	toolsPath := filepath.Join(p.configPath, "tools", fmt.Sprintf("%s.cue", agentRole))
 
 	instances := load.Instances([]string{toolsPath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for tool profile: %s", profileName)
+		return nil, fmt.Errorf("no CUE instances found for tool profile: %s", agentRole)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
@@ -244,9 +281,9 @@ func (p *cueConfigProviderImpl) LoadToolProfile(profileName string) (*ToolsConfi
 	}
 
 	// Extract tools configuration
-	toolsValue := value.LookupPath(cue.ParsePath(profileName))
+	toolsValue := value.LookupPath(cue.ParsePath(string(agentRole)))
 	if !toolsValue.Exists() {
-		return nil, fmt.Errorf("tool profile %s not found in file", profileName)
+		return nil, fmt.Errorf("tool profile %s not found in file", agentRole)
 	}
 
 	var tools ToolsConfig
@@ -391,6 +428,49 @@ func (p *cueConfigProviderImpl) resolveSliceValue(value []interface{}) (interfac
 	return resolved, nil
 }
 
+// getAllEnvironments returns a list of all available environment names
+func (p *cueConfigProviderImpl) getAllEnvironments() ([]string, error) {
+	envDir := filepath.Join(p.configPath, "compositions", "environments")
+	files, err := os.ReadDir(envDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read environments directory %s: %w", envDir, err)
+	}
+
+	var environments []string
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".cue") {
+			envName := strings.TrimSuffix(file.Name(), ".cue")
+			environments = append(environments, envName)
+		}
+	}
+	return environments, nil
+}
+
+// GetAgentInfoByID retrieves agent information by its UUID.
+func (p *cueConfigProviderImpl) GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error) {
+	environments, err := p.getAllEnvironments()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all environments: %w", err)
+	}
+
+	for _, env := range environments {
+		agents, err := p.GetAgentsInEnvironment(env)
+		if err != nil {
+			// Log the error but continue to other environments
+			logger.Log.Warn("Failed to get agents in environment", zap.String("environment", env), zap.Error(err))
+			continue
+		}
+
+		for _, agentInfo := range agents {
+			if agentInfo.ID() == agentID {
+				return agentInfo, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("agent with ID %s not found in any environment", agentID)
+}
+
 func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig *AgentConfig) (map[uuid.UUID]*shared.AgentInfo, error) {
 	subAgents := agentConfig.Setting.Agent.SubAgents
 	result := make(map[uuid.UUID]*shared.AgentInfo)
@@ -399,16 +479,10 @@ func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig
 		return result, nil
 	}
 
-	for _, subAgentID := range subAgents {
-		subAgentName := GetAgentNameFromID(subAgentID)
-		if subAgentName == "unknown" {
-			logger.Log.Warn("Failed to resolve sub-agent name from ID", zap.Any("sub_agent_id", subAgentID))
-			continue
-		}
-
-		subAgentConfig, err := p.LoadAgentComposition(environment, subAgentName)
+	for _, subAgentRole := range subAgents { // Changed from subAgentID to subAgentRole
+		subAgentConfig, err := p.LoadAgentComposition(environment, subAgentRole) // Use role for lookup
 		if err != nil {
-			return nil, fmt.Errorf("failed to load agent compositionparse agentID from %q: %w", agentConfig.AgentID, err)
+			return nil, fmt.Errorf("failed to load agent composition for sub-agent role %q: %w", subAgentRole, err)
 		}
 
 		result[subAgentConfig.AgentID] = subAgentConfig.ToAgentInfo()
@@ -461,10 +535,20 @@ func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string) ([]*s
 	agentMap := make(map[uuid.UUID]*shared.AgentInfo)
 	for iter.Next() {
 
-		agentName := iter.Selector().String()
-		agentConfig, err := p.LoadAgentComposition(environment, agentName)
+		agentName := iter.Selector().String() // Keep agentName for logging/error messages if needed
+		currentAgentValue := iter.Value()
+
+		var basicConfig struct {
+			Role shared.AgentRole `json:"role"`
+		}
+		if err := currentAgentValue.Decode(&basicConfig); err != nil {
+			logger.Log.Warn("Failed to decode basic agent config for role lookup in GetAgentsInEnvironment", zap.String("agentName", agentName), zap.Error(err))
+			continue
+		}
+
+		agentConfig, err := p.LoadAgentComposition(environment, basicConfig.Role)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load agent composition %s: %w", environment, err)
+			return nil, fmt.Errorf("failed to load agent composition for role %s in environment %s: %w", basicConfig.Role, environment, err)
 		}
 
 		info, err := p.loadSubAgentInfo(environment, agentConfig)

@@ -12,6 +12,7 @@ import (
 type AgentConfig struct {
 	AgentID     uuid.UUID        `json:"agent_id"`
 	Name        string           `json:"name"`
+	Role        shared.AgentRole `json:"role"`
 	Description string           `json:"description,omitempty"`
 	Type        shared.AgentType `json:"type"`
 	Prompt      PromptConfig     `json:"prompt"`
@@ -47,7 +48,7 @@ type AgentSettings struct {
 	StreamingEnabled  bool                   `json:"streaming_enabled"`
 	ChannelBufferSize int                    `json:"channel_buffer_size"`
 	LLM               LLMSettings            `json:"llm"`
-	SubAgents         []uuid.UUID            `json:"sub_agents,omitempty"`
+	SubAgents         []shared.AgentRole     `json:"sub_agents,omitempty"`
 	InputSchema       map[string]interface{} `json:"input_schema,omitempty"`
 	OutputSchema      map[string]interface{} `json:"output_schema,omitempty"`
 	OutputKey         string                 `json:"output_key,omitempty"`
@@ -89,10 +90,10 @@ type ToolSetConfig struct {
 
 // AgentFactory creates agents using configuration-based approach
 type AgentFactory interface {
-	CreateAgent(ctx context.Context, environment, agentName string) (shared.TheAgent, error)
-	CreateAgentByID(ctx context.Context, agentID uuid.UUID) (shared.TheAgent, error)
+	CreateAgent(ctx context.Context, environment string, agentRole shared.AgentRole) (shared.TheAgent, error)
+	CreateAgentByID(ctx context.Context, environment string, agentID uuid.UUID) (shared.TheAgent, error)
 	ValidateConfiguration() error
-	GetAgentConfig(environment, agentName string) (*AgentConfig, error)
+	GetAgentConfig(environment string, agentRole shared.AgentRole) (*AgentConfig, error)
 }
 
 // ToolFactory creates tools from configuration
@@ -102,10 +103,11 @@ type ToolFactory interface {
 
 // ConfigProvider loads configurations from various sources
 type ConfigProvider interface {
-	LoadAgentComposition(environment, agentName string) (*AgentConfig, error)
-	LoadPrompt(agentName, version string) (*PromptConfig, error)
-	LoadSettings(agentName, profile string) (*SettingsConfig, error)
-	LoadToolProfile(profileName string) (*ToolsConfig, error)
+	LoadAgentComposition(environment string, agentRole shared.AgentRole) (*AgentConfig, error)
+	LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error)
+	LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error)
+	LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error)
 	ValidateConfiguration() error
 	GetAgentsInEnvironment(environment string) ([]*shared.AgentInfo, error)
+	GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error) // New method
 }

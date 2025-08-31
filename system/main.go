@@ -22,17 +22,20 @@ func startup(ctx context.Context) error {
 
 	agentFactory := do.MustInvoke[config.AgentFactory](injector)
 
-	researcherAgent, err := agentFactory.CreateAgent(ctx, "production", "researcher")
+	// TODO: Allow environment selection via command-line argument or environment variable
+	selectedEnvironment := "production" // Default environment
+
+	researcherAgent, err := agentFactory.CreateAgent(ctx, selectedEnvironment, shared.AgentRoleResearcher)
 	if err != nil {
 		return fmt.Errorf("failed to create researcher agent: %w", err)
 	}
 
-	projectManagerAgent, err := agentFactory.CreateAgent(ctx, "production", "project_manager")
+	projectManagerAgent, err := agentFactory.CreateAgent(ctx, selectedEnvironment, shared.AgentRoleProjectManager)
 	if err != nil {
 		return fmt.Errorf("failed to create project manager agent: %w", err)
 	}
 
-	coderAgent, err := agentFactory.CreateAgent(ctx, "production", "coder")
+	coderAgent, err := agentFactory.CreateAgent(ctx, selectedEnvironment, shared.AgentRoleCoder)
 	if err != nil {
 		return fmt.Errorf("failed to create coder agent: %w", err)
 	}

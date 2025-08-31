@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/samber/do"
+	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
@@ -39,9 +41,9 @@ func NewUnifiedAgentFactory(injector *do.Injector) (AgentFactory, error) {
 }
 
 // CreateAgent creates an agent using configuration
-func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agentName string) (shared.TheAgent, error) {
+func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment string, agentRole shared.AgentRole) (shared.TheAgent, error) {
 	// Load agent configuration
-	agentConfig, err := f.configProvider.LoadAgentComposition(environment, agentName)
+	agentConfig, err := f.configProvider.LoadAgentComposition(environment, agentRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load agent config: %w", err)
 	}
@@ -66,11 +68,11 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 	case shared.AgentTypeDefault:
 		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, agentInfo)
 	case shared.AgentTypeChain:
-		ag, err = f.createChainAgent(ctx, agentConfig, allTools)
+		ag, err = f.createChainAgent(ctx, environment, agentConfig, allTools)
 	case shared.AgentTypeCycle:
-		ag, err = f.createCycleAgent(ctx, agentConfig, allTools)
+		ag, err = f.createCycleAgent(ctx, environment, agentConfig, allTools)
 	case shared.AgentTypeParallel:
-		ag, err = f.createParallelAgent(ctx, agentConfig, allTools)
+		ag, err = f.createParallelAgent(ctx, environment, agentConfig, allTools)
 	default:
 		// Default to LLM agent if type is not specified or unknown
 		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, agentInfo)
@@ -88,13 +90,13 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment, agen
 }
 
 // CreateAgentByID creates an agent by its UUID using default environment
-func (f *UnifiedAgentFactory) CreateAgentByID(ctx context.Context, agentID uuid.UUID) (shared.TheAgent, error) {
-	agentName := GetAgentNameFromID(agentID)
-	if agentName == "unknown" {
-		return nil, fmt.Errorf("unknown agent ID: %s", agentID)
+func (f *UnifiedAgentFactory) CreateAgentByID(ctx context.Context, environment string, agentID uuid.UUID) (shared.TheAgent, error) {
+	agentInfo, err := f.configProvider.GetAgentInfoByID(agentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent info for ID %s: %w", agentID, err)
 	}
 
-	return f.CreateAgent(ctx, "production", agentName)
+	return f.CreateAgent(ctx, environment, agentInfo.Role())
 }
 
 // ValidateConfiguration validates all configurations
@@ -103,24 +105,19 @@ func (f *UnifiedAgentFactory) ValidateConfiguration() error {
 }
 
 // GetAgentConfig returns the raw configuration for an agent
-func (f *UnifiedAgentFactory) GetAgentConfig(environment, agentName string) (*AgentConfig, error) {
-	return f.configProvider.LoadAgentComposition(environment, agentName)
+func (f *UnifiedAgentFactory) GetAgentConfig(environment string, agentRole shared.AgentRole) (*AgentConfig, error) {
+	return f.configProvider.LoadAgentComposition(environment, agentRole)
 }
 
 // GetAgentNameFromID maps agent UUIDs to their names
-// TODO: refactor that. This info must come from a central agent registry
-func GetAgentNameFromID(agentID uuid.UUID) string {
-	agentMap := map[uuid.UUID]string{
-		shared.AgentIDCoder:          "coder",
-		shared.AgentIDProjectManager: "project_manager",
-		shared.AgentIDResearcher:     "researcher",
+// This function now uses the ConfigProvider to get the agent's name.
+func (f *UnifiedAgentFactory) GetAgentNameFromID(agentID uuid.UUID) string {
+	agentInfo, err := f.configProvider.GetAgentInfoByID(agentID)
+	if err != nil {
+		logger.Log.Warn("Failed to get agent info by ID", zap.Any("agent_id", agentID), zap.Error(err))
+		return "unknown"
 	}
-
-	if name, exists := agentMap[agentID]; exists {
-		return name
-	}
-
-	return "unknown"
+	return agentInfo.Name
 }
 
 // getAllTools combines tools and tools from toolsets into a single slice
@@ -198,7 +195,7 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 
 	// Add sub-agents if any
 	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
+		subAgents, err := f.getSubAgents(ctx, environment, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -234,12 +231,12 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 }
 
 // createChainAgent creates a chain agent with the provided configuration
-func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []chainagent.Option{}
 
 	// Add sub-agents
 	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
+		subAgents, err := f.getSubAgents(ctx, environment, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -262,12 +259,12 @@ func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, agentConfig 
 }
 
 // createCycleAgent creates a cycle agent with the provided configuration
-func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []cycleagent.Option{}
 
 	// Add sub-agents
 	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
+		subAgents, err := f.getSubAgents(ctx, environment, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -295,12 +292,12 @@ func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, agentConfig 
 }
 
 // createParallelAgent creates a parallel agent with the provided configuration
-func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []parallelagent.Option{}
 
 	// Add sub-agents
 	if len(agentConfig.Setting.Agent.SubAgents) > 0 {
-		subAgents, err := f.getSubAgents(ctx, agentConfig.Setting.Agent.SubAgents)
+		subAgents, err := f.getSubAgents(ctx, environment, agentConfig.Setting.Agent.SubAgents)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sub agents: %w", err)
 		}
@@ -359,15 +356,15 @@ func (f *UnifiedAgentFactory) getModel(agentConfig *AgentConfig) (model.Model, e
 	return nil, fmt.Errorf("model provider %s is unknown", agentConfig.Setting.Agent.LLM.Provider)
 }
 
-// getSubAgents creates sub-agent instances based on their UUIDs
-func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, subAgentIDs []uuid.UUID) ([]agent.Agent, error) {
+// getSubAgents creates sub-agent instances based on their roles
+func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, environment string, subAgentRoles []shared.AgentRole) ([]agent.Agent, error) {
 	var subAgents []agent.Agent
-	for _, id := range subAgentIDs {
+	for _, role := range subAgentRoles {
 
 		// Recursively create the sub-agent
-		subAgent, err := f.CreateAgentByID(ctx, id)
+		subAgent, err := f.CreateAgent(ctx, environment, role)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create sub-agent %s: %w", id, err)
+			return nil, fmt.Errorf("failed to create sub-agent %s: %w", role, err)
 		}
 		subAgents = append(subAgents, subAgent)
 	}
@@ -380,7 +377,7 @@ func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
 
 	agentInfo := shared.NewAgentInfo(
 		p.AgentID,
-		shared.AgentRole(p.Name),
+		p.Role,
 		agent.StreamingEnabled,
 		p.Name,
 		p.Description,

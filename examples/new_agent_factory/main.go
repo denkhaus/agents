@@ -37,7 +37,7 @@ func main() {
 	fmt.Printf("Created agent: %s (ID: %s)\n", agent.Info().Name, agent.ID())
 
 	// Create an agent by ID
-	agentByID, err := factory.CreateAgentByID(ctx, shared.AgentIDProjectManager)
+	agentByID, err := factory.CreateAgentByID(ctx, "development", shared.AgentIDProjectManager)
 	if err != nil {
 		log.Fatalf("Failed to create agent by ID: %v", err)
 	}
