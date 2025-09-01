@@ -1,10 +1,7 @@
-//go:build mage
-
 package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/magefile/mage/mg"
@@ -14,28 +11,16 @@ import (
 // CueVersion namespace for all cue-version related commands
 type CueVersion mg.Namespace
 
-// Validate validates all CUE configurations
-func (CueVersion) Validate() error {
-	fmt.Println("Validating CUE configurations...")
-
-	// Change to config directory for validation
-	if err := os.Chdir("config"); err != nil {
-		return err
-	}
-	defer os.Chdir("..")
-
-	// Validate all configurations
-	if err := sh.RunV("cue", "vet", "./..."); err != nil {
-		return err
-	}
-
-	fmt.Println("All CUE configurations are valid!")
-	return nil
-}
-
 // Show displays the current version from Git
 func (CueVersion) Show() error {
 	fmt.Println("Getting current version from Git...")
+
+	cleanup, err := changeToConfigDirWithCleanup()
+	if err != nil {
+		return fmt.Errorf("failed to change to config directory: %w", err)
+	}
+
+	defer cleanup()
 
 	// Get the latest Git tag
 	tag, err := sh.Output("git", "describe", "--tags", "--abbrev=0")
@@ -50,7 +35,7 @@ func (CueVersion) Show() error {
 
 // Tag creates a new Git tag for a release
 func (CueVersion) Tag(version string) error {
-	mg.Deps(CueVersion.Validate)
+	mg.Deps(Cue.Validate)
 
 	if version == "" {
 		return fmt.Errorf("version is required")
@@ -63,11 +48,12 @@ func (CueVersion) Tag(version string) error {
 
 	fmt.Printf("Creating new release tag: %s\n", version)
 
-	// Change to config directory for release creation and git operations
-	if err := os.Chdir("config"); err != nil {
-		return err
+	cleanup, err := changeToConfigDirWithCleanup()
+	if err != nil {
+		return fmt.Errorf("failed to change to config directory: %w", err)
 	}
-	defer os.Chdir("..")
+
+	defer cleanup()
 
 	// Create release file
 	if err := createReleaseFile(version); err != nil {
@@ -94,7 +80,7 @@ func (CueVersion) Tag(version string) error {
 	if err := sh.RunV("git", "push", "origin", "main"); err != nil {
 		fmt.Printf("Warning: Failed to push changes: %v\n", err)
 	}
-	
+
 	if err := sh.RunV("git", "push", "origin", version); err != nil {
 		fmt.Printf("Warning: Failed to push tag: %v\n", err)
 	}
@@ -106,6 +92,13 @@ func (CueVersion) Tag(version string) error {
 // List displays all Git tags
 func (CueVersion) List() error {
 	fmt.Println("Listing all Git tags...")
+
+	cleanup, err := changeToConfigDirWithCleanup()
+	if err != nil {
+		return fmt.Errorf("failed to change to config directory: %w", err)
+	}
+
+	defer cleanup()
 
 	output, err := sh.Output("git", "tag", "--sort=-version:refname")
 	if err != nil {
@@ -119,48 +112,5 @@ func (CueVersion) List() error {
 		}
 	}
 
-	return nil
-}
-
-// Init initializes the Git-based versioning system
-func (CueVersion) Init() error {
-	fmt.Println("Initializing Git-based versioning system...")
-
-	// Check if we're in a Git repository
-	if err := sh.Run("git", "rev-parse", "--git-dir"); err != nil {
-		return fmt.Errorf("not a Git repository")
-	}
-
-	// Create necessary directories if they don't exist
-	dirs := []string{
-		configDir + "/prompts",
-		configDir + "/settings",
-		configDir + "/tools/profiles",
-		configDir + "/compositions/stable",
-	}
-
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
-		}
-	}
-
-	// Move versioned directories to flattened structure
-	if err := restructureDirectories(); err != nil {
-		return err
-	}
-
-	fmt.Println("Git-based versioning system initialized!")
-	return nil
-}
-
-// Clean removes backup files created during initialization
-func (CueVersion) Clean() error {
-	fmt.Println("Cleaning up backup files...")
-
-	// Find and remove backup files (files with version suffixes)
-	// This is a simplified implementation - in practice, you might want to be more specific
-
-	fmt.Println("Cleanup completed!")
 	return nil
 }

@@ -1,10 +1,7 @@
-//go:build mage
-
 package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +10,22 @@ import (
 	"time"
 )
 
+func changeToConfigDirWithCleanup() (func(), error) {
+
+	// Change to the config directory to run cue commands
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current directory: %w", err)
+	}
+	if err := os.Chdir(configDir); err != nil {
+		return nil, fmt.Errorf("failed to change directory to %s: %w", configDir, err)
+	}
+
+	return func() {
+		os.Chdir(cwd)
+	}, nil
+}
+
 // createReleaseFile creates a new release file based on current configurations
 func createReleaseFile(version string) error {
 	// Check if we're already in the config directory
@@ -20,7 +33,7 @@ func createReleaseFile(version string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	var releaseDir string
 	if filepath.Base(currentDir) == "config" {
 		// We're already in the config directory
@@ -29,7 +42,7 @@ func createReleaseFile(version string) error {
 		// We're in the main directory
 		releaseDir = configDir + "/releases"
 	}
-	
+
 	releaseFile := fmt.Sprintf("%s/%s.cue", releaseDir, strings.ReplaceAll(version, ".", "_"))
 
 	// Check if release file already exists
@@ -82,8 +95,8 @@ import (
     }
 }
 `, strings.ReplaceAll(version, ".", "_"), version, currentDate, version,
-   componentVersions.Prompts, componentVersions.Tools,
-   componentVersions.Settings, componentVersions.Compositions)
+		componentVersions.Prompts, componentVersions.Tools,
+		componentVersions.Settings, componentVersions.Compositions)
 
 	// Write release file
 	return os.WriteFile(releaseFile, []byte(content), 0644)
@@ -146,7 +159,7 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 		if file == "" {
 			continue
 		}
-		
+
 		// Determine which component this file belongs to
 		switch {
 		case strings.HasPrefix(file, "prompts/") || strings.Contains(file, "prompts"):
@@ -164,15 +177,15 @@ func getComponentVersions(targetVersion string) (*ComponentVersions, error) {
 	if !componentsChanged["prompts"] {
 		versions.Prompts = prevVersions.Prompts
 	}
-	
+
 	if !componentsChanged["tools"] {
 		versions.Tools = prevVersions.Tools
 	}
-	
+
 	if !componentsChanged["settings"] {
 		versions.Settings = prevVersions.Settings
 	}
-	
+
 	if !componentsChanged["compositions"] {
 		versions.Compositions = prevVersions.Compositions
 	}
@@ -191,7 +204,7 @@ func getChangedConfigFiles(sinceTag string) ([]string, error) {
 
 	// Split output into lines
 	lines := strings.Split(string(output), "\n")
-	
+
 	// Filter out empty lines
 	var files []string
 	for _, line := range lines {
@@ -199,7 +212,7 @@ func getChangedConfigFiles(sinceTag string) ([]string, error) {
 			files = append(files, line)
 		}
 	}
-	
+
 	return files, nil
 }
 
@@ -210,40 +223,40 @@ func getPreviousComponentVersions(lastTag string) (*ComponentVersions, error) {
 	if len(tagParts) != 3 {
 		return nil, fmt.Errorf("invalid tag format: %s", lastTag)
 	}
-	
+
 	filename := fmt.Sprintf("v%s_%s_%s.cue", tagParts[0], tagParts[1], tagParts[2])
 	releaseFile := fmt.Sprintf("config/releases/%s", filename)
-	
+
 	// Read the release file
 	content, err := os.ReadFile(releaseFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read release file %s: %v", releaseFile, err)
 	}
-	
+
 	// Parse component versions from the file
 	versions := &ComponentVersions{}
 	contentStr := string(content)
-	
+
 	// Extract prompts version
 	if matches := regexp.MustCompile(`prompts:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
 		versions.Prompts = matches[1]
 	}
-	
+
 	// Extract tools version
 	if matches := regexp.MustCompile(`tools:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
 		versions.Tools = matches[1]
 	}
-	
+
 	// Extract settings version
 	if matches := regexp.MustCompile(`settings:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
 		versions.Settings = matches[1]
 	}
-	
+
 	// Extract compositions version
 	if matches := regexp.MustCompile(`compositions:\s+"([^"]+)"`).FindStringSubmatch(contentStr); len(matches) > 1 {
 		versions.Compositions = matches[1]
 	}
-	
+
 	return versions, nil
 }
 
@@ -256,91 +269,8 @@ func getLastConfigTag() (string, error) {
 		// No tags found
 		return "", nil
 	}
-	
+
 	return strings.TrimSpace(string(output)), nil
 }
 
 // restructureDirectories moves versioned directories to flattened structure
-func restructureDirectories() error {
-	fmt.Println("Restructuring directories for Git-based versioning...")
-
-	// Move prompts from v1_0 to prompts root
-	promptsSrc := configDir + "/prompts/v1_0"
-	promptsDst := configDir + "/prompts"
-
-	if _, err := os.Stat(promptsSrc); err == nil {
-		fmt.Println("Moving prompts from v1_0 to root...")
-
-		// Move each file
-		files, err := os.ReadDir(promptsSrc)
-		if err != nil {
-			return err
-		}
-
-		for _, file := range files {
-			src := fmt.Sprintf("%s/%s", promptsSrc, file.Name())
-			dst := fmt.Sprintf("%s/%s", promptsDst, file.Name())
-
-			// Rename existing files with version suffix before overwriting
-			if _, err := os.Stat(dst); err == nil {
-				versionedDst := fmt.Sprintf("%s.v1.0.0", dst)
-				fmt.Printf("Renaming existing file %s to %s\n", dst, versionedDst)
-				if err := os.Rename(dst, versionedDst); err != nil {
-					return err
-				}
-			}
-
-			fmt.Printf("Moving %s to %s\n", src, dst)
-			if err := os.Rename(src, dst); err != nil {
-				return err
-			}
-		}
-
-		// Remove empty v1_0 directory
-		fmt.Println("Removing empty v1_0 directory...")
-		if err := os.Remove(promptsSrc); err != nil {
-			log.Printf("Warning: Could not remove directory %s: %v", promptsSrc, err)
-		}
-	}
-
-	// Move settings from default to settings root
-	settingsSrc := configDir + "/settings/default"
-	settingsDst := configDir + "/settings"
-
-	if _, err := os.Stat(settingsSrc); err == nil {
-		fmt.Println("Moving settings from default to root...")
-
-		// Move each file
-		files, err := os.ReadDir(settingsSrc)
-		if err != nil {
-			return err
-		}
-
-		for _, file := range files {
-			src := fmt.Sprintf("%s/%s", settingsSrc, file.Name())
-			dst := fmt.Sprintf("%s/%s", settingsDst, file.Name())
-
-			// Rename existing files with version suffix before overwriting
-			if _, err := os.Stat(dst); err == nil {
-				versionedDst := fmt.Sprintf("%s.v1.0.0", dst)
-				fmt.Printf("Renaming existing file %s to %s\n", dst, versionedDst)
-				if err := os.Rename(dst, versionedDst); err != nil {
-					return err
-				}
-			}
-
-			fmt.Printf("Moving %s to %s\n", src, dst)
-			if err := os.Rename(src, dst); err != nil {
-				return err
-			}
-		}
-
-		// Remove empty default directory
-		fmt.Println("Removing empty default directory...")
-		if err := os.Remove(settingsSrc); err != nil {
-			log.Printf("Warning: Could not remove directory %s: %v", settingsSrc, err)
-		}
-	}
-
-	return nil
-}

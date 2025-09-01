@@ -111,3 +111,20 @@ type ConfigProvider interface {
 	GetAgentsInEnvironment(environment string) ([]*shared.AgentInfo, error)
 	GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error) // New method
 }
+
+func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
+	agent := p.Setting.Agent
+
+	agentInfo := shared.NewAgentInfo(
+		p.AgentID,
+		p.Role,
+		agent.StreamingEnabled,
+		p.Name,
+		p.Description,
+	)
+
+	agentInfo.InputSchema = agent.InputSchema
+	agentInfo.OutputSchema = agent.OutputSchema
+
+	return &agentInfo
+}

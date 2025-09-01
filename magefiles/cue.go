@@ -1,6 +1,3 @@
-//go:build mage
-// +build mage
-
 package main
 
 import (
@@ -18,11 +15,29 @@ import (
 // Cue is a namespace for cue related commands
 type Cue mg.Namespace
 
+// Validate validates all CUE configurations
+func (Cue) Validate() error {
+	fmt.Println("Validating CUE configurations...")
+
+	cleanup, err := changeToConfigDirWithCleanup()
+	if err != nil {
+		return fmt.Errorf("failed to change to config directory: %w", err)
+	}
+
+	defer cleanup()
+
+	// Validate all configurations
+	if err := sh.RunV("cue", "vet", "./..."); err != nil {
+		return err
+	}
+
+	fmt.Println("All CUE configurations are valid!")
+	return nil
+}
+
 // Update updates all cue definitions and dependencies.
 func (Cue) Update() error {
 	fmt.Println("Updating CUE definitions and dependencies...")
-
-	configDir := "config"
 
 	// Find all Go packages to generate CUE definitions from
 	packages, err := findCUEGeneratedPackages(configDir)
@@ -30,15 +45,12 @@ func (Cue) Update() error {
 		return fmt.Errorf("failed to find CUE generated packages: %w", err)
 	}
 
-	// Change to the config directory to run cue commands
-	cwd, err := os.Getwd()
+	cleanup, err := changeToConfigDirWithCleanup()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return fmt.Errorf("failed to change to config directory: %w", err)
 	}
-	if err := os.Chdir(configDir); err != nil {
-		return fmt.Errorf("failed to change directory to %s: %w", configDir, err)
-	}
-	defer os.Chdir(cwd)
+
+	defer cleanup()
 
 	// Update CUE dependencies
 	fmt.Println("Running cue mod tidy...")

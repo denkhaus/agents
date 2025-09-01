@@ -169,6 +169,15 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tools for agent role %s: %w", decodedRole, err)
 		}
+		
+		// Apply tool overrides from environment configuration
+		toolOverrides := foundAgentValue.LookupPath(cue.ParsePath("tool.overrides"))
+		if toolOverrides.Exists() {
+			if err := p.applyToolOverrides(toolsConfig, toolOverrides); err != nil {
+				return nil, fmt.Errorf("failed to apply tool overrides for agent role %s: %w", decodedRole, err)
+			}
+		}
+		
 		config.Tool = *toolsConfig
 	}
 
@@ -180,121 +189,74 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 	return config, nil
 }
 
-// LoadPrompt loads a specific prompt configuration
-func (p *cueConfigProviderImpl) LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error) {
-	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentRole))
-
-	instances := load.Instances([]string{promptPath}, &load.Config{
+// loadAndDecode loads a CUE file, looks up a path, and decodes the result into target.
+func (p *cueConfigProviderImpl) loadAndDecode(filePath, lookupPath string, target interface{}) error {
+	instances := load.Instances([]string{filePath}, &load.Config{
 		Dir: p.configPath,
 	})
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for prompt: %s", agentRole)
+		return fmt.Errorf("no CUE instances found for path: %s", filePath)
 	}
 
 	values, err := p.ctx.BuildInstances(instances)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build instances: %w", err)
+		return fmt.Errorf("failed to build instances: %w", err)
 	}
 	if len(values) == 0 {
-		return nil, fmt.Errorf("no prompt CUE instances built")
+		return fmt.Errorf("no CUE instances built for path: %s", filePath)
 	}
 	value := values[0]
 	if value.Err() != nil {
-		return nil, fmt.Errorf("failed to build prompt CUE instance: %w", value.Err())
+		return fmt.Errorf("failed to build CUE instance: %w", value.Err())
 	}
 
-	// Extract prompt configuration
-	promptValue := value.LookupPath(cue.ParsePath(string(agentRole)))
-	if !promptValue.Exists() {
-		return nil, fmt.Errorf("prompt %s not found in file", agentRole)
+	// Extract configuration
+	configValue := value.LookupPath(cue.ParsePath(lookupPath))
+	if !configValue.Exists() {
+		return fmt.Errorf("path '%s' not found in file %s", lookupPath, filePath)
 	}
 
+	if err := configValue.Decode(target); err != nil {
+		return fmt.Errorf("failed to decode config for path '%s': %w", lookupPath, err)
+	}
+
+	return nil
+}
+
+// LoadPrompt loads a specific prompt configuration
+func (p *cueConfigProviderImpl) LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error) {
+	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentRole))
 	var prompt PromptConfig
-	if err := promptValue.Decode(&prompt); err != nil {
-		return nil, fmt.Errorf("failed to decode prompt config: %w", err)
+	err := p.loadAndDecode(promptPath, string(agentRole), &prompt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load prompt for role %s: %w", agentRole, err)
 	}
-
 	return &prompt, nil
 }
 
 // LoadSettings loads agent settings
 func (p *cueConfigProviderImpl) LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error) {
 	settingsPath := filepath.Join(p.configPath, "settings", fmt.Sprintf("%s.cue", agentRole))
-
-	instances := load.Instances([]string{settingsPath}, &load.Config{
-		Dir: p.configPath,
-	})
-
-	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for settings: %s", agentRole)
-	}
-
-	values, err := p.ctx.BuildInstances(instances)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build instances: %w", err)
-	}
-	if len(values) == 0 {
-		return nil, fmt.Errorf("no settings CUE instances built")
-	}
-	value := values[0]
-	if value.Err() != nil {
-		return nil, fmt.Errorf("failed to build settings CUE instance: %w", value.Err())
-	}
-
-	// Extract settings configuration
-	settingsValue := value.LookupPath(cue.ParsePath(string(agentRole)))
-	if !settingsValue.Exists() {
-		return nil, fmt.Errorf("settings %s not found in file", agentRole)
-	}
-
 	var settings SettingsConfig
-	if err := settingsValue.Decode(&settings); err != nil {
-		return nil, fmt.Errorf("failed to decode settings config: %w", err)
+	err := p.loadAndDecode(settingsPath, string(agentRole), &settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load settings for role %s: %w", agentRole, err)
 	}
-
 	return &settings, nil
 }
 
 // LoadToolProfile loads tool profile configuration
 func (p *cueConfigProviderImpl) LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error) {
 	toolsPath := filepath.Join(p.configPath, "tools", fmt.Sprintf("%s.cue", agentRole))
-
-	instances := load.Instances([]string{toolsPath}, &load.Config{
-		Dir: p.configPath,
-	})
-
-	if len(instances) == 0 {
-		return nil, fmt.Errorf("no CUE instances found for tool profile: %s", agentRole)
-	}
-
-	values, err := p.ctx.BuildInstances(instances)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build instances: %w", err)
-	}
-	if len(values) == 0 {
-		return nil, fmt.Errorf("no tools CUE instances built")
-	}
-	value := values[0]
-	if value.Err() != nil {
-		return nil, fmt.Errorf("failed to build tools CUE instance: %w", value.Err())
-	}
-
-	// Extract tools configuration
-	toolsValue := value.LookupPath(cue.ParsePath(string(agentRole)))
-	if !toolsValue.Exists() {
-		return nil, fmt.Errorf("tool profile %s not found in file", agentRole)
-	}
-
 	var tools ToolsConfig
-	if err := toolsValue.Decode(&tools); err != nil {
-		return nil, fmt.Errorf("failed to decode tools config: %w", err)
+	err := p.loadAndDecode(toolsPath, string(agentRole), &tools)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tool profile for role %s: %w", agentRole, err)
 	}
 
-	// Resolve environment variables in tool configurations
-	if err := p.resolveToolEnvironmentVariables(&tools); err != nil {
-		return nil, fmt.Errorf("failed to resolve tool environment variables: %w", err)
-	}
+	// NOTE: Environment variable resolution moved to after override merging
+	// This allows overrides with fallback values to take precedence over base configs
 
 	return &tools, nil
 }
@@ -573,4 +535,97 @@ func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string) ([]*s
 	}
 
 	return agentsInfo, nil
+}
+
+// applyToolOverrides applies tool overrides from environment configuration to the base tool config
+func (p *cueConfigProviderImpl) applyToolOverrides(toolsConfig *ToolsConfig, overrides cue.Value) error {
+	// Apply tool overrides
+	toolsOverride := overrides.LookupPath(cue.ParsePath("tools"))
+	if toolsOverride.Exists() {
+		var toolOverrides map[string]ToolConfig
+		if err := toolsOverride.Decode(&toolOverrides); err != nil {
+			return fmt.Errorf("failed to decode tool overrides: %w", err)
+		}
+		
+		// Merge tool overrides
+		for toolName, override := range toolOverrides {
+			if baseConfig, exists := toolsConfig.Tools[toolName]; exists {
+				// Merge the override with the base config
+				mergedConfig := p.mergeToolConfig(baseConfig, override)
+				toolsConfig.Tools[toolName] = mergedConfig
+			} else {
+				// Add new tool if it doesn't exist in base
+				toolsConfig.Tools[toolName] = override
+			}
+		}
+	}
+	
+	// Apply toolset overrides
+	toolsetsOverride := overrides.LookupPath(cue.ParsePath("toolsets"))
+	if toolsetsOverride.Exists() {
+		var toolsetOverrides map[string]ToolSetConfig
+		if err := toolsetsOverride.Decode(&toolsetOverrides); err != nil {
+			return fmt.Errorf("failed to decode toolset overrides: %w", err)
+		}
+		
+		// Merge toolset overrides
+		for toolsetName, override := range toolsetOverrides {
+			if baseConfig, exists := toolsConfig.ToolSets[toolsetName]; exists {
+				// Merge the override with the base config
+				mergedConfig := p.mergeToolSetConfig(baseConfig, override)
+				toolsConfig.ToolSets[toolsetName] = mergedConfig
+			} else {
+				// Add new toolset if it doesn't exist in base
+				toolsConfig.ToolSets[toolsetName] = override
+			}
+		}
+	}
+	
+	return nil
+}
+
+// mergeToolConfig merges a tool override with the base tool configuration
+func (p *cueConfigProviderImpl) mergeToolConfig(base ToolConfig, override ToolConfig) ToolConfig {
+	merged := ToolConfig{
+		Enabled: base.Enabled,
+		Config:  make(map[string]interface{}),
+	}
+	
+	// Override enabled flag if specified
+	merged.Enabled = override.Enabled
+	
+	// Copy base config
+	for key, value := range base.Config {
+		merged.Config[key] = value
+	}
+	
+	// Apply override config
+	for key, value := range override.Config {
+		merged.Config[key] = value
+	}
+	
+	return merged
+}
+
+// mergeToolSetConfig merges a toolset override with the base toolset configuration
+func (p *cueConfigProviderImpl) mergeToolSetConfig(base ToolSetConfig, override ToolSetConfig) ToolSetConfig {
+	merged := ToolSetConfig{
+		Enabled: base.Enabled,
+		Config:  make(map[string]interface{}),
+	}
+	
+	// Override enabled flag if specified
+	merged.Enabled = override.Enabled
+	
+	// Copy base config
+	for key, value := range base.Config {
+		merged.Config[key] = value
+	}
+	
+	// Apply override config
+	for key, value := range override.Config {
+		merged.Config[key] = value
+	}
+	
+	return merged
 }
