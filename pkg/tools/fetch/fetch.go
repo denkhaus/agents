@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -160,7 +161,7 @@ func fetch(ctx context.Context, args fetchArgs) (fetchResult, error) {
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.Tool, error) {
+	return func(config tools.ConfigPayload, _ []*shared.AgentInfo) (tool.Tool, error) {
 		return New()
 	}, nil
 }

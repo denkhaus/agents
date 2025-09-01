@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -58,7 +59,7 @@ func getCurrentTime(ctx context.Context, args timeArgs) (timeResult, error) {
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.Tool, error) {
+	return func(config tools.ConfigPayload, _ []*shared.AgentInfo) (tool.Tool, error) {
 		return New()
 	}, nil
 }

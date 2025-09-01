@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/google/uuid"
 	"github.com/samber/do"
@@ -20,34 +21,39 @@ const (
 
 // ToolSetConfig holds configuration for the project management toolset
 type ToolSetConfig struct {
-	ReadOnly bool `json:"read_only" mapstructure:"read_only"`
+	IsReadOnly bool `json:"read_only" mapstructure:"read_only"`
 }
 
 // projectTaskToolSet implements the ToolSet interface for project task management
 type projectTaskToolSet struct {
-	manager    ProjectManager
-	logger     *zap.Logger
-	isReadOnly bool
-	tools      []tool.CallableTool
+	ToolSetConfig
+	manager         ProjectManager
+	logger          *zap.Logger
+	tools           []tool.CallableTool
+	availableAgents []*shared.AgentInfo
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+	return func(config tools.ConfigPayload, availableAgents []*shared.AgentInfo) (tool.ToolSet, error) {
 		// Extract configuration and convert to options
 		var settings projectTaskToolSet
-		if err := config.Bind(&settings); err != nil {
+		if err := config.Bind(&settings.ToolSetConfig); err != nil {
 			return nil, err
 		}
 
 		// Create options from settings
 		var opts []Option
+		opts = append(opts, WithReadOnly(settings.IsReadOnly))
+
 		if settings.manager != nil {
 			opts = append(opts, WithManager(settings.manager))
 		}
 		if settings.logger != nil {
 			opts = append(opts, WithLogger(settings.logger))
 		}
-		opts = append(opts, WithReadOnly(settings.isReadOnly))
+		if len(availableAgents) > 0 {
+			opts = append(opts, WithAvailableAgents(availableAgents))
+		}
 
 		return New(opts...)
 	}, nil
@@ -69,7 +75,7 @@ func New(opts ...Option) (tool.ToolSet, error) {
 		return nil, fmt.Errorf("manager cannot be nil")
 	}
 
-	if toolSet.isReadOnly {
+	if toolSet.IsReadOnly {
 		// Initialize readonly tools
 		toolSet.tools = []tool.CallableTool{
 			toolSet.getProjectTool(),

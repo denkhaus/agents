@@ -3,6 +3,7 @@
 package duck
 
 import (
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -19,7 +20,7 @@ type ToolConfig struct {
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.Tool, error) {
+	return func(config tools.ConfigPayload, _ []*shared.AgentInfo) (tool.Tool, error) {
 		// Extract options from config if needed
 		// For now, use default options
 		return duckduckgo.NewTool(), nil

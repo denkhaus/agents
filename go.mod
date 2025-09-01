@@ -47,6 +47,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cockroachdb/apd/v3 v3.2.1 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect

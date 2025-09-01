@@ -40,6 +40,11 @@ func GetWelcomeMessage(agents []shared.AgentInfo, displayWidth int) string {
 		"- **Purple boxes**: Inter-agent communication\n" +
 		"- **White boxes**: Normal responses\n" +
 		"- **Green boxes**: System messages\n\n" +
+		"## Keyboard Controls\n\n" +
+		"- **Arrow Keys**: Navigate cursor and command history\n" +
+		"- **Tab**: Auto-complete commands and agent names\n" +
+		"- **ESC**: Interrupt active agent processing\n" +
+		"- **Ctrl+C**: Exit the chat\n\n" +
 		"---\n\n" +
 		"**Ready to chat! Select an agent to get started.**"
 

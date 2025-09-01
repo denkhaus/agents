@@ -98,7 +98,7 @@ type AgentFactory interface {
 
 // ToolFactory creates tools from configuration
 type ToolFactory interface {
-	CreateTools(toolsConfig ToolsConfig) ([]tool.Tool, []tool.ToolSet, error)
+	CreateTools(toolsConfig ToolsConfig, availableAgents []*shared.AgentInfo) ([]tool.Tool, []tool.ToolSet, error)
 }
 
 // ConfigProvider loads configurations from various sources

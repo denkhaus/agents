@@ -1,6 +1,9 @@
 package project
 
-import "go.uber.org/zap"
+import (
+	"github.com/denkhaus/agents/pkg/shared"
+	"go.uber.org/zap"
+)
 
 // Option is a functional option for configuring the project task tool set
 type Option func(*projectTaskToolSet)
@@ -15,7 +18,13 @@ func WithManager(manager ProjectManager) Option {
 // WithReadOnly allows to select tools that have no write access to project information
 func WithReadOnly(readOnly bool) Option {
 	return func(pts *projectTaskToolSet) {
-		pts.isReadOnly = readOnly
+		pts.IsReadOnly = readOnly
+	}
+}
+
+func WithAvailableAgents(availableAgents []*shared.AgentInfo) Option {
+	return func(pts *projectTaskToolSet) {
+		pts.availableAgents = availableAgents
 	}
 }
 

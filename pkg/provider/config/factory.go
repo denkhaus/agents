@@ -42,18 +42,18 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment strin
 	// Load agent configuration
 	agentConfig, err := f.configProvider.LoadAgentComposition(environment, agentRole)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load agent config: %w", err)
+		return nil, fmt.Errorf("failed to load agent configuration for role '%s' in environment '%s': %w", agentRole, environment, err)
+	}
+
+	availableAgents, err := f.configProvider.GetAgentsInEnvironment(environment, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent info from environment %q: %w", environment, err)
 	}
 
 	// Create tools based on configuration
-	tools, toolsets, err := f.toolFactory.CreateTools(agentConfig.Tool)
+	tools, toolsets, err := f.toolFactory.CreateTools(agentConfig.Tool, availableAgents)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tools: %w", err)
-	}
-
-	agentInfo, err := f.configProvider.GetAgentsInEnvironment(environment, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get agent info from environment %q: %w", environment, err)
 	}
 
 	// Get all tools (including those from toolsets)
@@ -63,7 +63,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment strin
 	var ag agent.Agent
 	switch agentConfig.Type {
 	case shared.AgentTypeDefault:
-		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, agentInfo)
+		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, availableAgents)
 	case shared.AgentTypeChain:
 		ag, err = f.createChainAgent(ctx, environment, agentConfig, allTools)
 	case shared.AgentTypeCycle:
@@ -72,7 +72,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment strin
 		ag, err = f.createParallelAgent(ctx, environment, agentConfig, allTools)
 	default:
 		// Default to LLM agent if type is not specified or unknown
-		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, agentInfo)
+		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, availableAgents)
 	}
 
 	if err != nil {
@@ -153,6 +153,10 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 	}
 
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
+
+	if agentConfig.Description != "" {
+		options = append(options, llmagent.WithDescription(agentConfig.Description))
+	}
 
 	// Add model
 	modelInstance, err := f.getModel(agentConfig)

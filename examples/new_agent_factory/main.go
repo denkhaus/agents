@@ -29,7 +29,7 @@ func main() {
 
 	// Create an agent by name
 	ctx := context.Background()
-	agent, err := factory.CreateAgent(ctx, "development", "coder")
+	agent, err := factory.CreateAgent(ctx, "development", shared.AgentRoleCoder)
 	if err != nil {
 		log.Fatalf("Failed to create agent: %v", err)
 	}
@@ -45,7 +45,7 @@ func main() {
 	fmt.Printf("Created agent by ID: %s (ID: %s)\n", agentByID.Info().Name, agentByID.ID())
 
 	// Get raw configuration
-	config, err := factory.GetAgentConfig("development", "researcher")
+	config, err := factory.GetAgentConfig("development", shared.AgentRoleResearcher)
 	if err != nil {
 		log.Fatalf("Failed to get agent config: %v", err)
 	}

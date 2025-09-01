@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/samber/do"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -38,7 +39,7 @@ type shellToolSet struct {
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+	return func(config tools.ConfigPayload, _ []*shared.AgentInfo) (tool.ToolSet, error) {
 		// Extract configuration and convert to options
 		var settings shellToolSet
 		if err := config.Bind(&settings.ToolSetConfig); err != nil {

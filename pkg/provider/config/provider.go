@@ -58,14 +58,14 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 
 	values, err := p.ctx.BuildInstances(instances)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build instances: %w", err)
+		return nil, fmt.Errorf("failed to build CUE instances for environment '%s': %w", environment, err)
 	}
 	if len(values) == 0 {
-		return nil, fmt.Errorf("no CUE instances built")
+		return nil, fmt.Errorf("no CUE instances built for environment '%s'", environment)
 	}
 	value := values[0]
 	if value.Err() != nil {
-		return nil, fmt.Errorf("failed to build CUE instance: %w", value.Err())
+		return nil, fmt.Errorf("CUE validation error in environment '%s': %w", environment, value.Err())
 	}
 
 	// Iterate through agents in the environment to find the one with the matching role
@@ -201,14 +201,14 @@ func (p *cueConfigProviderImpl) loadAndDecode(filePath, lookupPath string, targe
 
 	values, err := p.ctx.BuildInstances(instances)
 	if err != nil {
-		return fmt.Errorf("failed to build instances: %w", err)
+		return fmt.Errorf("failed to build CUE instances for file '%s': %w", filePath, err)
 	}
 	if len(values) == 0 {
-		return fmt.Errorf("no CUE instances built for path: %s", filePath)
+		return fmt.Errorf("no CUE instances built for file '%s'", filePath)
 	}
 	value := values[0]
 	if value.Err() != nil {
-		return fmt.Errorf("failed to build CUE instance: %w", value.Err())
+		return fmt.Errorf("CUE validation error in file '%s': %w", filePath, value.Err())
 	}
 
 	// Extract configuration
@@ -218,7 +218,8 @@ func (p *cueConfigProviderImpl) loadAndDecode(filePath, lookupPath string, targe
 	}
 
 	if err := configValue.Decode(target); err != nil {
-		return fmt.Errorf("failed to decode config for path '%s': %w", lookupPath, err)
+		return fmt.Errorf("failed to decode config for path '%s' in file '%s': %w\n\nHint: Check the CUE syntax, especially string formatting and indentation. You can validate with: cd %s && cue vet %s", 
+			lookupPath, filePath, err, filepath.Dir(filePath), filepath.Base(filePath))
 	}
 
 	return nil
@@ -227,10 +228,16 @@ func (p *cueConfigProviderImpl) loadAndDecode(filePath, lookupPath string, targe
 // LoadPrompt loads a specific prompt configuration
 func (p *cueConfigProviderImpl) LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error) {
 	promptPath := filepath.Join(p.configPath, "prompts", fmt.Sprintf("%s.cue", agentRole))
+	
+	// Check if file exists first
+	if _, err := os.Stat(promptPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("prompt configuration file not found for role '%s': %s", agentRole, promptPath)
+	}
+	
 	var prompt PromptConfig
 	err := p.loadAndDecode(promptPath, string(agentRole), &prompt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load prompt for role %s: %w", agentRole, err)
+		return nil, fmt.Errorf("failed to load prompt configuration for role '%s' from file '%s': %w", agentRole, promptPath, err)
 	}
 	return &prompt, nil
 }
@@ -238,10 +245,16 @@ func (p *cueConfigProviderImpl) LoadPrompt(agentRole shared.AgentRole) (*PromptC
 // LoadSettings loads agent settings
 func (p *cueConfigProviderImpl) LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error) {
 	settingsPath := filepath.Join(p.configPath, "settings", fmt.Sprintf("%s.cue", agentRole))
+	
+	// Check if file exists first
+	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("settings configuration file not found for role '%s': %s", agentRole, settingsPath)
+	}
+	
 	var settings SettingsConfig
 	err := p.loadAndDecode(settingsPath, string(agentRole), &settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load settings for role %s: %w", agentRole, err)
+		return nil, fmt.Errorf("failed to load settings configuration for role '%s' from file '%s': %w", agentRole, settingsPath, err)
 	}
 	return &settings, nil
 }
@@ -249,10 +262,16 @@ func (p *cueConfigProviderImpl) LoadSettings(agentRole shared.AgentRole) (*Setti
 // LoadToolProfile loads tool profile configuration
 func (p *cueConfigProviderImpl) LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error) {
 	toolsPath := filepath.Join(p.configPath, "tools", fmt.Sprintf("%s.cue", agentRole))
+	
+	// Check if file exists first
+	if _, err := os.Stat(toolsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("tools configuration file not found for role '%s': %s", agentRole, toolsPath)
+	}
+	
 	var tools ToolsConfig
 	err := p.loadAndDecode(toolsPath, string(agentRole), &tools)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load tool profile for role %s: %w", agentRole, err)
+		return nil, fmt.Errorf("failed to load tools configuration for role '%s' from file '%s': %w", agentRole, toolsPath, err)
 	}
 
 	// NOTE: Environment variable resolution moved to after override merging
@@ -270,12 +289,19 @@ func (p *cueConfigProviderImpl) ValidateConfiguration() error {
 
 	values, err := p.ctx.BuildInstances(instances)
 	if err != nil {
-		return fmt.Errorf("failed to build instances: %w", err)
+		return fmt.Errorf("failed to build CUE instances during validation in directory '%s': %w", p.configPath, err)
 	}
 
-	for _, instance := range values {
+	for i, instance := range values {
 		if instance.Err() != nil {
-			return fmt.Errorf("CUE validation failed: %w", instance.Err())
+			// Try to get more specific information about which file failed
+			var fileName string
+			if len(instances) > i && len(instances[i].Files) > 0 {
+				fileName = instances[i].Files[0].Filename
+			} else {
+				fileName = fmt.Sprintf("instance_%d", i)
+			}
+			return fmt.Errorf("CUE validation failed in file '%s': %w", fileName, instance.Err())
 		}
 	}
 

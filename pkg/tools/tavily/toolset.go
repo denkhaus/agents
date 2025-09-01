@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/iamwavecut/go-tavily"
 	"github.com/samber/do"
@@ -38,7 +39,7 @@ type TavilyToolSet struct {
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
-	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
+	return func(config tools.ConfigPayload, _ []*shared.AgentInfo) (tool.ToolSet, error) {
 
 		var settings ToolSetConfig
 		if err := config.Bind(&settings); err != nil {

@@ -1,16 +1,16 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 	"strings"
 	"sync" // Add this import
 
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/acarl005/stripansi"
+	"github.com/chzyer/readline"
 	"github.com/denkhaus/agents/multi"
 	"github.com/denkhaus/agents/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
@@ -42,8 +42,11 @@ const (
 // ChatSystem manages the multi-agent chat
 type cliMultiAgentChatImpl struct {
 	plugins.Options
-	currentAgent *shared.AgentInfo // Track the currently selected agent
-	outputMutex  sync.Mutex        // Mutex to protect concurrent writes to stdout
+	currentAgent *shared.AgentInfo  // Track the currently selected agent
+	outputMutex  sync.Mutex         // Mutex to protect concurrent writes to stdout
+	activeCancel context.CancelFunc // Cancel function for active agent operations
+	activeMutex  sync.Mutex         // Mutex to protect activeCancel
+	isAgentBusy  bool               // Track if an agent is currently processing
 }
 
 // NewCLIMultiAgentChat creates a new CLI-based multi-agent chat plugin.
@@ -128,7 +131,35 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 	// Show welcome message with all available commands
 	p.showWelcomeMessage()
 
-	scanner := bufio.NewScanner(os.Stdin)
+	// Create readline instance with cursor support and tab completion
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("/exit"),
+		readline.PcItem("/help"),
+		readline.PcItem("/list"),
+		readline.PcItem("/clear"),
+		readline.PcItem("/width"),
+	)
+	
+	// Add agent names to completer
+	for _, agent := range p.Processor.GetAllAgentInfos() {
+		if agent.Role() != shared.AgentRoleHuman {
+			completer.Children = append(completer.Children, readline.PcItem("/"+agent.Name))
+		}
+	}
+
+	config := &readline.Config{
+		Prompt:          "",
+		HistoryFile:     "/tmp/.agents_history",
+		AutoComplete:    completer,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	}
+
+	rl, err := readline.NewEx(config)
+	if err != nil {
+		return fmt.Errorf("failed to create readline: %w", err)
+	}
+	defer rl.Close()
 
 	for {
 		// Create prompt showing current agent
@@ -136,14 +167,39 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 		if p.currentAgent != nil {
 			prompt = fmt.Sprintf("you [%s]", p.currentAgent.Name)
 		}
-		fmt.Printf("%s >> ", prompt)
+		rl.SetPrompt(fmt.Sprintf("%s >> ", prompt))
 
-		if !scanner.Scan() {
-			break
+		line, err := rl.Readline()
+		if err != nil {
+			if err == readline.ErrInterrupt {
+				// Handle Ctrl+C - exit the application
+				p.printSystemMessage("Goodbye!")
+				return nil
+			} else if err == io.EOF {
+				break
+			}
+			return err
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input := strings.TrimSpace(line)
 		if input == "" {
+			continue
+		}
+
+		// Handle ESC key for agent interruption
+		if input == "\x1b" || strings.HasPrefix(input, "\x1b") {
+			// ESC key pressed - check if we should cancel agent operation
+			p.activeMutex.Lock()
+			if p.isAgentBusy && p.activeCancel != nil {
+				p.printSystemMessage("[ESC] Cancelling agent operation...")
+				p.activeCancel()
+				p.activeCancel = nil
+				p.isAgentBusy = false
+				p.activeMutex.Unlock()
+			} else {
+				p.activeMutex.Unlock()
+				p.printSystemMessage("No active agent operation to cancel")
+			}
 			continue
 		}
 
@@ -211,11 +267,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 
 		// Send message to current agent or show help
 		if p.currentAgent != nil {
-			err := p.Processor.SendMessageWithProcessing(ctx, shared.AgentIDHuman, p.currentAgent.ID(), input)
-			if err != nil {
-				fmt.Printf("ERROR: %v\n", err)
-				continue
-			}
+			p.sendMessageToAgent(ctx, input)
 		} else {
 			fmt.Println("No agent selected. Use /<agent-name> to select an agent.")
 		}
@@ -254,11 +306,19 @@ func (p *cliMultiAgentChatImpl) getHelpMessage() string {
 	builder.WriteString("/<agent-name>         - Select an agent to chat with\n")
 	builder.WriteString("/exit                 - Exit the chat\n")
 	builder.WriteString("\n")
+	builder.WriteString("=== Navigation & Control ===\n")
+	builder.WriteString("Arrow Keys            - Navigate cursor and command history\n")
+	builder.WriteString("Tab                   - Auto-complete commands and agent names\n")
+	builder.WriteString("ESC                   - Interrupt active agent processing\n")
+	builder.WriteString("Ctrl+C                - Exit the chat\n")
+	builder.WriteString("Ctrl+D                - Alternative exit\n")
+	builder.WriteString("\n")
 	builder.WriteString("=== Usage ===\n")
 	builder.WriteString("1. Select an agent: /project-manager\n")
 	builder.WriteString("2. Chat directly: Hello, how can you help?\n")
 	builder.WriteString("3. Switch agents: /another-agent\n")
-	builder.WriteString("4. Adjust display: /width 80\n")
+	builder.WriteString("4. Interrupt processing: ESC (during agent response)\n")
+	builder.WriteString("5. Adjust display: /width 80\n")
 	builder.WriteString("===========================")
 	return builder.String()
 }
@@ -361,4 +421,47 @@ func (p *cliMultiAgentChatImpl) detectMessageType(content string) plugins.Messag
 	}
 
 	return plugins.MessageTypeNormal
+}
+
+// sendMessageToAgent sends a message to the current agent with cancellation support
+func (p *cliMultiAgentChatImpl) sendMessageToAgent(ctx context.Context, input string) {
+	if p.currentAgent == nil {
+		return
+	}
+
+	// Create a cancellable context for this operation
+	agentCtx, cancel := context.WithCancel(ctx)
+	
+	// Store the cancel function so it can be called by interrupt handler
+	p.activeMutex.Lock()
+	p.activeCancel = cancel
+	p.isAgentBusy = true
+	p.activeMutex.Unlock()
+
+	// Show that agent is processing
+	p.printSystemMessage("[PROCESSING] %s is processing your message... (Press ESC to interrupt)", p.currentAgent.Name)
+
+	// Send message in a goroutine to allow interruption
+	go func() {
+		defer func() {
+			// Clean up when done
+			p.activeMutex.Lock()
+			p.activeCancel = nil
+			p.isAgentBusy = false
+			p.activeMutex.Unlock()
+		}()
+
+		// Use SendMessageWithProcessing but with cancellable context
+		err := p.Processor.SendMessageWithProcessing(agentCtx, shared.AgentIDHuman, p.currentAgent.ID(), input)
+		if err != nil {
+			if agentCtx.Err() == context.Canceled {
+				p.printSystemMessage("[CANCELLED] Agent operation was cancelled")
+			} else {
+				p.printSystemMessage("ERROR: %v", err)
+			}
+			return
+		}
+
+		p.printSystemMessage("[COMPLETED] %s finished processing", p.currentAgent.Name)
+	}()
 }
