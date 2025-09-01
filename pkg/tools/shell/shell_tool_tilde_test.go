@@ -29,11 +29,14 @@ func TestTildeExpansion(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -179,11 +182,14 @@ func TestTildeExpansionEdgeCases(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -260,11 +266,14 @@ func TestTildeSecurityValidation(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	securityTests := []struct {

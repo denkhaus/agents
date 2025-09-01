@@ -16,14 +16,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func startup(ctx context.Context) error {
+func startup(ctx context.Context, selectedEnvironment string) error {
 
 	injector := di.NewContainer()
 
 	agentFactory := do.MustInvoke[config.AgentFactory](injector)
-
-	// TODO: Allow environment selection via command-line argument or environment variable
-	selectedEnvironment := "production" // Default environment
 
 	researcherAgent, err := agentFactory.CreateAgent(ctx, selectedEnvironment, shared.AgentRoleResearcher)
 	if err != nil {
@@ -58,7 +55,10 @@ func startup(ctx context.Context) error {
 }
 
 func main() {
-	if err := startup(context.Background()); err != nil {
+	// TODO: Allow environment selection via command-line argument or environment variable
+	selectedEnvironment := "production" // Default environment
+
+	if err := startup(context.Background(), selectedEnvironment); err != nil {
 		logger.Log.Fatal("application error", zap.Error(err))
 	}
 }

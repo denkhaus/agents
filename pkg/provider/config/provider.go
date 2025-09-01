@@ -106,19 +106,19 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 
 	// Now decode the full agent configuration
 	var basicConfig struct {
-		AgentID     uuid.UUID        `json:"agent_id"`
-		Name        string           `json:"name"`
-		Description string           `json:"description,omitempty"`
-		Type        string           `json:"type"`
+		AgentID     uuid.UUID `json:"agent_id"`
+		Name        string    `json:"name"`
+		Description string    `json:"description,omitempty"`
+		Type        string    `json:"type"`
 		Prompt      struct {
 			Source cue.Value `json:"source"`
-		}`json:"prompt"`
+		} `json:"prompt"`
 		Setting struct {
 			Source cue.Value `json:"source"`
-		}`json:"setting"`
+		} `json:"setting"`
 		Tool struct {
 			Source cue.Value `json:"source"`
-		}`json:"tool"`
+		} `json:"tool"`
 	}
 
 	// Decode the basic configuration
@@ -169,7 +169,7 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tools for agent role %s: %w", decodedRole, err)
 		}
-		
+
 		// Apply tool overrides from environment configuration
 		toolOverrides := foundAgentValue.LookupPath(cue.ParsePath("tool.overrides"))
 		if toolOverrides.Exists() {
@@ -177,7 +177,7 @@ func (p *cueConfigProviderImpl) LoadAgentComposition(environment string, agentRo
 				return nil, fmt.Errorf("failed to apply tool overrides for agent role %s: %w", decodedRole, err)
 			}
 		}
-		
+
 		config.Tool = *toolsConfig
 	}
 
@@ -416,7 +416,7 @@ func (p *cueConfigProviderImpl) GetAgentInfoByID(agentID uuid.UUID) (*shared.Age
 	}
 
 	for _, env := range environments {
-		agents, err := p.GetAgentsInEnvironment(env)
+		agents, err := p.GetAgentsInEnvironment(env, true)
 		if err != nil {
 			// Log the error but continue to other environments
 			logger.Log.Warn("Failed to get agents in environment", zap.String("environment", env), zap.Error(err))
@@ -454,7 +454,7 @@ func (p *cueConfigProviderImpl) loadSubAgentInfo(environment string, agentConfig
 }
 
 // GetAgentsInEnvironment retrieves information about all agents defined within a specific environment.
-func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string) ([]*shared.AgentInfo, error) {
+func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string, includeHuman bool) ([]*shared.AgentInfo, error) {
 
 	// Load the environment-specific composition file
 	envPath := filepath.Join(p.configPath, "compositions", "environments", fmt.Sprintf("%s.cue", environment))
@@ -534,6 +534,10 @@ func (p *cueConfigProviderImpl) GetAgentsInEnvironment(environment string) ([]*s
 		agentsInfo = append(agentsInfo, info)
 	}
 
+	if includeHuman {
+		agentsInfo = append(agentsInfo, &shared.AgentInfoHuman)
+	}
+
 	return agentsInfo, nil
 }
 
@@ -546,7 +550,7 @@ func (p *cueConfigProviderImpl) applyToolOverrides(toolsConfig *ToolsConfig, ove
 		if err := toolsOverride.Decode(&toolOverrides); err != nil {
 			return fmt.Errorf("failed to decode tool overrides: %w", err)
 		}
-		
+
 		// Merge tool overrides
 		for toolName, override := range toolOverrides {
 			if baseConfig, exists := toolsConfig.Tools[toolName]; exists {
@@ -559,7 +563,7 @@ func (p *cueConfigProviderImpl) applyToolOverrides(toolsConfig *ToolsConfig, ove
 			}
 		}
 	}
-	
+
 	// Apply toolset overrides
 	toolsetsOverride := overrides.LookupPath(cue.ParsePath("toolsets"))
 	if toolsetsOverride.Exists() {
@@ -567,7 +571,7 @@ func (p *cueConfigProviderImpl) applyToolOverrides(toolsConfig *ToolsConfig, ove
 		if err := toolsetsOverride.Decode(&toolsetOverrides); err != nil {
 			return fmt.Errorf("failed to decode toolset overrides: %w", err)
 		}
-		
+
 		// Merge toolset overrides
 		for toolsetName, override := range toolsetOverrides {
 			if baseConfig, exists := toolsConfig.ToolSets[toolsetName]; exists {
@@ -580,7 +584,7 @@ func (p *cueConfigProviderImpl) applyToolOverrides(toolsConfig *ToolsConfig, ove
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -590,20 +594,20 @@ func (p *cueConfigProviderImpl) mergeToolConfig(base ToolConfig, override ToolCo
 		Enabled: base.Enabled,
 		Config:  make(map[string]interface{}),
 	}
-	
+
 	// Override enabled flag if specified
 	merged.Enabled = override.Enabled
-	
+
 	// Copy base config
 	for key, value := range base.Config {
 		merged.Config[key] = value
 	}
-	
+
 	// Apply override config
 	for key, value := range override.Config {
 		merged.Config[key] = value
 	}
-	
+
 	return merged
 }
 
@@ -613,19 +617,19 @@ func (p *cueConfigProviderImpl) mergeToolSetConfig(base ToolSetConfig, override 
 		Enabled: base.Enabled,
 		Config:  make(map[string]interface{}),
 	}
-	
+
 	// Override enabled flag if specified
 	merged.Enabled = override.Enabled
-	
+
 	// Copy base config
 	for key, value := range base.Config {
 		merged.Config[key] = value
 	}
-	
+
 	// Apply override config
 	for key, value := range override.Config {
 		merged.Config[key] = value
 	}
-	
+
 	return merged
 }

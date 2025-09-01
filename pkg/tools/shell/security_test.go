@@ -17,11 +17,13 @@ func TestAbsolutePathSecurity(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat", "grep", "find"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat", "grep", "find"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+		currentWorkDir: tempDir,
 	}
 
 	// Test cases that should be BLOCKED
@@ -141,11 +143,14 @@ func TestSystemDirectoryAccess(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	// System directories that should be blocked
@@ -184,11 +189,14 @@ func TestEnvironmentVariableBlocking(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat", "echo"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat", "echo"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	envTests := []struct {
@@ -262,11 +270,14 @@ func TestSecurityBypass(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat", "find"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat", "find"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	// Advanced bypass attempts that should be blocked

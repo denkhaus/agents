@@ -23,47 +23,44 @@ const (
 
 // ToolSetConfig holds configuration for the shell toolset
 type ToolSetConfig struct {
-	BaseDir               string        `json:"base_dir,omitempty"`
-	ExecuteCommandEnabled bool          `json:"execute_command_enabled"`
-	AllowedCommands       []string      `json:"allowed_commands,omitempty"`
-	Timeout               time.Duration `json:"timeout,omitempty"`
-	MaxOutputSize         int64         `json:"max_output_size,omitempty"`
+	BaseDir               string        `json:"base_dir,omitempty" mapstructure:"base_dir,omitempty"`
+	ExecuteCommandEnabled bool          `json:"execute_command_enabled" mapstructure:"execute_command_enabled"`
+	AllowedCommands       []string      `json:"allowed_commands,omitempty" mapstructure:"allowed_commands,omitempty"`
+	Timeout               time.Duration `json:"timeout,omitempty" mapstructure:"timeout,omitempty"`
+	MaxOutputSize         int64         `json:"max_output_size,omitempty" mapstructure:"max_output_size,omitempty"`
 }
 
 // shellToolSet implements the ToolSet interface for shell operations.
 type shellToolSet struct {
-	baseDir               string
-	executeCommandEnabled bool
-	allowedCommands       []string
-	tools                 []tool.CallableTool
-	timeout               time.Duration
-	maxOutputSize         int64
-	currentWorkDir        string // Current working directory for cd command
+	ToolSetConfig
+	tools          []tool.CallableTool
+	currentWorkDir string // Current working directory for cd command
 }
+
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 	return func(config tools.ConfigPayload) (tool.ToolSet, error) {
 		// Extract configuration and convert to options
 		var settings shellToolSet
-		if err := config.Bind(&settings); err != nil {
+		if err := config.Bind(&settings.ToolSetConfig); err != nil {
 			return nil, err
 		}
-		
+
 		// Create options from settings
 		var opts []Option
-		if settings.baseDir != "" {
-			opts = append(opts, WithBaseDir(settings.baseDir))
+		if settings.BaseDir != "" {
+			opts = append(opts, WithBaseDir(settings.BaseDir))
 		}
-		opts = append(opts, WithExecuteCommandEnabled(settings.executeCommandEnabled))
-		if len(settings.allowedCommands) > 0 {
-			opts = append(opts, WithAllowedCommands(settings.allowedCommands))
+		opts = append(opts, WithExecuteCommandEnabled(settings.ExecuteCommandEnabled))
+		if len(settings.AllowedCommands) > 0 {
+			opts = append(opts, WithAllowedCommands(settings.AllowedCommands))
 		}
-		if settings.timeout > 0 {
-			opts = append(opts, WithTimeout(settings.timeout))
+		if settings.Timeout > 0 {
+			opts = append(opts, WithTimeout(settings.Timeout))
 		}
-		if settings.maxOutputSize > 0 {
-			opts = append(opts, WithMaxOutputSize(settings.maxOutputSize))
+		if settings.MaxOutputSize > 0 {
+			opts = append(opts, WithMaxOutputSize(settings.MaxOutputSize))
 		}
-		
+
 		return New(opts...)
 	}, nil
 }
@@ -72,12 +69,15 @@ func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 func New(opts ...Option) (tool.ToolSet, error) {
 	// Apply default configuration.
 	shellToolSet := &shellToolSet{
-		baseDir:               defaultBaseDir,
-		executeCommandEnabled: true,
-		allowedCommands:       []string{}, // Empty means use default safe list
-		timeout:               30 * time.Second,
-		maxOutputSize:         1024 * 1024, // 1MB default
-		currentWorkDir:        "",          // Will be set to baseDir after validation
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:               defaultBaseDir,
+			ExecuteCommandEnabled: true,
+			AllowedCommands:       []string{}, // Empty means use default safe list
+			Timeout:               30 * time.Second,
+			MaxOutputSize:         1024 * 1024, // 1MB default
+		},
+
+		currentWorkDir: "", // Will be set to baseDir after validation
 	}
 
 	// Apply user-provided options.
@@ -86,22 +86,22 @@ func New(opts ...Option) (tool.ToolSet, error) {
 	}
 
 	// Clean and validate the base directory.
-	shellToolSet.baseDir = filepath.Clean(shellToolSet.baseDir)
+	shellToolSet.BaseDir = filepath.Clean(shellToolSet.BaseDir)
 
 	// Convert to absolute path for security
-	absBaseDir, err := filepath.Abs(shellToolSet.baseDir)
+	absBaseDir, err := filepath.Abs(shellToolSet.BaseDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path for base directory: %w", err)
 	}
-	shellToolSet.baseDir = absBaseDir
+	shellToolSet.BaseDir = absBaseDir
 
 	// Check if the base directory exists.
-	stat, err := os.Stat(shellToolSet.baseDir)
+	stat, err := os.Stat(shellToolSet.BaseDir)
 	if err != nil {
-		return nil, fmt.Errorf("base directory '%s' does not exist: %w", shellToolSet.baseDir, err)
+		return nil, fmt.Errorf("base directory '%s' does not exist: %w", shellToolSet.BaseDir, err)
 	}
 	if !stat.IsDir() {
-		return nil, fmt.Errorf("base directory '%s' is not a directory", shellToolSet.baseDir)
+		return nil, fmt.Errorf("base directory '%s' is not a directory", shellToolSet.BaseDir)
 	}
 
 	// Validate configuration
@@ -110,11 +110,11 @@ func New(opts ...Option) (tool.ToolSet, error) {
 	}
 
 	// Initialize current working directory to base directory
-	shellToolSet.currentWorkDir = shellToolSet.baseDir
+	shellToolSet.currentWorkDir = shellToolSet.BaseDir
 
 	// Create function tools based on enabled features.
 	var tools []tool.CallableTool
-	if shellToolSet.executeCommandEnabled {
+	if shellToolSet.ExecuteCommandEnabled {
 		tools = append(tools, shellToolSet.executeCommandTool())
 		tools = append(tools, shellToolSet.changeDirectoryTool())
 	}
@@ -125,13 +125,13 @@ func New(opts ...Option) (tool.ToolSet, error) {
 
 // validateConfiguration validates the tool set configuration
 func (f *shellToolSet) validateConfiguration() error {
-	if f.timeout <= 0 {
+	if f.Timeout <= 0 {
 		return fmt.Errorf("timeout must be positive")
 	}
-	if f.maxOutputSize <= 0 {
+	if f.MaxOutputSize <= 0 {
 		return fmt.Errorf("max output size must be positive")
 	}
-	if f.maxOutputSize > 100*1024*1024 { // 100MB limit
+	if f.MaxOutputSize > 100*1024*1024 { // 100MB limit
 		return fmt.Errorf("max output size cannot exceed 100MB")
 	}
 	return nil
@@ -155,7 +155,7 @@ func (f *shellToolSet) resolvePath(relativePath string) (string, error) {
 	}
 
 	// Join with base directory
-	fullPath := filepath.Join(f.baseDir, cleanPath)
+	fullPath := filepath.Join(f.BaseDir, cleanPath)
 
 	// Get absolute paths for comparison
 	absFullPath, err := filepath.Abs(fullPath)
@@ -163,7 +163,7 @@ func (f *shellToolSet) resolvePath(relativePath string) (string, error) {
 		return "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	absBaseDir, err := filepath.Abs(f.baseDir)
+	absBaseDir, err := filepath.Abs(f.BaseDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute base directory: %w", err)
 	}

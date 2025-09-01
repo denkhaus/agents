@@ -124,8 +124,10 @@ func TestNewToolSet(t *testing.T) {
 
 func TestValidateInput(t *testing.T) {
 	toolSet := &shellToolSet{
-		baseDir:         ".",
-		allowedCommands: []string{"ls", "cat", "echo"},
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         ".",
+			AllowedCommands: []string{"ls", "cat", "echo"},
+		},
 	}
 
 	tests := []struct {
@@ -254,7 +256,9 @@ func TestIsCommandAllowed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toolSet := &shellToolSet{
-				allowedCommands: tt.allowedCommands,
+				ToolSetConfig: ToolSetConfig{
+					AllowedCommands: tt.allowedCommands,
+				},
 			}
 
 			result := toolSet.isCommandAllowed(tt.command)
@@ -360,7 +364,9 @@ func TestResolvePath(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir: tempDir,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir: tempDir,
+		},
 	}
 
 	tests := []struct {
@@ -448,11 +454,14 @@ func TestExecuteCommand(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"echo", "cat", "ls"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"echo", "cat", "ls"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -584,7 +593,9 @@ func TestValidateWorkingDirectory(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir: tempDir,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir: tempDir,
+		},
 	}
 
 	tests := []struct {
@@ -683,11 +694,14 @@ func TestChangeDirectory(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -831,11 +845,14 @@ func TestChangeDirectoryTool(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -922,11 +939,14 @@ func TestChangeDirectorySecurityValidation(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"cd"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"cd"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -998,8 +1018,10 @@ func TestChangeDirectorySecurityValidation(t *testing.T) {
 // Benchmark tests
 func BenchmarkValidateInput(b *testing.B) {
 	toolSet := &shellToolSet{
-		baseDir:         ".",
-		allowedCommands: []string{"ls", "cat", "echo"},
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         ".",
+			AllowedCommands: []string{"ls", "cat", "echo"},
+		},
 	}
 
 	input := ShellToolInput{
@@ -1015,7 +1037,9 @@ func BenchmarkValidateInput(b *testing.B) {
 
 func BenchmarkResolvePath(b *testing.B) {
 	toolSet := &shellToolSet{
-		baseDir: ".",
+		ToolSetConfig: ToolSetConfig{
+			BaseDir: ".",
+		},
 	}
 
 	b.ResetTimer()

@@ -39,11 +39,14 @@ func TestAbsolutePathWorkspaceValidation(t *testing.T) {
 	}
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat", "find"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat", "find"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	tests := []struct {
@@ -160,7 +163,9 @@ func TestValidateAbsolutePathWithinWorkspace(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir: tempDir,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir: tempDir,
+		},
 	}
 
 	tests := []struct {
@@ -236,11 +241,14 @@ func TestWorkspacePathEdgeCases(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	toolSet := &shellToolSet{
-		baseDir:         tempDir,
-		currentWorkDir:  tempDir,
-		allowedCommands: []string{"ls", "cat"},
-		timeout:         5 * time.Second,
-		maxOutputSize:   1024 * 1024,
+		ToolSetConfig: ToolSetConfig{
+			BaseDir:         tempDir,
+			AllowedCommands: []string{"ls", "cat"},
+			Timeout:         5 * time.Second,
+			MaxOutputSize:   1024 * 1024,
+		},
+
+		currentWorkDir: tempDir,
 	}
 
 	// Test edge cases

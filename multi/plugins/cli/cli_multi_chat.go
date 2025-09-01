@@ -162,7 +162,12 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 					if p.currentAgent != nil && p.currentAgent.Equal(info) {
 						marker = " (current)"
 					}
-					builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, info.ID(), marker))
+					// Mark human agents as non-selectable
+					if info.Role() == shared.AgentRoleHuman {
+						builder.WriteString(fmt.Sprintf("- %s (ID: %s) [HUMAN - not selectable]%s\n", info.Name, info.ID(), marker))
+					} else {
+						builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, info.ID(), marker))
+					}
 				}
 				builder.WriteString("=========================")
 				p.printSystemText(builder.String())
@@ -190,8 +195,13 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 				// Try to find agent by name
 				agentInfo := p.Processor.GetAgentInfoByAuthor(command)
 				if agentInfo != nil {
-					p.currentAgent = agentInfo
-					p.printSystemMessage("Selected agent: %s", agentInfo.Name)
+					// Prevent selecting the human agent as a target
+					if agentInfo.Role() == shared.AgentRoleHuman {
+						p.printSystemMessage("Cannot select human agent '%s' as a target. You can only send messages to AI agents.", agentInfo.Name)
+					} else {
+						p.currentAgent = agentInfo
+						p.printSystemMessage("Selected agent: %s", agentInfo.Name)
+					}
 				} else {
 					p.printSystemMessage("Unknown command or agent: %s. Use /help for available commands.", command)
 				}

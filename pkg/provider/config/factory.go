@@ -51,7 +51,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment strin
 		return nil, fmt.Errorf("failed to create tools: %w", err)
 	}
 
-	agentInfo, err := f.configProvider.GetAgentsInEnvironment(environment)
+	agentInfo, err := f.configProvider.GetAgentsInEnvironment(environment, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent info from environment %q: %w", environment, err)
 	}
@@ -227,8 +227,6 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 	return llmagent.New(agentConfig.Name, options...), nil
 }
 
-
-
 // getModel creates a model instance based on the configuration
 func (f *UnifiedAgentFactory) getModel(agentConfig *AgentConfig) (model.Model, error) {
 	switch agentConfig.Setting.Agent.LLM.Provider {
@@ -265,7 +263,3 @@ func (f *UnifiedAgentFactory) getModel(agentConfig *AgentConfig) (model.Model, e
 
 	return nil, fmt.Errorf("model provider %s is unknown", agentConfig.Setting.Agent.LLM.Provider)
 }
-
-
-
-

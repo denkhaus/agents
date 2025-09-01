@@ -23,11 +23,11 @@ const (
 
 // ToolSetConfig represents the tavily toolset configuration
 type ToolSetConfig struct {
-	ApiKey         string `json:"api_key"`
-	SearchEnabled  bool   `json:"search_enabled"`
-	CrawlEnabled   bool   `json:"crawl_enabled"`
-	ExtractEnabled bool   `json:"extract_enabled"`
-	MapEnabled     bool   `json:"map_enabled"`
+	ApiKey         string `json:"api_key" mapstructure:"api_key"`
+	SearchEnabled  bool   `json:"search_enabled" mapstructure:"search_enabled"`
+	CrawlEnabled   bool   `json:"crawl_enabled" mapstructure:"crawl_enabled"`
+	ExtractEnabled bool   `json:"extract_enabled" mapstructure:"extract_enabled"`
+	MapEnabled     bool   `json:"map_enabled" mapstructure:"map_enabled"`
 }
 
 // TavilyToolSet implements the ToolSet interface for Tavily API.

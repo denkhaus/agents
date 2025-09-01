@@ -15,8 +15,8 @@ const (
 
 // ToolSetConfig represents the file toolset configuration
 type ToolSetConfig struct {
-	WorkspacePath string `json:"workspace_path"`
-	ReadOnly      bool   `json:"read_only"`
+	WorkspacePath string `json:"workspace_path" mapstructure:"workspace_path"`
+	ReadOnly      bool   `json:"read_only" mapstructure:"read_only"`
 }
 
 func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
@@ -60,6 +60,16 @@ func (p *ToolSetConfig) create() (toolset tool.ToolSet, err error) {
 			file.WithReadFileEnabled(true),
 			file.WithReplaceContentEnabled(false),
 			file.WithSaveFileEnabled(false),
+			file.WithSearchFileEnabled(true),
+			file.WithSearchContentEnabled(true),
+		)
+	} else {
+		// Create full file operation tools (read and write).
+		options = append(options,
+			file.WithListFileEnabled(true),
+			file.WithReadFileEnabled(true),
+			file.WithReplaceContentEnabled(true),
+			file.WithSaveFileEnabled(true),
 			file.WithSearchFileEnabled(true),
 			file.WithSearchContentEnabled(true),
 		)

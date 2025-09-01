@@ -8,6 +8,6 @@ import (
 )
 
 func TestStartup(t *testing.T) {
-	err := startup(context.Background())
+	err := startup(context.Background(), "production")
 	assert.NoError(t, err)
 }

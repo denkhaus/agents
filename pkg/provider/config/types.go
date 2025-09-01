@@ -108,7 +108,7 @@ type ConfigProvider interface {
 	LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error)
 	LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error)
 	ValidateConfiguration() error
-	GetAgentsInEnvironment(environment string) ([]*shared.AgentInfo, error)
+	GetAgentsInEnvironment(environment string, includeHuman bool) ([]*shared.AgentInfo, error)
 	GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error) // New method
 }
 

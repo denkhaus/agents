@@ -37,7 +37,7 @@ func (t *shellToolSet) validateInput(input ShellToolInput) error {
 
 	// Check if command is in allowed list
 	if !t.isCommandAllowed(input.Command) {
-		return fmt.Errorf("command '%s' is not allowed. Allowed commands: %v", input.Command, t.allowedCommands)
+		return fmt.Errorf("command '%s' is not allowed. Allowed commands: %v", input.Command, t.AllowedCommands)
 	}
 
 	// Validate working directory if provided
@@ -61,12 +61,12 @@ func (t *shellToolSet) validateInput(input ShellToolInput) error {
 
 // isCommandAllowed checks if a command is in the allowed list
 func (t *shellToolSet) isCommandAllowed(command string) bool {
-	if len(t.allowedCommands) == 0 {
+	if len(t.AllowedCommands) == 0 {
 		// If no allowed commands specified, use default safe list
 		return t.isDefaultSafeCommand(command)
 	}
 
-	for _, allowed := range t.allowedCommands {
+	for _, allowed := range t.AllowedCommands {
 		if command == allowed {
 			return true
 		}
@@ -141,7 +141,7 @@ func (t *shellToolSet) validateAbsolutePathWithinWorkspace(absPath string) error
 	cleanPath := filepath.Clean(absPath)
 
 	// Get absolute path of base directory
-	absBaseDir, err := filepath.Abs(t.baseDir)
+	absBaseDir, err := filepath.Abs(t.BaseDir)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute base directory: %w", err)
 	}
@@ -167,9 +167,9 @@ func (t *shellToolSet) executeCommand(ctx context.Context, input ShellToolInput)
 		return t.handleChangeDirectory(ctx, input)
 	}
 	// Handle context timeout
-	if t.timeout > 0 {
+	if t.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, t.timeout)
+		ctx, cancel = context.WithTimeout(ctx, t.Timeout)
 		defer cancel()
 	}
 
@@ -257,7 +257,7 @@ func (t *shellToolSet) validateWorkingDirectory(workDir string) error {
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	absBaseDir, err := filepath.Abs(t.baseDir)
+	absBaseDir, err := filepath.Abs(t.BaseDir)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute base path: %w", err)
 	}
@@ -354,11 +354,11 @@ func (t *shellToolSet) handleChangeDirectory(_ context.Context, input ShellToolI
 	// Handle tilde (~) expansion - map to base directory (our sandbox "home")
 	if targetDir == "~" {
 		// Go directly to base directory
-		newWorkDir = t.baseDir
+		newWorkDir = t.BaseDir
 	} else if strings.HasPrefix(targetDir, "~/") {
 		// Replace ~ with base directory, then append the rest
 		targetDir = targetDir[2:] // Remove "~/"
-		newWorkDir = filepath.Join(t.baseDir, targetDir)
+		newWorkDir = filepath.Join(t.BaseDir, targetDir)
 	}
 
 	if newWorkDir == "" { // Only process if not already set by tilde expansion
@@ -398,7 +398,7 @@ func (t *shellToolSet) handleChangeDirectory(_ context.Context, input ShellToolI
 		}, nil
 	}
 
-	absBaseDir, err := filepath.Abs(t.baseDir)
+	absBaseDir, err := filepath.Abs(t.BaseDir)
 	if err != nil {
 		return &ShellToolOutput{
 			StdOut:   "",
@@ -489,8 +489,8 @@ func (t *shellToolSet) changeDirectory(ctx context.Context, input ChangeDirector
 
 	if result.ExitCode == 0 {
 		// Success - get relative paths for user-friendly output
-		relOldPath, _ := filepath.Rel(t.baseDir, oldWorkDirBeforeChange)
-		relNewPath, _ := filepath.Rel(t.baseDir, result.WorkDir)
+		relOldPath, _ := filepath.Rel(t.BaseDir, oldWorkDirBeforeChange)
+		relNewPath, _ := filepath.Rel(t.BaseDir, result.WorkDir)
 
 		return &ChangeDirectoryOutput{
 			NewWorkDir: relNewPath,
@@ -499,7 +499,7 @@ func (t *shellToolSet) changeDirectory(ctx context.Context, input ChangeDirector
 		}, nil
 	} else {
 		// Error - working directory didn't change
-		relCurrentPath, _ := filepath.Rel(t.baseDir, oldWorkDirBeforeChange)
+		relCurrentPath, _ := filepath.Rel(t.BaseDir, oldWorkDirBeforeChange)
 		return &ChangeDirectoryOutput{
 			NewWorkDir: relCurrentPath,
 			OldWorkDir: relCurrentPath,
