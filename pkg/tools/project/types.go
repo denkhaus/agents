@@ -28,6 +28,7 @@ type Task struct {
 	Complexity   int         `json:"complexity"`             // Used for breakdown decisions
 	Depth        int         `json:"depth"`                  // 0 for root tasks
 	Estimate     *int64      `json:"estimate,omitempty"`     // Time estimate in minutes
+	AssignedAgent *uuid.UUID `json:"assigned_agent,omitempty"` // Agent assigned to this task
 	Dependencies []uuid.UUID `json:"dependencies,omitempty"` // Tasks this task depends on
 	Dependents   []uuid.UUID `json:"dependents,omitempty"`   // Tasks that depend on this task
 	CreatedAt    time.Time   `json:"created_at"`
@@ -322,4 +323,70 @@ type setTaskEstimateArgs struct {
 type setTaskEstimateResult struct {
 	Task    *Task  `json:"task,omitempty" description:"The updated task"`
 	Message string `json:"message" description:"A message describing the result"`
+}
+
+// listAvailableAgentsArgs defines the arguments for listing available agents (empty struct)
+type listAvailableAgentsArgs struct{}
+
+// listAvailableAgentsResult defines the result of listing available agents
+type listAvailableAgentsResult struct {
+	Agents  []AgentInfo `json:"agents" description:"List of available agents in the system"`
+	Count   int         `json:"count" description:"Number of available agents"`
+	Message string      `json:"message" description:"A message describing the result"`
+}
+
+// AgentInfo represents information about an available agent
+type AgentInfo struct {
+	ID          string `json:"id" description:"Unique identifier of the agent"`
+	Name        string `json:"name" description:"Display name of the agent"`
+	Role        string `json:"role" description:"Role/type of the agent (e.g., researcher, coder, project-manager)"`
+	Description string `json:"description" description:"Detailed description of the agent's capabilities and purpose"`
+}
+
+// assignTaskToAgentArgs defines the arguments for assigning a task to an agent
+type assignTaskToAgentArgs struct {
+	TaskID  string `json:"task_id" description:"The ID of the task to assign"`
+	AgentID string `json:"agent_id" description:"The ID of the agent to assign the task to"`
+}
+
+// assignTaskToAgentResult defines the result of assigning a task to an agent
+type assignTaskToAgentResult struct {
+	Task    *Task  `json:"task,omitempty" description:"The updated task with agent assignment"`
+	Message string `json:"message" description:"A message describing the result"`
+}
+
+// unassignTaskFromAgentArgs defines the arguments for unassigning a task from an agent
+type unassignTaskFromAgentArgs struct {
+	TaskID string `json:"task_id" description:"The ID of the task to unassign"`
+}
+
+// unassignTaskFromAgentResult defines the result of unassigning a task from an agent
+type unassignTaskFromAgentResult struct {
+	Task    *Task  `json:"task,omitempty" description:"The updated task with removed agent assignment"`
+	Message string `json:"message" description:"A message describing the result"`
+}
+
+// listTasksByAgentArgs defines the arguments for listing tasks assigned to a specific agent
+type listTasksByAgentArgs struct {
+	ProjectID string `json:"project_id" description:"The ID of the project to search in"`
+	AgentID   string `json:"agent_id" description:"The ID of the agent to find tasks for"`
+}
+
+// listTasksByAgentResult defines the result of listing tasks assigned to a specific agent
+type listTasksByAgentResult struct {
+	Tasks   []*Task `json:"tasks,omitempty" description:"Tasks assigned to the specified agent"`
+	Count   int     `json:"count" description:"Number of tasks assigned to the agent"`
+	Message string  `json:"message" description:"A message describing the result"`
+}
+
+// listUnassignedTasksArgs defines the arguments for listing unassigned tasks
+type listUnassignedTasksArgs struct {
+	ProjectID string `json:"project_id" description:"The ID of the project to search in"`
+}
+
+// listUnassignedTasksResult defines the result of listing unassigned tasks
+type listUnassignedTasksResult struct {
+	Tasks   []*Task `json:"tasks,omitempty" description:"Tasks that have no agent assigned"`
+	Count   int     `json:"count" description:"Number of unassigned tasks"`
+	Message string  `json:"message" description:"A message describing the result"`
 }

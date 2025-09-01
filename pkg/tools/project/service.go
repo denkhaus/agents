@@ -365,6 +365,90 @@ func (s *service) SetTaskEstimate(ctx context.Context, taskID uuid.UUID, estimat
 	return s.repo.GetTask(ctx, taskID)
 }
 
+// Agent assignment methods
+
+// AssignTaskToAgent assigns a task to a specific agent
+func (s *service) AssignTaskToAgent(ctx context.Context, taskID uuid.UUID, agentID uuid.UUID) (*Task, error) {
+	task, err := s.repo.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("task not found: %w", err)
+	}
+
+	task.AssignedAgent = &agentID
+	task.UpdatedAt = time.Now()
+
+	if err := s.repo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to assign task to agent: %w", err)
+	}
+
+	return s.repo.GetTask(ctx, taskID)
+}
+
+// UnassignTaskFromAgent removes agent assignment from a task
+func (s *service) UnassignTaskFromAgent(ctx context.Context, taskID uuid.UUID) (*Task, error) {
+	task, err := s.repo.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("task not found: %w", err)
+	}
+
+	task.AssignedAgent = nil
+	task.UpdatedAt = time.Now()
+
+	if err := s.repo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to unassign task from agent: %w", err)
+	}
+
+	return s.repo.GetTask(ctx, taskID)
+}
+
+// ListTasksByAgent returns all tasks assigned to a specific agent in a project
+func (s *service) ListTasksByAgent(ctx context.Context, projectID uuid.UUID, agentID uuid.UUID) ([]*Task, error) {
+	// Validate project exists
+	if _, err := s.repo.GetProject(ctx, projectID); err != nil {
+		return nil, fmt.Errorf("project not found: %w", err)
+	}
+
+	// Get all tasks in the project
+	allTasks, err := s.repo.GetTasksByProject(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project tasks: %w", err)
+	}
+
+	// Filter tasks assigned to the specific agent
+	var assignedTasks []*Task
+	for _, task := range allTasks {
+		if task.AssignedAgent != nil && *task.AssignedAgent == agentID {
+			assignedTasks = append(assignedTasks, task)
+		}
+	}
+
+	return assignedTasks, nil
+}
+
+// ListUnassignedTasks returns all tasks that have no agent assigned in a project
+func (s *service) ListUnassignedTasks(ctx context.Context, projectID uuid.UUID) ([]*Task, error) {
+	// Validate project exists
+	if _, err := s.repo.GetProject(ctx, projectID); err != nil {
+		return nil, fmt.Errorf("project not found: %w", err)
+	}
+
+	// Get all tasks in the project
+	allTasks, err := s.repo.GetTasksByProject(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project tasks: %w", err)
+	}
+
+	// Filter tasks with no agent assignment
+	var unassignedTasks []*Task
+	for _, task := range allTasks {
+		if task.AssignedAgent == nil {
+			unassignedTasks = append(unassignedTasks, task)
+		}
+	}
+
+	return unassignedTasks, nil
+}
+
 func (s *service) FindNextActionableTask(ctx context.Context, projectID uuid.UUID) (*Task, error) {
 	// Validate project exists
 	if _, err := s.repo.GetProject(ctx, projectID); err != nil {

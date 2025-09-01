@@ -18,7 +18,10 @@ var (
 		AgentRoleHuman,
 		false,
 		"denkhaus",
-		"A human you can chat with",
+		`Senior team lead and decision authority with comprehensive project oversight.
+		Has the highest rank in the team hierarchy and serves as the final decision maker when agents cannot reach consensus or need guidance.
+		Possesses deep domain expertise, strategic vision, and complete visibility across all projects. Responsible for critical decisions, conflict resolution,
+		resource allocation, and overall project direction. Other agents should escalate complex decisions, blockers, and strategic questions to this human leader.`,
 	)
 )
 

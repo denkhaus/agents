@@ -38,6 +38,14 @@ type ProjectManager interface {
 	BulkUpdateTasks(ctx context.Context, taskIDs []uuid.UUID, updates TaskUpdates) error
 	DuplicateTask(ctx context.Context, taskID uuid.UUID, newProjectID uuid.UUID) (*Task, error)
 	SetTaskEstimate(ctx context.Context, taskID uuid.UUID, estimate int64) (*Task, error)
+	
+	// Agent assignment management
+	AssignTaskToAgent(ctx context.Context, taskID uuid.UUID, agentID uuid.UUID) (*Task, error)
+	UnassignTaskFromAgent(ctx context.Context, taskID uuid.UUID) (*Task, error)
+	ListTasksByAgent(ctx context.Context, projectID uuid.UUID, agentID uuid.UUID) ([]*Task, error)
+	ListUnassignedTasks(ctx context.Context, projectID uuid.UUID) ([]*Task, error)
+	
+	// Dependency management
 	AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*Task, error)
 	RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*Task, error)
 	GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]*Task, error)
