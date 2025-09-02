@@ -181,7 +181,7 @@ func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction strin
 	)
 
 	// Wrap with messaging using predefined ID
-	wrapper := messaging.NewMessagingWrapper(
+	wrapper := messaging.NewWrapper(
 		shared.NewAgent(baseAgent, agentID, false),
 		cs.broker,
 	)

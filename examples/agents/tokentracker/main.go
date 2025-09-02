@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/logger"
-	"github.com/denkhaus/agents/session/condenser"
+	"github.com/denkhaus/agents/pkg/session/condenser"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -133,13 +133,13 @@ func (c *tokenTrackerChat) setup(_ context.Context) error {
 	// Create the condenser service, wrapping the base session service.
 	condenserSessionService, err := condenser.NewWithOptions(
 		baseSessionService,
-		modelInstance, // Pass the LLM model instance for summarization
-		logger.Log,    // Provide the global logger for visibility
-		condenser.WithMaxContextTokens(4000),        // Example: max context size of 4000 tokens
-		condenser.WithTriggerThreshold(0.75),        // Example: trigger condensation at 75% capacity
+		modelInstance,                        // Pass the LLM model instance for summarization
+		logger.Log,                           // Provide the global logger for visibility
+		condenser.WithMaxContextTokens(4000), // Example: max context size of 4000 tokens
+		condenser.WithTriggerThreshold(0.75), // Example: trigger condensation at 75% capacity
 		condenser.WithSummaryPrompt("Summarize the conversation history for an LLM to continue the conversation without losing context. Keep it concise and focused on key facts."),
 		condenser.WithTokenCountingMethod(condenser.TokenCountingAuto), // Auto-select best token counting method
-		condenser.WithRecentEventsToKeep(2),         // Keep 2 most recent events
+		condenser.WithRecentEventsToKeep(2),                            // Keep 2 most recent events
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create condenser service: %w", err)

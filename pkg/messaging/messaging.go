@@ -19,8 +19,8 @@ type messagingWrapper struct {
 	broker MessageBroker
 }
 
-// NewMessagingWrapper creates a new messaging wrapper with a predefined ID
-func NewMessagingWrapper(baseAgent shared.TheAgent, broker MessageBroker) shared.TheAgent {
+// NewWrapper creates a new messaging wrapper with a predefined ID
+func NewWrapper(baseAgent shared.TheAgent, broker MessageBroker) shared.TheAgent {
 	// Create wrapper with predefined ID
 	wrapper := &messagingWrapper{
 		TheAgent: baseAgent,
