@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -72,7 +73,7 @@ func TestDuplicateTask(t *testing.T) {
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
 
-	originalTask := taskResult.(*Task)
+	originalTask := taskResult.(*shared.Task)
 
 	// Duplicate the task to the target project
 	duplicateTaskTool := findTool("duplicate_task")
@@ -94,7 +95,7 @@ func TestDuplicateTask(t *testing.T) {
 	assert.Equal(t, originalTask.Title, duplicatedTask.Title)
 	assert.Equal(t, originalTask.Description, duplicatedTask.Description)
 	assert.Equal(t, originalTask.Complexity, duplicatedTask.Complexity)
-	assert.Equal(t, TaskStatePending, duplicatedTask.State)
+	assert.Equal(t, shared.TaskStatePending, duplicatedTask.State)
 	assert.Equal(t, 0, duplicatedTask.Depth)
 	assert.Nil(t, duplicatedTask.ParentID)
 	assert.Nil(t, duplicatedTask.CompletedAt)
@@ -110,7 +111,7 @@ func TestDuplicateTask(t *testing.T) {
 	getTaskResult, err := getTaskTool.Call(ctx, getTaskInputJSON)
 	require.NoError(t, err)
 
-	stillOriginalTask := getTaskResult.(*Task)
+	stillOriginalTask := getTaskResult.(*shared.Task)
 	assert.Equal(t, originalTask.ID, stillOriginalTask.ID)
 	assert.Equal(t, originalTask.ProjectID, stillOriginalTask.ProjectID)
 	assert.Equal(t, originalTask.State, stillOriginalTask.State)

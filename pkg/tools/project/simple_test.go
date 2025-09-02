@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,9 +41,9 @@ func TestProjectTaskManager(t *testing.T) {
 	assert.Equal(t, task.Title, retrievedTask.Title)
 
 	// Test task state update
-	updatedTask, err := manager.UpdateTaskState(ctx, task.ID, TaskStateCompleted)
+	updatedTask, err := manager.UpdateTaskState(ctx, task.ID, shared.TaskStateCompleted)
 	require.NoError(t, err)
-	assert.Equal(t, TaskStateCompleted, updatedTask.State)
+	assert.Equal(t, shared.TaskStateCompleted, updatedTask.State)
 	assert.NotNil(t, updatedTask.CompletedAt)
 
 	// Test project progress

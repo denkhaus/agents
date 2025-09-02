@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -38,7 +39,7 @@ func (pts *projectTaskToolSet) createProjectTool() tool.CallableTool {
 }
 
 // getProject performs project retrieval
-func (pts *projectTaskToolSet) getProject(ctx context.Context, args getProjectArgs) (*Project, error) {
+func (pts *projectTaskToolSet) getProject(ctx context.Context, args getProjectArgs) (*shared.Project, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
@@ -64,7 +65,7 @@ func (pts *projectTaskToolSet) getProjectTool() tool.CallableTool {
 }
 
 // updateProjectDescription performs project description update
-func (pts *projectTaskToolSet) updateProjectDescription(ctx context.Context, args updateProjectDescriptionArgs) (*Project, error) {
+func (pts *projectTaskToolSet) updateProjectDescription(ctx context.Context, args updateProjectDescriptionArgs) (*shared.Project, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
@@ -174,7 +175,7 @@ func (pts *projectTaskToolSet) deleteProjectTool() tool.CallableTool {
 	)
 }
 
-func (pts *projectTaskToolSet) getProjectProgress(ctx context.Context, args getProjectProgressArgs) (*ProjectProgress, error) {
+func (pts *projectTaskToolSet) getProjectProgress(ctx context.Context, args getProjectProgressArgs) (*shared.ProjectProgress, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid project ID format: %w", err)

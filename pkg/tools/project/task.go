@@ -6,138 +6,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/denkhaus/agents/pkg/shared"
-	"github.com/denkhaus/agents/pkg/tools"
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
-	"github.com/samber/do"
 	"go.uber.org/zap" // Add this import
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 	"trpc.group/trpc-go/trpc-agent-go/tool/function"
 )
-
-const (
-	ToolSetName = "project_toolset"
-)
-
-// ToolSetConfig holds configuration for the project management toolset
-type ToolSetConfig struct {
-	IsReadOnly bool `json:"read_only" mapstructure:"read_only"`
-}
-
-// projectTaskToolSet implements the ToolSet interface for project task management
-type projectTaskToolSet struct {
-	ToolSetConfig
-	manager         ProjectManager
-	logger          *zap.Logger
-	tools           []tool.CallableTool
-	availableAgents []*shared.AgentInfo
-}
-
-func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
-	return func(config tools.ConfigPayload, availableAgents []*shared.AgentInfo) (tool.ToolSet, error) {
-		// Extract configuration and convert to options
-		var settings projectTaskToolSet
-		if err := config.Bind(&settings.ToolSetConfig); err != nil {
-			return nil, err
-		}
-
-		// Create options from settings
-		var opts []Option
-		opts = append(opts, WithReadOnly(settings.IsReadOnly))
-
-		if settings.manager != nil {
-			opts = append(opts, WithManager(settings.manager))
-		}
-		if settings.logger != nil {
-			opts = append(opts, WithLogger(settings.logger))
-		}
-		if len(availableAgents) > 0 {
-			opts = append(opts, WithAvailableAgents(availableAgents))
-		}
-
-		return New(opts...)
-	}, nil
-}
-
-// NewToolSet creates a new project task management tool set
-func New(opts ...Option) (tool.ToolSet, error) {
-	toolSet := &projectTaskToolSet{
-		manager: NewManager(DefaultConfig()),
-		logger:  zap.NewNop(), // Use null logger by default to avoid interfering with chat output
-	}
-
-	// Apply options
-	for _, opt := range opts {
-		opt(toolSet)
-	}
-
-	if toolSet.manager == nil {
-		return nil, fmt.Errorf("manager cannot be nil")
-	}
-
-	if toolSet.IsReadOnly {
-		// Initialize readonly tools
-		toolSet.tools = []tool.CallableTool{
-			toolSet.getProjectTool(),
-			toolSet.listProjectsTool(),
-			toolSet.getTaskTool(),
-			toolSet.getProjectProgressTool(),
-			toolSet.getChildTasksTool(),
-			toolSet.getParentTaskTool(),
-			toolSet.findNextActionableTaskTool(),
-			toolSet.findTasksNeedingBreakdownTool(),
-			toolSet.getRootTasksTool(),
-			toolSet.listTasksByStateTool(),
-			toolSet.listTasksForProjectTool(),
-			toolSet.getTaskDependenciesTool(),
-			toolSet.getDependentTasksTool(),
-			// Agent management tools (readonly)
-			toolSet.listAvailableAgentsTool(),
-			toolSet.listTasksByAgentTool(),
-			toolSet.listUnassignedTasksTool(),
-		}
-	} else {
-		// Initialize all tools
-		toolSet.tools = []tool.CallableTool{
-			toolSet.createProjectTool(),
-			toolSet.getProjectTool(),
-			toolSet.updateProjectDescriptionTool(), // Add this line
-			toolSet.listProjectsTool(),
-			toolSet.createTaskTool(),
-			toolSet.getTaskTool(),
-			toolSet.updateTaskDescriptionTool(), // Add this line
-			toolSet.updateTaskStateTool(),
-			toolSet.getProjectProgressTool(),
-			toolSet.getChildTasksTool(),
-			toolSet.getParentTaskTool(),
-			toolSet.findNextActionableTaskTool(),
-			toolSet.findTasksNeedingBreakdownTool(),
-			toolSet.getRootTasksTool(),
-			toolSet.listTasksByStateTool(),
-			toolSet.deleteTaskSubtreeTool(),
-			toolSet.updateTaskTool(),
-			toolSet.deleteTaskTool(),
-			toolSet.updateProjectTool(),
-			toolSet.deleteProjectTool(),
-			toolSet.listTasksForProjectTool(),
-			toolSet.bulkUpdateTasksTool(),
-			toolSet.duplicateTaskTool(),
-			toolSet.setTaskEstimateTool(),
-			toolSet.addTaskDependencyTool(),
-			toolSet.removeTaskDependencyTool(),
-			toolSet.getTaskDependenciesTool(),
-			toolSet.getDependentTasksTool(),
-			// Agent management tools
-			toolSet.listAvailableAgentsTool(),
-			toolSet.assignTaskToAgentTool(),
-			toolSet.unassignTaskFromAgentTool(),
-			toolSet.listTasksByAgentTool(),
-			toolSet.listUnassignedTasksTool(),
-		}
-	}
-
-	return toolSet, nil
-}
 
 // Tools returns the list of available tools
 func (pts *projectTaskToolSet) Tools(ctx context.Context) []tool.CallableTool {
@@ -150,7 +24,7 @@ func (pts *projectTaskToolSet) Close() error {
 }
 
 // createTask performs task creation
-func (pts *projectTaskToolSet) createTask(ctx context.Context, args createTaskArgs) (*Task, error) {
+func (pts *projectTaskToolSet) createTask(ctx context.Context, args createTaskArgs) (*shared.Task, error) {
 	projectID, err := uuid.Parse(args.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid project ID format: %w", err)
@@ -186,7 +60,7 @@ func (pts *projectTaskToolSet) createTaskTool() tool.CallableTool {
 }
 
 // getTask performs task retrieval
-func (pts *projectTaskToolSet) getTask(ctx context.Context, args getTaskArgs) (*Task, error) {
+func (pts *projectTaskToolSet) getTask(ctx context.Context, args getTaskArgs) (*shared.Task, error) {
 	taskID, err := uuid.Parse(args.TaskID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
@@ -212,7 +86,7 @@ func (pts *projectTaskToolSet) getTaskTool() tool.CallableTool {
 }
 
 // updateTaskDescription performs task description update
-func (pts *projectTaskToolSet) updateTaskDescription(ctx context.Context, args updateTaskDescriptionArgs) (*Task, error) {
+func (pts *projectTaskToolSet) updateTaskDescription(ctx context.Context, args updateTaskDescriptionArgs) (*shared.Task, error) {
 	taskID, err := uuid.Parse(args.TaskID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
@@ -238,7 +112,7 @@ func (pts *projectTaskToolSet) updateTaskDescriptionTool() tool.CallableTool {
 }
 
 // updateTaskState performs task state update
-func (pts *projectTaskToolSet) updateTaskState(ctx context.Context, args updateTaskStateArgs) (*Task, error) {
+func (pts *projectTaskToolSet) updateTaskState(ctx context.Context, args updateTaskStateArgs) (*shared.Task, error) {
 	taskID, err := uuid.Parse(args.TaskID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
@@ -291,7 +165,7 @@ func (pts *projectTaskToolSet) getChildTasksTool() tool.CallableTool {
 	)
 }
 
-func (pts *projectTaskToolSet) getParentTask(ctx context.Context, args getParentTaskArgs) (*Task, error) {
+func (pts *projectTaskToolSet) getParentTask(ctx context.Context, args getParentTaskArgs) (*shared.Task, error) {
 	taskID, err := uuid.Parse(args.TaskID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid task ID format: %w", err)
@@ -588,7 +462,7 @@ func (pts *projectTaskToolSet) bulkUpdateTasks(ctx context.Context, args bulkUpd
 	}
 
 	// Create updates object
-	updates := TaskUpdates{
+	updates := shared.TaskUpdates{
 		State:      args.State,
 		Complexity: args.Complexity,
 	}

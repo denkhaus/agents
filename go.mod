@@ -4,10 +4,12 @@ go 1.25.0
 
 require (
 	cuelang.org/go v0.14.1
+	entgo.io/ent v0.14.5
 	github.com/MichaelMure/go-term-markdown v0.1.4
 	github.com/briandowns/spinner v1.23.2
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/chzyer/readline v1.5.1
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
@@ -15,6 +17,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/lib/pq v1.10.9
 	github.com/magefile/mage v1.15.0
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/openai/openai-go v1.12.0
@@ -40,7 +43,6 @@ require (
 
 require (
 	cuelabs.dev/go/oci/ociregistry v0.0.0-20250715075730-49cab49c8e9d // indirect
-	entgo.io/ent v0.14.5 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -48,7 +50,6 @@ require (
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cockroachdb/apd/v3 v3.2.1 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
@@ -60,7 +61,6 @@ require (
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.13 // indirect
-	github.com/lib/pq v1.10.9 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

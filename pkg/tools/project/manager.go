@@ -1,18 +1,20 @@
 package project
 
 import (
+	"github.com/denkhaus/agents/pkg/tools/project/repository/inmemory"
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
 // NewManager creates a new project task manager with default in-memory repository
 func NewManager(config *Config) ProjectManager {
-	repo := newMemoryRepository()
+	repo := inmemory.NewMemoryRepository()
 	svc := newService(repo, config)
 	return svc
 }
 
 // NewManagerWithRepository creates a new project task manager with custom repository
-func NewManagerWithRepository(repo Repository, config *Config) ProjectManager {
+func NewManagerWithRepository(repo shared.Repository, config *Config) ProjectManager {
 	svc := newService(repo, config)
 	return svc
 }

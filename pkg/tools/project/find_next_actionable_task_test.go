@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -62,7 +63,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 		require.NoError(t, err)
-		task1 := task1Result.(*Task)
+		task1 := task1Result.(*shared.Task)
 
 		// Create second task
 		task2Input := map[string]interface{}{
@@ -75,7 +76,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 		require.NoError(t, err)
-		task2 := task2Result.(*Task)
+		task2 := task2Result.(*shared.Task)
 
 		// Find next actionable task
 		findNextActionableTaskTool := findTool("find_next_actionable_task")
@@ -126,7 +127,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependencyTaskResult, err := createTaskTool.Call(ctx, dependencyTaskInputJSON)
 		require.NoError(t, err)
-		dependencyTask := dependencyTaskResult.(*Task)
+		dependencyTask := dependencyTaskResult.(*shared.Task)
 
 		// Create second task (dependent on the first)
 		dependentTaskInput := map[string]interface{}{
@@ -139,7 +140,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependentTaskResult, err := createTaskTool.Call(ctx, dependentTaskInputJSON)
 		require.NoError(t, err)
-		dependentTask := dependentTaskResult.(*Task)
+		dependentTask := dependentTaskResult.(*shared.Task)
 
 		// Add dependency
 		addDependencyTool := findTool("add_task_dependency")
@@ -212,7 +213,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependencyTask1Result, err := createTaskTool.Call(ctx, dependencyTask1InputJSON)
 		require.NoError(t, err)
-		dependencyTask1 := dependencyTask1Result.(*Task)
+		dependencyTask1 := dependencyTask1Result.(*shared.Task)
 
 		dependencyTask2Input := map[string]interface{}{
 			"project_id":  projectID,
@@ -224,7 +225,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependencyTask2Result, err := createTaskTool.Call(ctx, dependencyTask2InputJSON)
 		require.NoError(t, err)
-		dependencyTask2 := dependencyTask2Result.(*Task)
+		dependencyTask2 := dependencyTask2Result.(*shared.Task)
 
 		// Create dependent task that depends on both
 		dependentTaskInput := map[string]interface{}{
@@ -237,7 +238,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependentTaskResult, err := createTaskTool.Call(ctx, dependentTaskInputJSON)
 		require.NoError(t, err)
-		dependentTask := dependentTaskResult.(*Task)
+		dependentTask := dependentTaskResult.(*shared.Task)
 
 		// Add dependencies
 		addDependencyTool := findTool("add_task_dependency")
@@ -365,12 +366,12 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 			},
 		}
 
-		tasks := make([]*Task, len(taskInputs))
+		tasks := make([]*shared.Task, len(taskInputs))
 		for i, taskInput := range taskInputs {
 			taskInputJSON, _ := json.Marshal(taskInput)
 			taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 			require.NoError(t, err)
-			tasks[i] = taskResult.(*Task)
+			tasks[i] = taskResult.(*shared.Task)
 		}
 
 		// Add dependencies to create the chain
@@ -447,7 +448,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependencyTaskResult, err := createTaskTool.Call(ctx, dependencyTaskInputJSON)
 		require.NoError(t, err)
-		dependencyTask := dependencyTaskResult.(*Task)
+		dependencyTask := dependencyTaskResult.(*shared.Task)
 
 		// Create dependent task
 		dependentTaskInput := map[string]interface{}{
@@ -460,7 +461,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		dependentTaskResult, err := createTaskTool.Call(ctx, dependentTaskInputJSON)
 		require.NoError(t, err)
-		dependentTask := dependentTaskResult.(*Task)
+		dependentTask := dependentTaskResult.(*shared.Task)
 
 		// Add dependency
 		addDependencyTool := findTool("add_task_dependency")
@@ -536,7 +537,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 		require.NoError(t, err)
-		task1 := task1Result.(*Task)
+		task1 := task1Result.(*shared.Task)
 
 		task2Input := map[string]interface{}{
 			"project_id":  projectID,
@@ -548,7 +549,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 		require.NoError(t, err)
-		task2 := task2Result.(*Task)
+		task2 := task2Result.(*shared.Task)
 
 		// Try to create a circular dependency: Task 1 depends on Task 2
 		addDependencyTool := findTool("add_task_dependency")
@@ -600,7 +601,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 		require.NoError(t, err)
-		task1 := task1Result.(*Task)
+		task1 := task1Result.(*shared.Task)
 
 		task2Input := map[string]interface{}{
 			"project_id":  projectID,
@@ -612,7 +613,7 @@ func TestFindNextActionableTaskWithDependencies(t *testing.T) {
 
 		task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 		require.NoError(t, err)
-		task2 := task2Result.(*Task)
+		task2 := task2Result.(*shared.Task)
 
 		// Add dependencies: Task 2 depends on Task 1
 		addDependencyTool := findTool("add_task_dependency")

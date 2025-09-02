@@ -49,8 +49,7 @@ func (Project) Fields() []ent.Field {
 // Edges of the Project.
 func (Project) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("tasks", Task.Type).
-			StorageKey(edge.Column("project_id")),
+		edge.To("tasks", Task.Type),
 	}
 }
 

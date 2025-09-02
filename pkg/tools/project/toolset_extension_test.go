@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -60,7 +61,7 @@ func TestFindNextActionableTask(t *testing.T) {
 
 	task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 	require.NoError(t, err)
-	task1 := task1Result.(*Task)
+	task1 := task1Result.(*shared.Task)
 
 	// Create second task with higher priority
 	task2Input := map[string]interface{}{
@@ -74,7 +75,7 @@ func TestFindNextActionableTask(t *testing.T) {
 	task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 	require.NoError(t, err)
 
-	task2 := task2Result.(*Task)
+	task2 := task2Result.(*shared.Task)
 	assert.Equal(t, "Task 2", task2.Title)
 	assert.Equal(t, 3, task2.Complexity)
 
@@ -159,7 +160,7 @@ func TestFindTasksNeedingBreakdown(t *testing.T) {
 
 	complexTaskResult, err := createTaskTool.Call(ctx, complexTaskInputJSON)
 	require.NoError(t, err)
-	complexTask := complexTaskResult.(*Task)
+	complexTask := complexTaskResult.(*shared.Task)
 
 	// Create a simple task that doesn't need breakdown
 	simpleTaskInput := map[string]interface{}{
@@ -239,7 +240,7 @@ func TestGetRootTasks(t *testing.T) {
 
 	rootTaskResult, err := createTaskTool.Call(ctx, rootTaskInputJSON)
 	require.NoError(t, err)
-	rootTask := rootTaskResult.(*Task)
+	rootTask := rootTaskResult.(*shared.Task)
 
 	// Create subtask
 	subTaskInput := map[string]interface{}{
@@ -320,13 +321,13 @@ func TestListTasksByState(t *testing.T) {
 
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
-	task := taskResult.(*Task)
+	task := taskResult.(*shared.Task)
 
 	// Update task state to completed
 	updateTaskStateTool := findTool("update_task_state")
 	stateInput := map[string]interface{}{
 		"task_id": task.ID.String(),
-		"state":   TaskStateCompleted,
+		"state":   shared.TaskStateCompleted,
 	}
 	stateInputJSON, _ := json.Marshal(stateInput)
 
@@ -337,7 +338,7 @@ func TestListTasksByState(t *testing.T) {
 	listTasksByStateTool := findTool("list_tasks_by_state")
 	listInput := map[string]interface{}{
 		"project_id": projectID,
-		"state":      TaskStateCompleted,
+		"state":      shared.TaskStateCompleted,
 	}
 	listInputJSON, _ := json.Marshal(listInput)
 
@@ -347,5 +348,5 @@ func TestListTasksByState(t *testing.T) {
 	result := listResult.(listTasksByStateResult)
 	assert.Equal(t, 1, result.Count)
 	assert.Equal(t, task.ID, result.Tasks[0].ID)
-	assert.Equal(t, TaskStateCompleted, result.Tasks[0].State)
+	assert.Equal(t, shared.TaskStateCompleted, result.Tasks[0].State)
 }

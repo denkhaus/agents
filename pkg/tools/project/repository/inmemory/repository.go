@@ -1,4 +1,4 @@
-package project
+package inmemory
 
 import (
 	"context"
@@ -7,22 +7,24 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/pkg/shared/resource"
+
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 )
 
 // memoryRepository implements Repository interface with in-memory storage using resource managers
 type memoryRepository struct {
-	projects       *resource.Manager[*Project]
-	tasks          *resource.Manager[*Task]
+	projects       *resource.Manager[*shared.Project]
+	tasks          *resource.Manager[*shared.Task]
 	tasksByProject *resource.Manager[[]uuid.UUID]
 	tasksByParent  *resource.Manager[[]uuid.UUID]
 }
 
 // newMemoryRepository creates a new in-memory repository
-func newMemoryRepository() Repository {
+func NewMemoryRepository() shared.Repository {
 	return &memoryRepository{
-		projects:       resource.NewManager[*Project](),
-		tasks:          resource.NewManager[*Task](),
+		projects:       resource.NewManager[*shared.Project](),
+		tasks:          resource.NewManager[*shared.Task](),
 		tasksByProject: resource.NewManager[[]uuid.UUID](),
 		tasksByParent:  resource.NewManager[[]uuid.UUID](),
 	}
@@ -32,7 +34,7 @@ func newMemoryRepository() Repository {
 
 // Project operations
 
-func (r *memoryRepository) CreateProject(ctx context.Context, project *Project) error {
+func (r *memoryRepository) CreateProject(ctx context.Context, project *shared.Project) error {
 	if r.projects.Exists(project.ID) {
 		return fmt.Errorf("project with ID %s already exists", project.ID)
 	}
@@ -50,7 +52,7 @@ func (r *memoryRepository) CreateProject(ctx context.Context, project *Project) 
 	return nil
 }
 
-func (r *memoryRepository) GetProject(ctx context.Context, id uuid.UUID) (*Project, error) {
+func (r *memoryRepository) GetProject(ctx context.Context, id uuid.UUID) (*shared.Project, error) {
 	project, exists := r.projects.Get(id)
 	if !exists {
 		return nil, fmt.Errorf("project with ID %s not found", id)
@@ -60,8 +62,8 @@ func (r *memoryRepository) GetProject(ctx context.Context, id uuid.UUID) (*Proje
 	return &projectCopy, nil
 }
 
-func (r *memoryRepository) UpdateProject(ctx context.Context, project *Project) error {
-	return r.projects.UpdateWithError(project.ID, func(existing *Project) (*Project, error) {
+func (r *memoryRepository) UpdateProject(ctx context.Context, project *shared.Project) error {
+	return r.projects.UpdateWithError(project.ID, func(existing *shared.Project) (*shared.Project, error) {
 		projectCopy := *project
 		projectCopy.CreatedAt = existing.CreatedAt
 		projectCopy.UpdatedAt = time.Now()
@@ -87,9 +89,9 @@ func (r *memoryRepository) DeleteProject(ctx context.Context, id uuid.UUID) erro
 	return nil
 }
 
-func (r *memoryRepository) ListProjects(ctx context.Context) ([]*Project, error) {
+func (r *memoryRepository) ListProjects(ctx context.Context) ([]*shared.Project, error) {
 	allProjects := r.projects.GetAll()
-	projects := make([]*Project, 0, len(allProjects))
+	projects := make([]*shared.Project, 0, len(allProjects))
 
 	for _, project := range allProjects {
 		projectCopy := *project
@@ -105,7 +107,7 @@ func (r *memoryRepository) ListProjects(ctx context.Context) ([]*Project, error)
 
 // Task operations
 
-func (r *memoryRepository) CreateTask(ctx context.Context, task *Task) error {
+func (r *memoryRepository) CreateTask(ctx context.Context, task *shared.Task) error {
 	if r.tasks.Exists(task.ID) {
 		return fmt.Errorf("task with ID %s already exists", task.ID)
 	}
@@ -155,7 +157,7 @@ func (r *memoryRepository) CreateTask(ctx context.Context, task *Task) error {
 	return nil
 }
 
-func (r *memoryRepository) GetTask(ctx context.Context, id uuid.UUID) (*Task, error) {
+func (r *memoryRepository) GetTask(ctx context.Context, id uuid.UUID) (*shared.Task, error) {
 	task, exists := r.tasks.Get(id)
 	if !exists {
 		return nil, fmt.Errorf("task with ID %s not found", id)
@@ -165,9 +167,9 @@ func (r *memoryRepository) GetTask(ctx context.Context, id uuid.UUID) (*Task, er
 	return &taskCopy, nil
 }
 
-func (r *memoryRepository) UpdateTask(ctx context.Context, task *Task) error {
+func (r *memoryRepository) UpdateTask(ctx context.Context, task *shared.Task) error {
 	var projectID uuid.UUID
-	err := r.tasks.UpdateWithError(task.ID, func(existing *Task) (*Task, error) {
+	err := r.tasks.UpdateWithError(task.ID, func(existing *shared.Task) (*shared.Task, error) {
 		taskCopy := *task
 		taskCopy.CreatedAt = existing.CreatedAt
 		taskCopy.UpdatedAt = time.Now()
@@ -176,10 +178,10 @@ func (r *memoryRepository) UpdateTask(ctx context.Context, task *Task) error {
 		taskCopy.Depth = existing.Depth
 		projectID = existing.ProjectID
 
-		if task.State == TaskStateCompleted && existing.State != TaskStateCompleted {
+		if task.State == shared.TaskStateCompleted && existing.State != shared.TaskStateCompleted {
 			now := time.Now()
 			taskCopy.CompletedAt = &now
-		} else if task.State != TaskStateCompleted {
+		} else if task.State != shared.TaskStateCompleted {
 			taskCopy.CompletedAt = nil
 		}
 
@@ -244,7 +246,7 @@ func (r *memoryRepository) deleteTaskInternal(taskID uuid.UUID, projectID uuid.U
 }
 
 func (r *memoryRepository) updateProjectMetrics(projectID uuid.UUID) {
-	r.projects.Update(projectID, func(project *Project) *Project {
+	r.projects.Update(projectID, func(project *shared.Project) *shared.Project {
 		taskIDs, exists := r.tasksByProject.Get(projectID)
 		if !exists {
 			return project
@@ -254,7 +256,7 @@ func (r *memoryRepository) updateProjectMetrics(projectID uuid.UUID) {
 		completedTasks := 0
 
 		for _, taskID := range taskIDs {
-			if task, exists := r.tasks.Get(taskID); exists && task.State == TaskStateCompleted {
+			if task, exists := r.tasks.Get(taskID); exists && task.State == shared.TaskStateCompleted {
 				completedTasks++
 			}
 		}
@@ -276,9 +278,9 @@ func (r *memoryRepository) updateProjectMetrics(projectID uuid.UUID) {
 
 // Simplified implementations for the remaining methods
 
-func (r *memoryRepository) ListTasks(ctx context.Context, filter TaskFilter) ([]*Task, error) {
+func (r *memoryRepository) ListTasks(ctx context.Context, filter shared.TaskFilter) ([]*shared.Task, error) {
 	allTasks := r.tasks.GetAll()
-	var tasks []*Task
+	var tasks []*shared.Task
 
 	for _, task := range allTasks {
 		if r.matchesFilter(task, filter) {
@@ -294,7 +296,7 @@ func (r *memoryRepository) ListTasks(ctx context.Context, filter TaskFilter) ([]
 	return tasks, nil
 }
 
-func (r *memoryRepository) matchesFilter(task *Task, filter TaskFilter) bool {
+func (r *memoryRepository) matchesFilter(task *shared.Task, filter shared.TaskFilter) bool {
 	if filter.ProjectID != nil && task.ProjectID != *filter.ProjectID {
 		return false
 	}
@@ -321,17 +323,17 @@ func (r *memoryRepository) matchesFilter(task *Task, filter TaskFilter) bool {
 	return true
 }
 
-func (r *memoryRepository) GetTasksByProject(ctx context.Context, projectID uuid.UUID) ([]*Task, error) {
-	return r.ListTasks(ctx, TaskFilter{ProjectID: &projectID})
+func (r *memoryRepository) GetTasksByProject(ctx context.Context, projectID uuid.UUID) ([]*shared.Task, error) {
+	return r.ListTasks(ctx, shared.TaskFilter{ProjectID: &projectID})
 }
 
-func (r *memoryRepository) GetTasksByParent(ctx context.Context, parentID uuid.UUID) ([]*Task, error) {
+func (r *memoryRepository) GetTasksByParent(ctx context.Context, parentID uuid.UUID) ([]*shared.Task, error) {
 	childIDs, exists := r.tasksByParent.Get(parentID)
 	if !exists {
-		return []*Task{}, nil
+		return []*shared.Task{}, nil
 	}
 
-	var childTasks []*Task
+	var childTasks []*shared.Task
 	for _, childID := range childIDs {
 		if task, exists := r.tasks.Get(childID); exists {
 			taskCopy := *task
@@ -347,13 +349,13 @@ func (r *memoryRepository) GetTasksByParent(ctx context.Context, parentID uuid.U
 	return childTasks, nil
 }
 
-func (r *memoryRepository) GetRootTasks(ctx context.Context, projectID uuid.UUID) ([]*Task, error) {
+func (r *memoryRepository) GetRootTasks(ctx context.Context, projectID uuid.UUID) ([]*shared.Task, error) {
 	taskIDs, exists := r.tasksByProject.Get(projectID)
 	if !exists {
-		return []*Task{}, nil
+		return []*shared.Task{}, nil
 	}
 
-	var rootTasks []*Task
+	var rootTasks []*shared.Task
 	for _, taskID := range taskIDs {
 		if task, exists := r.tasks.Get(taskID); exists && task.ParentID == nil {
 			taskCopy := *task
@@ -368,7 +370,7 @@ func (r *memoryRepository) GetRootTasks(ctx context.Context, projectID uuid.UUID
 	return rootTasks, nil
 }
 
-func (r *memoryRepository) GetParentTask(ctx context.Context, taskID uuid.UUID) (*Task, error) {
+func (r *memoryRepository) GetParentTask(ctx context.Context, taskID uuid.UUID) (*shared.Task, error) {
 	task, err := r.GetTask(ctx, taskID)
 	if err != nil {
 		return nil, err
@@ -403,7 +405,7 @@ func (r *memoryRepository) DeleteTaskSubtree(ctx context.Context, taskID uuid.UU
 	return nil
 }
 
-func (r *memoryRepository) GetProjectProgress(ctx context.Context, projectID uuid.UUID) (*ProjectProgress, error) {
+func (r *memoryRepository) GetProjectProgress(ctx context.Context, projectID uuid.UUID) (*shared.ProjectProgress, error) {
 	if !r.projects.Exists(projectID) {
 		return nil, fmt.Errorf("project with ID %s not found", projectID)
 	}
@@ -413,7 +415,7 @@ func (r *memoryRepository) GetProjectProgress(ctx context.Context, projectID uui
 		taskIDs = []uuid.UUID{}
 	}
 
-	progress := &ProjectProgress{
+	progress := &shared.ProjectProgress{
 		ProjectID:    projectID,
 		TasksByDepth: make(map[int]int),
 	}
@@ -428,15 +430,15 @@ func (r *memoryRepository) GetProjectProgress(ctx context.Context, projectID uui
 		progress.TasksByDepth[task.Depth]++
 
 		switch task.State {
-		case TaskStateCompleted:
+		case shared.TaskStateCompleted:
 			progress.CompletedTasks++
-		case TaskStateInProgress:
+		case shared.TaskStateInProgress:
 			progress.InProgressTasks++
-		case TaskStatePending:
+		case shared.TaskStatePending:
 			progress.PendingTasks++
-		case TaskStateBlocked:
+		case shared.TaskStateBlocked:
 			progress.BlockedTasks++
-		case TaskStateCancelled:
+		case shared.TaskStateCancelled:
 			progress.CancelledTasks++
 		}
 	}
@@ -467,4 +469,107 @@ func (r *memoryRepository) GetTaskCountByDepth(ctx context.Context, projectID uu
 	}
 
 	return counts, nil
+}
+
+// AddTaskDependency adds a dependency relationship between tasks
+func (r *memoryRepository) AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*shared.Task, error) {
+	// Get both tasks to ensure they exist and are in the same project
+	task, err := r.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	dependsOnTask, err := r.GetTask(ctx, dependsOnTaskID)
+	if err != nil {
+		return nil, err
+	}
+
+	if task.ProjectID != dependsOnTask.ProjectID {
+		return nil, fmt.Errorf("tasks must be in the same project")
+	}
+
+	// Check if dependency already exists
+	for _, depID := range task.Dependencies {
+		if depID == dependsOnTaskID {
+			return nil, fmt.Errorf("dependency already exists")
+		}
+	}
+
+	// Add dependency
+	updatedTask := *task
+	updatedTask.Dependencies = append(task.Dependencies, dependsOnTaskID)
+
+	if err := r.UpdateTask(ctx, &updatedTask); err != nil {
+		return nil, err
+	}
+
+	return r.GetTask(ctx, taskID)
+}
+
+// RemoveTaskDependency removes a dependency relationship between tasks
+func (r *memoryRepository) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*shared.Task, error) {
+	task, err := r.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find and remove dependency
+	updatedDeps := make([]uuid.UUID, 0, len(task.Dependencies))
+	found := false
+	for _, depID := range task.Dependencies {
+		if depID != dependsOnTaskID {
+			updatedDeps = append(updatedDeps, depID)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("dependency not found")
+	}
+
+	updatedTask := *task
+	updatedTask.Dependencies = updatedDeps
+
+	if err := r.UpdateTask(ctx, &updatedTask); err != nil {
+		return nil, err
+	}
+
+	return r.GetTask(ctx, taskID)
+}
+
+// GetTaskDependencies retrieves all tasks that the given task depends on
+func (r *memoryRepository) GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]*shared.Task, error) {
+	task, err := r.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	dependencies := make([]*shared.Task, 0, len(task.Dependencies))
+	for _, depID := range task.Dependencies {
+		depTask, err := r.GetTask(ctx, depID)
+		if err == nil { // Skip missing dependencies instead of erroring
+			dependencies = append(dependencies, depTask)
+		}
+	}
+
+	return dependencies, nil
+}
+
+// GetDependentTasks retrieves all tasks that depend on the given task
+func (r *memoryRepository) GetDependentTasks(ctx context.Context, taskID uuid.UUID) ([]*shared.Task, error) {
+	allTasks := r.tasks.GetAll()
+	dependents := make([]*shared.Task, 0)
+
+	for _, task := range allTasks {
+		for _, depID := range task.Dependencies {
+			if depID == taskID {
+				taskCopy := *task
+				dependents = append(dependents, &taskCopy)
+				break
+			}
+		}
+	}
+
+	return dependents, nil
 }

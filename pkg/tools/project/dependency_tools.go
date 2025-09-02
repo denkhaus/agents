@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	// Add this import
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap" // Add this import
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -19,8 +20,8 @@ type addTaskDependencyArgs struct {
 
 // addTaskDependencyResult defines the result of adding a task dependency
 type addTaskDependencyResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // addTaskDependency adds a dependency relationship between two tasks
@@ -67,8 +68,8 @@ type removeTaskDependencyArgs struct {
 
 // removeTaskDependencyResult defines the result of removing a task dependency
 type removeTaskDependencyResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // removeTaskDependency removes a dependency relationship between two tasks
@@ -114,9 +115,9 @@ type getTaskDependenciesArgs struct {
 
 // getTaskDependenciesResult defines the result of getting task dependencies
 type getTaskDependenciesResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks that the specified task depends on"`
-	Count   int     `json:"count" description:"The number of dependencies"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"The tasks that the specified task depends on"`
+	Count   int            `json:"count" description:"The number of dependencies"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // getTaskDependencies gets all tasks that the specified task depends on
@@ -158,9 +159,9 @@ type getDependentTasksArgs struct {
 
 // getDependentTasksResult defines the result of getting dependent tasks
 type getDependentTasksResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks that depend on the specified task"`
-	Count   int     `json:"count" description:"The number of dependent tasks"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"The tasks that depend on the specified task"`
+	Count   int            `json:"count" description:"The number of dependent tasks"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // getDependentTasks gets all tasks that depend on the specified task

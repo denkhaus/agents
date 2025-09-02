@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +67,7 @@ func TestProjectTaskToolSet(t *testing.T) {
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
 
-	rootTask := taskResult.(*Task)
+	rootTask := taskResult.(*shared.Task)
 	assert.Equal(t, "Root Task", rootTask.Title)
 	assert.Equal(t, 5, rootTask.Complexity)
 	assert.Equal(t, 0, rootTask.Depth)
@@ -85,7 +86,7 @@ func TestProjectTaskToolSet(t *testing.T) {
 	subtaskResult, err := createTaskTool.Call(ctx, subtaskInputJSON)
 	require.NoError(t, err)
 
-	subtask := subtaskResult.(*Task)
+	subtask := subtaskResult.(*shared.Task)
 	assert.Equal(t, "Subtask 1", subtask.Title)
 	assert.Equal(t, 1, subtask.Depth)
 	assert.Equal(t, rootTask.ID, *subtask.ParentID)
@@ -115,8 +116,8 @@ func TestProjectTaskToolSet(t *testing.T) {
 	updateResult, err := updateTaskStateTool.Call(ctx, updateStateInputJSON)
 	require.NoError(t, err)
 
-	updatedTask := updateResult.(*Task)
-	assert.Equal(t, TaskStateCompleted, updatedTask.State)
+	updatedTask := updateResult.(*shared.Task)
+	assert.Equal(t, shared.TaskStateCompleted, updatedTask.State)
 	assert.NotNil(t, updatedTask.CompletedAt)
 
 	// Test project progress
@@ -129,7 +130,7 @@ func TestProjectTaskToolSet(t *testing.T) {
 	progressResult, err := getProjectProgressTool.Call(ctx, progressInputJSON)
 	require.NoError(t, err)
 
-	progress := progressResult.(*ProjectProgress)
+	progress := progressResult.(*shared.ProjectProgress)
 	assert.Equal(t, project.Project.ID, progress.ProjectID)
 	assert.Equal(t, 2, progress.TotalTasks)
 	assert.Equal(t, 1, progress.CompletedTasks)
@@ -320,7 +321,7 @@ func TestProjectTaskToolSetDepthLimits(t *testing.T) {
 	rootTaskResult, err := createTaskTool.Call(ctx, rootTaskInputJSON)
 	require.NoError(t, err)
 
-	rootTask := rootTaskResult.(*Task)
+	rootTask := rootTaskResult.(*shared.Task)
 
 	// Create max depth tasks
 	parentID := rootTask.ID.String()

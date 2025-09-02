@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 )
 
 // AddTaskDependency adds a dependency relationship between two tasks
-func (s *service) AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*Task, error) {
+func (s *service) AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*shared.Task, error) {
 	// Validate that both tasks exist
 	task, err := s.repo.GetTask(ctx, taskID)
 	if err != nil {
@@ -60,7 +61,7 @@ func (s *service) AddTaskDependency(ctx context.Context, taskID uuid.UUID, depen
 }
 
 // RemoveTaskDependency removes a dependency relationship between two tasks
-func (s *service) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*Task, error) {
+func (s *service) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*shared.Task, error) {
 	// Get both tasks
 	task, err := s.repo.GetTask(ctx, taskID)
 	if err != nil {
@@ -110,13 +111,13 @@ func (s *service) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, de
 }
 
 // GetTaskDependencies returns all tasks that the given task depends on
-func (s *service) GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]*Task, error) {
+func (s *service) GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]*shared.Task, error) {
 	task, err := s.repo.GetTask(ctx, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	var dependencies []*Task
+	var dependencies []*shared.Task
 	for _, depID := range task.Dependencies {
 		depTask, err := s.repo.GetTask(ctx, depID)
 		if err != nil {
@@ -130,13 +131,13 @@ func (s *service) GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]
 }
 
 // GetDependentTasks returns all tasks that depend on the given task
-func (s *service) GetDependentTasks(ctx context.Context, taskID uuid.UUID) ([]*Task, error) {
+func (s *service) GetDependentTasks(ctx context.Context, taskID uuid.UUID) ([]*shared.Task, error) {
 	task, err := s.repo.GetTask(ctx, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	var dependents []*Task
+	var dependents []*shared.Task
 	for _, depID := range task.Dependents {
 		depTask, err := s.repo.GetTask(ctx, depID)
 		if err != nil {

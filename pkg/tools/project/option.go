@@ -1,7 +1,8 @@
 package project
 
 import (
-	"github.com/denkhaus/agents/pkg/shared"
+	pkgShared "github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"go.uber.org/zap"
 )
 
@@ -18,18 +19,18 @@ func WithManager(manager ProjectManager) Option {
 // WithReadOnly allows to select tools that have no write access to project information
 func WithReadOnly(readOnly bool) Option {
 	return func(pts *projectTaskToolSet) {
-		pts.IsReadOnly = readOnly
+		pts.isReadOnly = readOnly
 	}
 }
 
-func WithAvailableAgents(availableAgents []*shared.AgentInfo) Option {
+func WithAvailableAgents(availableAgents []*pkgShared.AgentInfo) Option {
 	return func(pts *projectTaskToolSet) {
 		pts.availableAgents = availableAgents
 	}
 }
 
 // WithRepository sets a custom repository instance
-func WithRepository(repo Repository) Option {
+func WithRepository(repo shared.Repository) Option {
 	return func(pts *projectTaskToolSet) {
 		// Create a new manager with the custom repository
 		config := DefaultConfig()

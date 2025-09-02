@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/repository/inmemory"
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,11 +14,11 @@ import (
 
 func TestMemoryRepository(t *testing.T) {
 	ctx := context.Background()
-	repo := newMemoryRepository()
+	repo := inmemory.NewMemoryRepository()
 
 	t.Run("Project Operations", func(t *testing.T) {
 		// Test project creation
-		project := &Project{
+		project := &shared.Project{
 			ID:          uuid.New(),
 			Title:       "Test Project",
 			Description: "A test project",
@@ -67,7 +69,7 @@ func TestMemoryRepository(t *testing.T) {
 
 	t.Run("Task Operations", func(t *testing.T) {
 		// Create a project first
-		project := &Project{
+		project := &shared.Project{
 			ID:          uuid.New(),
 			Title:       "Task Test Project",
 			Description: "For testing tasks",
@@ -76,12 +78,12 @@ func TestMemoryRepository(t *testing.T) {
 		require.NoError(t, err)
 
 		// Test root task creation
-		rootTask := &Task{
+		rootTask := &shared.Task{
 			ID:          uuid.New(),
 			ProjectID:   project.ID,
 			Title:       "Root Task",
 			Description: "A root task",
-			State:       TaskStatePending,
+			State:       shared.TaskStatePending,
 			Complexity:  5,
 		}
 
@@ -97,13 +99,13 @@ func TestMemoryRepository(t *testing.T) {
 		assert.False(t, retrieved.CreatedAt.IsZero())
 
 		// Test subtask creation
-		subtask := &Task{
+		subtask := &shared.Task{
 			ID:          uuid.New(),
 			ProjectID:   project.ID,
 			ParentID:    &rootTask.ID,
 			Title:       "Subtask",
 			Description: "A subtask",
-			State:       TaskStatePending,
+			State:       shared.TaskStatePending,
 			Complexity:  3,
 		}
 
@@ -116,13 +118,13 @@ func TestMemoryRepository(t *testing.T) {
 		assert.Equal(t, rootTask.ID, *retrievedSubtask.ParentID)
 
 		// Test task update
-		retrievedSubtask.State = TaskStateCompleted
+		retrievedSubtask.State = shared.TaskStateCompleted
 		err = repo.UpdateTask(ctx, retrievedSubtask)
 		require.NoError(t, err)
 
 		updated, err := repo.GetTask(ctx, subtask.ID)
 		require.NoError(t, err)
-		assert.Equal(t, TaskStateCompleted, updated.State)
+		assert.Equal(t, shared.TaskStateCompleted, updated.State)
 		assert.NotNil(t, updated.CompletedAt)
 
 		// Test task queries
@@ -141,8 +143,8 @@ func TestMemoryRepository(t *testing.T) {
 		assert.Equal(t, subtask.ID, parentTasks[0].ID)
 
 		// Test task filtering
-		completedState := TaskStateCompleted
-		completedTasks, err := repo.ListTasks(ctx, TaskFilter{
+		completedState := shared.TaskStateCompleted
+		completedTasks, err := repo.ListTasks(ctx, shared.TaskFilter{
 			ProjectID: &project.ID,
 			State:     &completedState,
 		})
@@ -164,7 +166,7 @@ func TestMemoryRepository(t *testing.T) {
 
 	t.Run("Hierarchy Operations", func(t *testing.T) {
 		// Create project
-		project := &Project{
+		project := &shared.Project{
 			ID:          uuid.New(),
 			Title:       "Hierarchy Test",
 			Description: "Testing hierarchy",
@@ -179,54 +181,54 @@ func TestMemoryRepository(t *testing.T) {
 		//   └── Child1.2
 		//   Root2
 
-		root1 := &Task{
+		root1 := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			Title:      "Root1",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 5,
 		}
 		err = repo.CreateTask(ctx, root1)
 		require.NoError(t, err)
 
-		child11 := &Task{
+		child11 := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			ParentID:   &root1.ID,
 			Title:      "Child1.1",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 3,
 		}
 		err = repo.CreateTask(ctx, child11)
 		require.NoError(t, err)
 
-		grandchild111 := &Task{
+		grandchild111 := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			ParentID:   &child11.ID,
 			Title:      "Grandchild1.1.1",
-			State:      TaskStateCompleted,
+			State:      shared.TaskStateCompleted,
 			Complexity: 2,
 		}
 		err = repo.CreateTask(ctx, grandchild111)
 		require.NoError(t, err)
 
-		child12 := &Task{
+		child12 := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			ParentID:   &root1.ID,
 			Title:      "Child1.2",
-			State:      TaskStateInProgress,
+			State:      shared.TaskStateInProgress,
 			Complexity: 4,
 		}
 		err = repo.CreateTask(ctx, child12)
 		require.NoError(t, err)
 
-		root2 := &Task{
+		root2 := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			Title:      "Root2",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 6,
 		}
 		err = repo.CreateTask(ctx, root2)
@@ -248,12 +250,11 @@ func TestMemoryRepository(t *testing.T) {
 		parent, err := repo.GetParentTask(ctx, child11.ID)
 		require.NoError(t, err)
 		assert.Equal(t, root1.ID, parent.ID)
-		
+
 		// Test parent of root is nil
 		parent, err = repo.GetParentTask(ctx, root1.ID)
 		require.NoError(t, err)
 		assert.Nil(t, parent)
-
 
 		// Test subtree deletion
 		err = repo.DeleteTaskSubtree(ctx, root1.ID)
@@ -282,7 +283,7 @@ func TestMemoryRepository(t *testing.T) {
 
 	t.Run("Progress Metrics", func(t *testing.T) {
 		// Create project
-		project := &Project{
+		project := &shared.Project{
 			ID:          uuid.New(),
 			Title:       "Progress Test",
 			Description: "Testing progress metrics",
@@ -291,33 +292,33 @@ func TestMemoryRepository(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create tasks with different states
-		tasks := []*Task{
+		tasks := []*shared.Task{
 			{
 				ID:         uuid.New(),
 				ProjectID:  project.ID,
 				Title:      "Completed Task",
-				State:      TaskStateCompleted,
+				State:      shared.TaskStateCompleted,
 				Complexity: 5,
 			},
 			{
 				ID:         uuid.New(),
 				ProjectID:  project.ID,
 				Title:      "In Progress Task",
-				State:      TaskStateInProgress,
+				State:      shared.TaskStateInProgress,
 				Complexity: 3,
 			},
 			{
 				ID:         uuid.New(),
 				ProjectID:  project.ID,
 				Title:      "Pending Task",
-				State:      TaskStatePending,
+				State:      shared.TaskStatePending,
 				Complexity: 4,
 			},
 			{
 				ID:         uuid.New(),
 				ProjectID:  project.ID,
 				Title:      "Blocked Task",
-				State:      TaskStateBlocked,
+				State:      shared.TaskStateBlocked,
 				Complexity: 2,
 			},
 		}
@@ -351,7 +352,7 @@ func TestMemoryRepository(t *testing.T) {
 
 	t.Run("Concurrent Operations", func(t *testing.T) {
 		// Create project
-		project := &Project{
+		project := &shared.Project{
 			ID:          uuid.New(),
 			Title:       "Concurrent Test",
 			Description: "Testing concurrent operations",
@@ -366,11 +367,11 @@ func TestMemoryRepository(t *testing.T) {
 
 		for i := 0; i < numTasks; i++ {
 			go func(taskNum int) {
-				task := &Task{
+				task := &shared.Task{
 					ID:         uuid.New(),
 					ProjectID:  project.ID,
 					Title:      fmt.Sprintf("Concurrent Task %d", taskNum),
-					State:      TaskStatePending,
+					State:      shared.TaskStatePending,
 					Complexity: 5,
 				}
 				results <- repo.CreateTask(ctx, task)
@@ -394,8 +395,8 @@ func TestMemoryRepository(t *testing.T) {
 		// Update tasks concurrently
 		updateResults := make(chan error, len(tasks))
 		for _, task := range tasks {
-			go func(t *Task) {
-				t.State = TaskStateCompleted
+			go func(t *shared.Task) {
+				t.State = shared.TaskStateCompleted
 				updateResults <- repo.UpdateTask(ctx, t)
 			}(task)
 		}
@@ -434,11 +435,11 @@ func TestMemoryRepository(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 
 		// Test creating task with non-existent project
-		task := &Task{
+		task := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  uuid.New(),
 			Title:      "Invalid Task",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 5,
 		}
 		err = repo.CreateTask(ctx, task)
@@ -446,7 +447,7 @@ func TestMemoryRepository(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 
 		// Test creating task with non-existent parent
-		project := &Project{
+		project := &shared.Project{
 			ID:    uuid.New(),
 			Title: "Test Project",
 		}
@@ -461,22 +462,22 @@ func TestMemoryRepository(t *testing.T) {
 		assert.Contains(t, err.Error(), "parent task")
 
 		// Test deleting task with children
-		rootTask := &Task{
+		rootTask := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			Title:      "Root",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 5,
 		}
 		err = repo.CreateTask(ctx, rootTask)
 		require.NoError(t, err)
 
-		childTask := &Task{
+		childTask := &shared.Task{
 			ID:         uuid.New(),
 			ProjectID:  project.ID,
 			ParentID:   &rootTask.ID,
 			Title:      "Child",
-			State:      TaskStatePending,
+			State:      shared.TaskStatePending,
 			Complexity: 3,
 		}
 		err = repo.CreateTask(ctx, childTask)

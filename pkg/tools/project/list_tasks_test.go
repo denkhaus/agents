@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -58,7 +59,7 @@ func TestListTasksForProject(t *testing.T) {
 
 	rootTaskResult, err := createTaskTool.Call(ctx, rootTaskInputJSON)
 	require.NoError(t, err)
-	rootTask := rootTaskResult.(*Task)
+	rootTask := rootTaskResult.(*shared.Task)
 
 	// Create subtask
 	subTaskInput := map[string]interface{}{

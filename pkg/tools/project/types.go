@@ -1,77 +1,10 @@
 package project
 
 import (
-	"time"
+	"fmt"
 
-	"github.com/google/uuid"
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 )
-
-// TaskState represents the current state of a task
-type TaskState string
-
-const (
-	TaskStatePending    TaskState = "pending"
-	TaskStateInProgress TaskState = "in-progress"
-	TaskStateCompleted  TaskState = "completed"
-	TaskStateBlocked    TaskState = "blocked"
-	TaskStateCancelled  TaskState = "cancelled"
-)
-
-// Task represents a single task in the project hierarchy
-type Task struct {
-	ID           uuid.UUID   `json:"id"`
-	ProjectID    uuid.UUID   `json:"project_id"`
-	ParentID     *uuid.UUID  `json:"parent_id,omitempty"` // nil for root tasks
-	Title        string      `json:"title"`
-	Description  string      `json:"description"`
-	State        TaskState   `json:"state"`
-	Complexity   int         `json:"complexity"`             // Used for breakdown decisions
-	Depth        int         `json:"depth"`                  // 0 for root tasks
-	Estimate     *int64      `json:"estimate,omitempty"`     // Time estimate in minutes
-	AssignedAgent *uuid.UUID `json:"assigned_agent,omitempty"` // Agent assigned to this task
-	Dependencies []uuid.UUID `json:"dependencies,omitempty"` // Tasks this task depends on
-	Dependents   []uuid.UUID `json:"dependents,omitempty"`   // Tasks that depend on this task
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
-	CompletedAt  *time.Time  `json:"completed_at,omitempty"`
-}
-
-// Project represents a project containing hierarchical tasks
-type Project struct {
-	ID          uuid.UUID `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	// Progress metrics
-	TotalTasks     int     `json:"total_tasks"`
-	CompletedTasks int     `json:"completed_tasks"`
-	Progress       float64 `json:"progress"` // Percentage (0-100)
-}
-
-// ProjectProgress represents detailed progress information
-type ProjectProgress struct {
-	ProjectID       uuid.UUID   `json:"project_id"`
-	TotalTasks      int         `json:"total_tasks"`
-	CompletedTasks  int         `json:"completed_tasks"`
-	InProgressTasks int         `json:"in_progress_tasks"`
-	PendingTasks    int         `json:"pending_tasks"`
-	BlockedTasks    int         `json:"blocked_tasks"`
-	CancelledTasks  int         `json:"cancelled_tasks"`
-	OverallProgress float64     `json:"overall_progress"`
-	TasksByDepth    map[int]int `json:"tasks_by_depth"`
-}
-
-// TaskFilter represents filtering options for task queries
-type TaskFilter struct {
-	ProjectID     *uuid.UUID `json:"project_id,omitempty"`
-	ParentID      *uuid.UUID `json:"parent_id,omitempty"`
-	State         *TaskState `json:"state,omitempty"`
-	MinDepth      *int       `json:"min_depth,omitempty"`
-	MaxDepth      *int       `json:"max_depth,omitempty"`
-	MinComplexity *int       `json:"min_complexity,omitempty"`
-	MaxComplexity *int       `json:"max_complexity,omitempty"`
-}
 
 // ValidationError represents a validation error
 type ValidationError struct {
@@ -81,12 +14,6 @@ type ValidationError struct {
 
 func (e ValidationError) Error() string {
 	return e.Message
-}
-
-// TaskUpdates represents the fields that can be updated in bulk
-type TaskUpdates struct {
-	State      *TaskState `json:"state,omitempty"`
-	Complexity *int       `json:"complexity,omitempty"`
 }
 
 // Tool Input/Output Types
@@ -99,8 +26,8 @@ type createProjectArgs struct {
 
 // createProjectResult holds the output for creating a project
 type createProjectResult struct {
-	Project *Project `json:"project"`
-	Message string   `json:"message"`
+	Project *shared.Project `json:"project"`
+	Message string          `json:"message"`
 }
 
 // getProjectArgs holds the input for getting a project
@@ -119,8 +46,8 @@ type listProjectsArgs struct{}
 
 // listProjectsResult holds the output for listing projects
 type listProjectsResult struct {
-	Projects []*Project `json:"projects"`
-	Count    int        `json:"count"`
+	Projects []*shared.Project `json:"projects"`
+	Count    int               `json:"count"`
 }
 
 // createTaskArgs holds the input for creating a task
@@ -145,8 +72,8 @@ type getTaskArgs struct {
 
 // updateTaskStateArgs holds the input for updating task state
 type updateTaskStateArgs struct {
-	TaskID string    `json:"task_id" description:"Task UUID"`
-	State  TaskState `json:"state" description:"New task state (pending, in-progress, completed, blocked, cancelled)"`
+	TaskID string           `json:"task_id" description:"Task UUID"`
+	State  shared.TaskState `json:"state" description:"New task state (pending, in-progress, completed, blocked, cancelled)"`
 }
 
 // getProjectProgressArgs holds the input for getting project progress
@@ -161,8 +88,8 @@ type getChildTasksArgs struct {
 
 // getChildTasksResult holds the output for getting child tasks
 type getChildTasksResult struct {
-	Tasks []*Task `json:"tasks"`
-	Count int     `json:"count"`
+	Tasks []*shared.Task `json:"tasks"`
+	Count int            `json:"count"`
 }
 
 // getParentTaskArgs holds the input for getting the parent task
@@ -182,17 +109,17 @@ type deleteTaskResult struct {
 
 // updateTaskArgs defines the arguments for updating a task
 type updateTaskArgs struct {
-	TaskID      string    `json:"task_id" description:"The ID of the task to update"`
-	Title       string    `json:"title" description:"The new title for the task"`
-	Description string    `json:"description" description:"The new description for the task"`
-	Complexity  int       `json:"complexity" description:"The new complexity for the task (1-10)"`
-	State       TaskState `json:"state" description:"The new state for the task"`
+	TaskID      string           `json:"task_id" description:"The ID of the task to update"`
+	Title       string           `json:"title" description:"The new title for the task"`
+	Description string           `json:"description" description:"The new description for the task"`
+	Complexity  int              `json:"complexity" description:"The new complexity for the task (1-10)"`
+	State       shared.TaskState `json:"state" description:"The new state for the task"`
 }
 
 // updateTaskResult defines the result of updating a task
 type updateTaskResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // deleteTaskSubtreeArgs defines the arguments for deleting a task subtree
@@ -207,15 +134,15 @@ type deleteTaskSubtreeResult struct {
 
 // listTasksByStateArgs defines the arguments for listing tasks by state
 type listTasksByStateArgs struct {
-	ProjectID string    `json:"project_id" description:"The ID of the project to list tasks from"`
-	State     TaskState `json:"state" description:"The state of tasks to list"`
+	ProjectID string           `json:"project_id" description:"The ID of the project to list tasks from"`
+	State     shared.TaskState `json:"state" description:"The state of tasks to list"`
 }
 
 // listTasksByStateResult defines the result of listing tasks by state
 type listTasksByStateResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks with the specified state, if any"`
-	Count   int     `json:"count" description:"The number of tasks with the specified state"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"The tasks with the specified state, if any"`
+	Count   int            `json:"count" description:"The number of tasks with the specified state"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // getRootTasksArgs defines the arguments for getting root tasks
@@ -225,9 +152,9 @@ type getRootTasksArgs struct {
 
 // getRootTasksResult defines the result of getting root tasks
 type getRootTasksResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The root tasks, if any"`
-	Count   int     `json:"count" description:"The number of root tasks"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"The root tasks, if any"`
+	Count   int            `json:"count" description:"The number of root tasks"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // findTasksNeedingBreakdownArgs defines the arguments for finding tasks needing breakdown
@@ -237,9 +164,9 @@ type findTasksNeedingBreakdownArgs struct {
 
 // findTasksNeedingBreakdownResult defines the result of finding tasks needing breakdown
 type findTasksNeedingBreakdownResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"The tasks needing breakdown, if any"`
-	Count   int     `json:"count" description:"The number of tasks needing breakdown"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"The tasks needing breakdown, if any"`
+	Count   int            `json:"count" description:"The number of tasks needing breakdown"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // findNextActionableTaskArgs defines the arguments for finding the next actionable task
@@ -249,8 +176,8 @@ type findNextActionableTaskArgs struct {
 
 // findNextActionableTaskResult defines the result of finding the next actionable task
 type findNextActionableTaskResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The next actionable task, if found"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The next actionable task, if found"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // updateProjectArgs defines the arguments for updating a project
@@ -262,8 +189,8 @@ type updateProjectArgs struct {
 
 // updateProjectResult defines the result of updating a project
 type updateProjectResult struct {
-	Project *Project `json:"project,omitempty" description:"The updated project"`
-	Message string   `json:"message" description:"A message describing the result"`
+	Project *shared.Project `json:"project,omitempty" description:"The updated project"`
+	Message string          `json:"message" description:"A message describing the result"`
 }
 
 // deleteProjectArgs defines the arguments for deleting a project
@@ -283,16 +210,16 @@ type listTasksForProjectArgs struct {
 
 // listTasksForProjectResult defines the result of listing all tasks in a project
 type listTasksForProjectResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"All tasks in the project"`
-	Count   int     `json:"count" description:"The number of tasks in the project"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"All tasks in the project"`
+	Count   int            `json:"count" description:"The number of tasks in the project"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // bulkUpdateTasksArgs defines the arguments for bulk updating tasks
 type bulkUpdateTasksArgs struct {
-	TaskIDs    []string   `json:"task_ids" description:"The IDs of the tasks to update"`
-	State      *TaskState `json:"state,omitempty" description:"The new state for the tasks"`
-	Complexity *int       `json:"complexity,omitempty" description:"The new complexity for the tasks (1-10)"`
+	TaskIDs    []string          `json:"task_ids" description:"The IDs of the tasks to update"`
+	State      *shared.TaskState `json:"state,omitempty" description:"The new state for the tasks"`
+	Complexity *int              `json:"complexity,omitempty" description:"The new complexity for the tasks (1-10)"`
 }
 
 // bulkUpdateTasksResult defines the result of bulk updating tasks
@@ -309,8 +236,8 @@ type duplicateTaskArgs struct {
 
 // duplicateTaskResult defines the result of duplicating a task
 type duplicateTaskResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The duplicated task"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The duplicated task"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // setTaskEstimateArgs defines the arguments for setting a task estimate
@@ -321,8 +248,8 @@ type setTaskEstimateArgs struct {
 
 // setTaskEstimateResult defines the result of setting a task estimate
 type setTaskEstimateResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // listAvailableAgentsArgs defines the arguments for listing available agents (empty struct)
@@ -351,8 +278,8 @@ type assignTaskToAgentArgs struct {
 
 // assignTaskToAgentResult defines the result of assigning a task to an agent
 type assignTaskToAgentResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task with agent assignment"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task with agent assignment"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // unassignTaskFromAgentArgs defines the arguments for unassigning a task from an agent
@@ -362,8 +289,8 @@ type unassignTaskFromAgentArgs struct {
 
 // unassignTaskFromAgentResult defines the result of unassigning a task from an agent
 type unassignTaskFromAgentResult struct {
-	Task    *Task  `json:"task,omitempty" description:"The updated task with removed agent assignment"`
-	Message string `json:"message" description:"A message describing the result"`
+	Task    *shared.Task `json:"task,omitempty" description:"The updated task with removed agent assignment"`
+	Message string       `json:"message" description:"A message describing the result"`
 }
 
 // listTasksByAgentArgs defines the arguments for listing tasks assigned to a specific agent
@@ -374,9 +301,9 @@ type listTasksByAgentArgs struct {
 
 // listTasksByAgentResult defines the result of listing tasks assigned to a specific agent
 type listTasksByAgentResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"Tasks assigned to the specified agent"`
-	Count   int     `json:"count" description:"Number of tasks assigned to the agent"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"Tasks assigned to the specified agent"`
+	Count   int            `json:"count" description:"Number of tasks assigned to the agent"`
+	Message string         `json:"message" description:"A message describing the result"`
 }
 
 // listUnassignedTasksArgs defines the arguments for listing unassigned tasks
@@ -386,7 +313,37 @@ type listUnassignedTasksArgs struct {
 
 // listUnassignedTasksResult defines the result of listing unassigned tasks
 type listUnassignedTasksResult struct {
-	Tasks   []*Task `json:"tasks,omitempty" description:"Tasks that have no agent assigned"`
-	Count   int     `json:"count" description:"Number of unassigned tasks"`
-	Message string  `json:"message" description:"A message describing the result"`
+	Tasks   []*shared.Task `json:"tasks,omitempty" description:"Tasks that have no agent assigned"`
+	Count   int            `json:"count" description:"Number of unassigned tasks"`
+	Message string         `json:"message" description:"A message describing the result"`
+}
+
+type ProjectRepositoryType string
+
+const (
+	ProjectRepositoryTypeInMemory ProjectRepositoryType = "inmemory"
+	ProjectRepositoryTypePostgres ProjectRepositoryType = "postgres"
+)
+
+func (p ProjectRepositoryType) String() string {
+	return string(p)
+}
+
+// Validate checks if the AgentRole is a valid defined role
+func (p ProjectRepositoryType) Validate() error {
+	switch p {
+	case ProjectRepositoryTypeInMemory,
+		ProjectRepositoryTypePostgres:
+		return nil
+	default:
+		return fmt.Errorf("invalid project repository type: %s. Valid types are: %s, %s",
+			p, ProjectRepositoryTypeInMemory, ProjectRepositoryTypePostgres)
+	}
+}
+
+// ToolSetConfig holds configuration for the project management toolset
+type ToolSetConfig struct {
+	RepositoryType ProjectRepositoryType `json:"repository_type" mapstructure:"repository_type"`
+	DatabaseURL    *string               `json:"database_url" mapstructure:"database_url"`
+	IsReadOnly     bool                  `json:"read_only" mapstructure:"read_only"`
 }

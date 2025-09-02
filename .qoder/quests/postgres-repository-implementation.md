@@ -361,7 +361,7 @@ import (
     "entgo.io/ent/dialect"
     entsql "entgo.io/ent/dialect/sql"
     "github.com/denkhaus/agents/pkg/tools/project"
-    "github.com/denkhaus/agents/pkg/tools/project/repository/ent"
+    "github.com/denkhaus/agents/pkg/tools/project/repository/postgres/ent"
     "github.com/google/uuid"
     _ "github.com/lib/pq"
 )
@@ -447,7 +447,7 @@ package repository
 
 import (
     "github.com/denkhaus/agents/pkg/tools/project"
-    "github.com/denkhaus/agents/pkg/tools/project/repository/ent"
+    "github.com/denkhaus/agents/pkg/tools/project/repository/postgres/ent"
 )
 
 // Project entity mapping
@@ -544,7 +544,7 @@ package repository
 import (
     "context"
     "fmt"
-    "github.com/denkhaus/agents/pkg/tools/project/repository/ent"
+    "github.com/denkhaus/agents/pkg/tools/project/repository/postgres/ent"
 )
 
 type TxFunc func(ctx context.Context, tx *ent.Tx) error
@@ -813,7 +813,7 @@ package repository
 import (
     "context"
     "time"
-    "github.com/denkhaus/agents/pkg/tools/project/repository/ent/migrate"
+    "github.com/denkhaus/agents/pkg/tools/project/repository/postgres/ent/migrate"
 )
 
 func (r *postgresRepository) RunMigrations(ctx context.Context) error {

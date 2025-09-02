@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -60,7 +61,7 @@ func TestBulkUpdateTasks(t *testing.T) {
 
 	task1Result, err := createTaskTool.Call(ctx, task1InputJSON)
 	require.NoError(t, err)
-	task1 := task1Result.(*Task)
+	task1 := task1Result.(*shared.Task)
 
 	// Create second task
 	task2Input := map[string]interface{}{
@@ -73,7 +74,7 @@ func TestBulkUpdateTasks(t *testing.T) {
 
 	task2Result, err := createTaskTool.Call(ctx, task2InputJSON)
 	require.NoError(t, err)
-	task2 := task2Result.(*Task)
+	task2 := task2Result.(*shared.Task)
 
 	// Bulk update tasks - change state to completed
 	bulkUpdateTool := findTool("bulk_update_tasks")
@@ -103,8 +104,8 @@ func TestBulkUpdateTasks(t *testing.T) {
 	getTask1Result, err := getTaskTool.Call(ctx, getTask1InputJSON)
 	require.NoError(t, err)
 
-	updatedTask1 := getTask1Result.(*Task)
-	assert.Equal(t, TaskStateCompleted, updatedTask1.State)
+	updatedTask1 := getTask1Result.(*shared.Task)
+	assert.Equal(t, shared.TaskStateCompleted, updatedTask1.State)
 	assert.NotNil(t, updatedTask1.CompletedAt)
 
 	// Check second task
@@ -116,8 +117,8 @@ func TestBulkUpdateTasks(t *testing.T) {
 	getTask2Result, err := getTaskTool.Call(ctx, getTask2InputJSON)
 	require.NoError(t, err)
 
-	updatedTask2 := getTask2Result.(*Task)
-	assert.Equal(t, TaskStateCompleted, updatedTask2.State)
+	updatedTask2 := getTask2Result.(*shared.Task)
+	assert.Equal(t, shared.TaskStateCompleted, updatedTask2.State)
 	assert.NotNil(t, updatedTask2.CompletedAt)
 }
 
@@ -170,7 +171,7 @@ func TestBulkUpdateTasksWithMultipleFields(t *testing.T) {
 
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
-	task := taskResult.(*Task)
+	task := taskResult.(*shared.Task)
 
 	// Bulk update task with multiple fields
 	bulkUpdateTool := findTool("bulk_update_tasks")
@@ -196,8 +197,8 @@ func TestBulkUpdateTasksWithMultipleFields(t *testing.T) {
 	getTaskResult, err := getTaskTool.Call(ctx, getTaskInputJSON)
 	require.NoError(t, err)
 
-	updatedTask := getTaskResult.(*Task)
-	assert.Equal(t, TaskStateInProgress, updatedTask.State)
+	updatedTask := getTaskResult.(*shared.Task)
+	assert.Equal(t, shared.TaskStateInProgress, updatedTask.State)
 	assert.Equal(t, 7, updatedTask.Complexity)
 	assert.Nil(t, updatedTask.CompletedAt)
 }

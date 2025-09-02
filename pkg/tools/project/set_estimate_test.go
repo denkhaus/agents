@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
@@ -59,7 +60,7 @@ func TestSetTaskEstimate(t *testing.T) {
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
 
-	task := taskResult.(*Task)
+	task := taskResult.(*shared.Task)
 
 	// Set task estimate
 	setEstimateTool := findTool("set_task_estimate")
@@ -90,7 +91,7 @@ func TestSetTaskEstimate(t *testing.T) {
 	getTaskResult, err := getTaskTool.Call(ctx, getTaskInputJSON)
 	require.NoError(t, err)
 
-	retrievedTask := getTaskResult.(*Task)
+	retrievedTask := getTaskResult.(*shared.Task)
 	assert.Equal(t, estimate, *retrievedTask.Estimate)
 }
 
@@ -144,7 +145,7 @@ func TestSetTaskEstimateToZero(t *testing.T) {
 	taskResult, err := createTaskTool.Call(ctx, taskInputJSON)
 	require.NoError(t, err)
 
-	task := taskResult.(*Task)
+	task := taskResult.(*shared.Task)
 
 	// Set task estimate to zero
 	setEstimateTool := findTool("set_task_estimate")
