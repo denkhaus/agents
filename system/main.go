@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
@@ -11,10 +13,15 @@ import (
 	"github.com/denkhaus/agents/multi/plugins/cli"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
+
 	"github.com/google/uuid"
 	"github.com/samber/do"
 	"go.uber.org/zap"
+	"trpc.group/trpc-go/trpc-agent-go/agent"
+	"trpc.group/trpc-go/trpc-agent-go/server/debug"
 )
+
+const debugServerDefaultListenAddr = ":6999"
 
 func startup(ctx context.Context, selectedEnvironment string) error {
 
@@ -50,6 +57,18 @@ func startup(ctx context.Context, selectedEnvironment string) error {
 			),
 		),
 	)
+
+	go func() {
+		agents := map[string]agent.Agent{}
+		agents[researcherAgent.Info().Name] = researcherAgent
+		agents[projectManagerAgent.Info().Name] = projectManagerAgent
+		agents[coderAgent.Info().Name] = coderAgent
+
+		server := debug.New(agents)
+		if err := http.ListenAndServe(debugServerDefaultListenAddr, server.Handler()); err != nil {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
 
 	return chat.Start(ctx)
 }

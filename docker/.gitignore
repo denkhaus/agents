@@ -1,0 +1,12 @@
+# Environment files with sensitive data
+.env
+
+# Docker volumes and data
+postgres_data/
+
+# Logs
+*.log
+
+# Temporary files
+.tmp/
+tmp/
