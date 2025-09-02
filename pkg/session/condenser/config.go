@@ -1,5 +1,7 @@
 package condenser
 
+import "go.uber.org/zap"
+
 // DefaultConfig returns sensible defaults for the condenser service
 func DefaultConfig() Config {
 	return Config{
@@ -10,7 +12,8 @@ func DefaultConfig() Config {
 		TokenCountingMethod: TokenCountingAuto,
 		CharsPerToken:       4.0,
 		EnableTokenCaching:  true,
-		CacheSize:          1000,
+		CacheSize:           1000,
+		Logger:              zap.NewNop(),
 	}
 }
 
@@ -21,6 +24,22 @@ type ConfigOption func(*Config)
 func WithMaxContextTokens(tokens int) ConfigOption {
 	return func(c *Config) {
 		c.MaxContextTokens = tokens
+	}
+}
+
+// WithCustomTokenCounter allows providing a custom token counter implementation
+func WithCustomTokenCounter(counter TokenCounter) ConfigOption {
+	return func(c *Config) {
+		c.TokenCountingMethod = TokenCountingCustom
+		// Store the custom counter in a way that can be retrieved
+		// This would need to be handled in the service creation
+	}
+}
+
+// WithLogger allows providing a custom logger for debugging reasons
+func WithLogger(logger *zap.Logger) ConfigOption {
+	return func(c *Config) {
+		c.Logger = logger
 	}
 }
 

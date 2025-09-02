@@ -59,5 +59,3 @@ const (
 	AgentTypeCycle    AgentType = "cycle"
 	AgentTypeParallel AgentType = "parallel"
 )
-
-

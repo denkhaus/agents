@@ -3,7 +3,6 @@ package condenser
 import (
 	"fmt"
 
-	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 )
@@ -13,7 +12,6 @@ func New(
 	sessionService session.Service,
 	summarizerLLM model.Model,
 	config Config,
-	logger *zap.Logger,
 ) (*Service, error) {
 	if sessionService == nil {
 		return nil, fmt.Errorf("session service cannot be nil")
@@ -23,7 +21,7 @@ func New(
 	}
 
 	// Create token counter based on config
-	tokenCounter, err := createTokenCounter(summarizerLLM, config, logger)
+	tokenCounter, err := createTokenCounter(summarizerLLM, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token counter: %w", err)
 	}
@@ -33,7 +31,7 @@ func New(
 		summarizerLLM:  summarizerLLM,
 		tokenCounter:   tokenCounter,
 		config:         config,
-		logger:         logger.Named("condenser"),
+		logger:         config.Logger,
 		metrics:        &Metrics{},
 	}, nil
 }
@@ -42,7 +40,6 @@ func New(
 func NewWithOptions(
 	sessionService session.Service,
 	summarizerLLM model.Model,
-	logger *zap.Logger,
 	opts ...ConfigOption,
 ) (*Service, error) {
 	config := DefaultConfig()
@@ -50,7 +47,7 @@ func NewWithOptions(
 		opt(&config)
 	}
 
-	return New(sessionService, summarizerLLM, config, logger)
+	return New(sessionService, summarizerLLM, config)
 }
 
 // GetMetrics returns current condensation metrics

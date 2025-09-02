@@ -134,7 +134,7 @@ func (c *tokenTrackerChat) setup(_ context.Context) error {
 	condenserSessionService, err := condenser.NewWithOptions(
 		baseSessionService,
 		modelInstance,                        // Pass the LLM model instance for summarization
-		logger.Log,                           // Provide the global logger for visibility
+		condenser.WithLogger(logger.Log),     // Provide the global logger for visibility
 		condenser.WithMaxContextTokens(4000), // Example: max context size of 4000 tokens
 		condenser.WithTriggerThreshold(0.75), // Example: trigger condensation at 75% capacity
 		condenser.WithSummaryPrompt("Summarize the conversation history for an LLM to continue the conversation without losing context. Keep it concise and focused on key facts."),

@@ -91,6 +91,9 @@ type Config struct {
 	// Performance
 	EnableTokenCaching bool
 	CacheSize          int
+
+	// Logging
+	Logger *zap.Logger
 }
 
 // Metrics tracks condensation performance

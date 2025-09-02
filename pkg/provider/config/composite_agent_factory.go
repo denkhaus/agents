@@ -8,13 +8,13 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/chainagent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
-	
+
 	"trpc.group/trpc-go/trpc-agent-go/agent/parallelagent"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
 // createChainAgent creates a chain agent with the provided configuration
-func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []chainagent.Option{}
 
 	// Add sub-agents
@@ -42,7 +42,7 @@ func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment 
 }
 
 // createCycleAgent creates a cycle agent with the provided configuration
-func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []cycleagent.Option{}
 
 	// Add sub-agents
@@ -75,7 +75,7 @@ func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment 
 }
 
 // createParallelAgent creates a parallel agent with the provided configuration
-func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environment string, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
 	options := []parallelagent.Option{}
 
 	// Add sub-agents
@@ -103,7 +103,7 @@ func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environme
 }
 
 // getSubAgents creates sub-agent instances based on their roles
-func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, environment string, subAgentRoles []shared.AgentRole) ([]agent.Agent, error) {
+func (f *UnifiedAgentFactory) getSubAgents(ctx context.Context, environment EnvironmentName, subAgentRoles []shared.AgentRole) ([]agent.Agent, error) {
 	var subAgents []agent.Agent
 	for _, role := range subAgentRoles {
 

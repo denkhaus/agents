@@ -3,10 +3,14 @@ package config
 import (
 	"context"
 
+	"github.com/denkhaus/agents/pkg/session/condenser"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
+
+type EnvironmentName string
+type AgentName string
 
 // AgentConfig represents a complete agent configuration
 type AgentConfig struct {
@@ -18,6 +22,23 @@ type AgentConfig struct {
 	Prompt      PromptConfig     `json:"prompt"`
 	Setting     SettingsConfig   `json:"setting"`
 	Tool        ToolsConfig      `json:"tool"`
+}
+
+func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
+	agent := p.Setting.Agent
+
+	agentInfo := shared.NewAgentInfo(
+		p.AgentID,
+		p.Role,
+		agent.StreamingEnabled,
+		p.Name,
+		p.Description,
+	)
+
+	agentInfo.InputSchema = agent.InputSchema
+	agentInfo.OutputSchema = agent.OutputSchema
+
+	return &agentInfo
 }
 
 // PromptConfig represents prompt configuration
@@ -91,10 +112,11 @@ type ToolSetConfig struct {
 
 // AgentFactory creates agents using configuration-based approach
 type AgentFactory interface {
-	CreateAgent(ctx context.Context, environment string, agentRole shared.AgentRole) (shared.TheAgent, error)
-	CreateAgentByID(ctx context.Context, environment string, agentID uuid.UUID) (shared.TheAgent, error)
+	CreateAgent(ctx context.Context, environment EnvironmentName, agentRole shared.AgentRole) (shared.TheAgent, error)
+	CreateAgentByID(ctx context.Context, environment EnvironmentName, agentID uuid.UUID) (shared.TheAgent, error)
+	CreateAllAgentsInEnvironment(ctx context.Context, envName EnvironmentName) ([]shared.TheAgent, error)
 	ValidateConfiguration() error
-	GetAgentConfig(environment string, agentRole shared.AgentRole) (*AgentConfig, error)
+	GetAgentConfig(environment EnvironmentName, agentRole shared.AgentRole) (*AgentConfig, error)
 }
 
 // ToolFactory creates tools from configuration
@@ -104,28 +126,44 @@ type ToolFactory interface {
 
 // ConfigProvider loads configurations from various sources
 type ConfigProvider interface {
-	LoadAgentComposition(environment string, agentRole shared.AgentRole) (*AgentConfig, error)
+	// System-level operations
+	LoadSystemConfig() (*SystemConfig, error)
+	LoadEnvironmentConfig(envName EnvironmentName) (*EnvironmentConfig, error)
+	ResolveAgentByRole(envName EnvironmentName, role shared.AgentRole) (*AgentConfig, error)
+
+	// Legacy methods (for backward compatibility)
+	LoadAgentComposition(environment EnvironmentName, agentRole shared.AgentRole) (*AgentConfig, error)
 	LoadPrompt(agentRole shared.AgentRole) (*PromptConfig, error)
 	LoadSettings(agentRole shared.AgentRole) (*SettingsConfig, error)
 	LoadToolProfile(agentRole shared.AgentRole) (*ToolsConfig, error)
 	ValidateConfiguration() error
-	GetAgentsInEnvironment(environment string, includeHuman bool) ([]*shared.AgentInfo, error)
-	GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error) // New method
+	GetAgentsInEnvironment(environment EnvironmentName, includeHuman bool) ([]*shared.AgentInfo, error)
+	GetAgentInfoByID(agentID uuid.UUID) (*shared.AgentInfo, error)
 }
 
-func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
-	agent := p.Setting.Agent
+type CondenserServiceSettings struct {
+	LoggingEnabled      bool                          `json:"logging_enabled,omitempty"`
+	TriggerThreshold    float64                       `json:"trigger_threshold,omitempty"`
+	SummaryPrompt       string                        `json:"summary_prompt,omitempty"`
+	TokenCountingMethod condenser.TokenCountingMethod `json:"token_counting_method,omitempty"`
+	RecentEventsToKeep  int                           `json:"recent_events_to_keep,omitempty"`
+	MaxContextTokens    int                           `json:"max_context_tokens,omitempty"`
+	ModelProvider       shared.ModelProvider          `json:"model_provider,omitempty"`
+	ModelName           string                        `json:"model_name,omitempty"`
+}
 
-	agentInfo := shared.NewAgentInfo(
-		p.AgentID,
-		p.Role,
-		agent.StreamingEnabled,
-		p.Name,
-		p.Description,
-	)
+type EnvironmentConfig struct {
+	Description string                         `json:"description,omitempty"`
+	Name        string                         `json:"name,omitempty"`
+	Agents      map[AgentName]AgentConfig      `json:"agents,omitempty"`
+	Roles       map[shared.AgentRole]AgentName `json:"roles,omitempty"`
+	Condenser   CondenserServiceSettings       `json:"condenser,omitempty"`
+}
 
-	agentInfo.InputSchema = agent.InputSchema
-	agentInfo.OutputSchema = agent.OutputSchema
+type CommonConfig struct {
+}
 
-	return &agentInfo
+type SystemConfig struct {
+	Environments map[EnvironmentName]EnvironmentConfig `json:"environments,omitempty"`
+	Common       CommonConfig                          `json:"common_settings,omitempty"`
 }

@@ -38,7 +38,7 @@ func NewUnifiedAgentFactory(injector *do.Injector) (AgentFactory, error) {
 }
 
 // CreateAgent creates an agent using configuration
-func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment string, agentRole shared.AgentRole) (shared.TheAgent, error) {
+func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment EnvironmentName, agentRole shared.AgentRole) (shared.TheAgent, error) {
 	// Load agent configuration
 	agentConfig, err := f.configProvider.LoadAgentComposition(environment, agentRole)
 	if err != nil {
@@ -87,7 +87,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment strin
 }
 
 // CreateAgentByID creates an agent by its UUID using default environment
-func (f *UnifiedAgentFactory) CreateAgentByID(ctx context.Context, environment string, agentID uuid.UUID) (shared.TheAgent, error) {
+func (f *UnifiedAgentFactory) CreateAgentByID(ctx context.Context, environment EnvironmentName, agentID uuid.UUID) (shared.TheAgent, error) {
 	agentInfo, err := f.configProvider.GetAgentInfoByID(agentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent info for ID %s: %w", agentID, err)
@@ -102,8 +102,41 @@ func (f *UnifiedAgentFactory) ValidateConfiguration() error {
 }
 
 // GetAgentConfig returns the raw configuration for an agent
-func (f *UnifiedAgentFactory) GetAgentConfig(environment string, agentRole shared.AgentRole) (*AgentConfig, error) {
+func (f *UnifiedAgentFactory) GetAgentConfig(environment EnvironmentName, agentRole shared.AgentRole) (*AgentConfig, error) {
 	return f.configProvider.LoadAgentComposition(environment, agentRole)
+}
+
+// CreateAllAgentsInEnvironment creates all agents defined in an environment
+func (f *UnifiedAgentFactory) CreateAllAgentsInEnvironment(ctx context.Context, envName EnvironmentName) ([]shared.TheAgent, error) {
+	// Load environment configuration
+	envConfig, err := f.configProvider.LoadEnvironmentConfig(envName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load environment config: %w", err)
+	}
+
+	var agents []shared.TheAgent
+
+	// Create agents based on role mappings (if any)
+	if len(envConfig.Roles) > 0 {
+		for role := range envConfig.Roles {
+			agent, err := f.CreateAgent(ctx, envName, role)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create agent for role %s: %w", role, err)
+			}
+			agents = append(agents, agent)
+		}
+	} else {
+		// Fallback: create agents directly from agent configs
+		for agentName, agentConfig := range envConfig.Agents {
+			agent, err := f.CreateAgent(ctx, envName, agentConfig.Role)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create agent %s: %w", agentName, err)
+			}
+			agents = append(agents, agent)
+		}
+	}
+
+	return agents, nil
 }
 
 // GetAgentNameFromID maps agent UUIDs to their names
@@ -138,7 +171,7 @@ func (f *UnifiedAgentFactory) getAllTools(ctx context.Context, tools []tool.Tool
 // createLLMAgent creates an LLM agent with the provided configuration
 func (f *UnifiedAgentFactory) createLLMAgent(
 	ctx context.Context,
-	environment string,
+	environment EnvironmentName,
 	agentConfig *AgentConfig,
 	tools []tool.Tool,
 	agentInfo []*shared.AgentInfo,
