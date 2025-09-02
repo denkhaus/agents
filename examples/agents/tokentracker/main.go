@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/denkhaus/agents/logger"
+	"github.com/denkhaus/agents/session/condenser"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -37,7 +39,7 @@ func main() {
 	// Parse command line flags.
 	flag.Parse()
 
-	fmt.Printf("🚀 Token Usage Tracker Demo\n")
+	fmt.Printf("Token Usage Tracker Demo\n")
 	fmt.Printf("Model: %s\n", *modelName)
 	fmt.Printf("Streaming: %t\n", *streaming)
 	fmt.Printf("Type 'exit' to end the conversation\n")
@@ -125,14 +127,30 @@ func (c *tokenTrackerChat) setup(_ context.Context) error {
 	)
 
 	// Create session service.
-	sessionService := inmemory.NewSessionService()
+	// Use the in-memory session service as the base.
+	baseSessionService := inmemory.NewSessionService()
+
+	// Create the condenser service, wrapping the base session service.
+	condenserSessionService, err := condenser.NewWithOptions(
+		baseSessionService,
+		modelInstance, // Pass the LLM model instance for summarization
+		logger.Log,    // Provide the global logger for visibility
+		condenser.WithMaxContextTokens(4000),        // Example: max context size of 4000 tokens
+		condenser.WithTriggerThreshold(0.75),        // Example: trigger condensation at 75% capacity
+		condenser.WithSummaryPrompt("Summarize the conversation history for an LLM to continue the conversation without losing context. Keep it concise and focused on key facts."),
+		condenser.WithTokenCountingMethod(condenser.TokenCountingAuto), // Auto-select best token counting method
+		condenser.WithRecentEventsToKeep(2),         // Keep 2 most recent events
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create condenser service: %w", err)
+	}
 
 	// Create runner.
 	appName := "token-tracker-demo"
 	c.runner = runner.NewRunner(
 		appName,
 		llmAgent,
-		runner.WithSessionService(sessionService),
+		runner.WithSessionService(condenserSessionService), // Use the condenser service
 	)
 
 	// Setup identifiers and token tracking.
@@ -142,7 +160,7 @@ func (c *tokenTrackerChat) setup(_ context.Context) error {
 		UsageHistory: make([]TurnUsage, 0),
 	}
 
-	fmt.Printf("✅ Token tracker ready! Session: %s\n\n", c.sessionID)
+	fmt.Printf("Token tracker ready! Session: %s\n\n", c.sessionID)
 
 	return nil
 }
@@ -151,14 +169,14 @@ func (c *tokenTrackerChat) setup(_ context.Context) error {
 func (c *tokenTrackerChat) startChat(ctx context.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	fmt.Println("💡 Special commands:")
+	fmt.Println("Special commands:")
 	fmt.Println("   /stats    - Show current session token usage statistics")
 	fmt.Println("   /new      - Start a new session (reset token tracking)")
 	fmt.Println("   /exit     - End the conversation")
 	fmt.Println()
 
 	for {
-		fmt.Print("👤 You: ")
+		fmt.Print("You: ")
 		if !scanner.Scan() {
 			break
 		}
@@ -172,7 +190,7 @@ func (c *tokenTrackerChat) startChat(ctx context.Context) error {
 		switch strings.ToLower(userInput) {
 		case "/exit":
 			c.showFinalStats()
-			fmt.Println("👋 Goodbye!")
+			fmt.Println("Goodbye!")
 			return nil
 		case "/stats":
 			c.showStats()
@@ -184,7 +202,7 @@ func (c *tokenTrackerChat) startChat(ctx context.Context) error {
 
 		// Process the user message.
 		if err := c.processMessage(ctx, userInput); err != nil {
-			fmt.Printf("❌ Error: %v\n", err)
+			fmt.Printf("Error: %v\n", err)
 		}
 
 		fmt.Println() // Add spacing between turns
@@ -214,7 +232,7 @@ func (c *tokenTrackerChat) processMessage(ctx context.Context, userMessage strin
 
 // processResponse handles both streaming and non-streaming responses with token tracking.
 func (c *tokenTrackerChat) processResponse(eventChan <-chan *event.Event, userMessage string) error {
-	fmt.Print("🤖 Assistant: ")
+	fmt.Print("Assistant: ")
 
 	var (
 		fullContent string
@@ -260,7 +278,7 @@ func (c *tokenTrackerChat) processResponse(eventChan <-chan *event.Event, userMe
 
 			// Show turn-specific token usage.
 			if turnUsage != nil {
-				fmt.Printf("\n📊 Turn %d Token Usage:\n", c.turnCount)
+				fmt.Printf("\nTurn %d Token Usage:\n", c.turnCount)
 				fmt.Printf("   Prompt: %d, Completion: %d, Total: %d\n",
 					turnUsage.PromptTokens,
 					turnUsage.CompletionTokens,
@@ -286,7 +304,7 @@ func (c *tokenTrackerChat) addTurnUsage(usage TurnUsage) {
 
 // showStats displays current session token usage statistics.
 func (c *tokenTrackerChat) showStats() {
-	fmt.Printf("\n📊 Session Token Usage Statistics:\n")
+	fmt.Printf("\nSession Token Usage Statistics:\n")
 	fmt.Printf("   Total Turns: %d\n", c.sessionUsage.TurnCount)
 	fmt.Printf("   Total Prompt Tokens: %d\n", c.sessionUsage.TotalPromptTokens)
 	fmt.Printf("   Total Completion Tokens: %d\n", c.sessionUsage.TotalCompletionTokens)
@@ -307,7 +325,7 @@ func (c *tokenTrackerChat) showStats() {
 // showFinalStats displays final statistics when exiting.
 func (c *tokenTrackerChat) showFinalStats() {
 	fmt.Printf("\n%s\n", strings.Repeat("=", 50))
-	fmt.Printf("🎯 Final Session Statistics:\n")
+	fmt.Printf("Final Session Statistics:\n")
 	c.showStats()
 }
 
@@ -320,7 +338,7 @@ func (c *tokenTrackerChat) startNewSession() {
 	}
 	c.turnCount = 0
 
-	fmt.Printf("🆕 Started new session!\n")
+	fmt.Printf("Started new session!\n")
 	fmt.Printf("   Previous: %s\n", oldSessionID)
 	fmt.Printf("   Current:  %s\n", c.sessionID)
 	fmt.Printf("   Token tracking has been reset.\n")

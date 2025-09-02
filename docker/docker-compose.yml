@@ -17,14 +17,22 @@ services:
       dockerfile: Dockerfile.adk-web
     restart: unless-stopped
     environment:
-      BACKEND_URL: ${ADK_BACKEND_URL:-http://host.docker.internal:6999}
+      BACKEND_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
     ports:
       - "4200:4200"
     depends_on:
       - postgres
     # Add health check to ensure the service is ready
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4200"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:4200",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
