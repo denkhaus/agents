@@ -152,6 +152,16 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 		Stream:      agentConfig.Setting.Agent.StreamingEnabled,
 	}
 
+	if agentConfig.Setting.Agent.TimeAwareness != nil {
+		tas := agentConfig.Setting.Agent.TimeAwareness
+
+		var err error
+		options, err = tas.Apply(options, agentConfig.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply time awareness settings: %w", err)
+		}
+	}
+
 	options = append(options, llmagent.WithGenerationConfig(generationConfig))
 
 	if agentConfig.Description != "" {

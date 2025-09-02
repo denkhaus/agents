@@ -52,6 +52,7 @@ type AgentSettings struct {
 	InputSchema       map[string]interface{} `json:"input_schema,omitempty"`
 	OutputSchema      map[string]interface{} `json:"output_schema,omitempty"`
 	OutputKey         string                 `json:"output_key,omitempty"`
+	TimeAwareness     *TimeAwarenessSettings `json:"time_awareness,omitempty"`
 }
 
 // LLMSettings represents LLM configuration
