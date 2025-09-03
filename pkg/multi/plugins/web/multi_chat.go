@@ -94,12 +94,37 @@ func (s *Server) createInterAgentEvent(fromAgent, toAgent, message string) map[s
 	}
 }
 
-// broadcastInterAgentEvent broadcasts an inter-agent event to all active SSE connections
+// broadcastInterAgentEvent broadcasts an inter-agent event to sessions of the sending agent
 func (s *Server) broadcastInterAgentEvent(event map[string]interface{}) {
-	// Note: This is a simplified implementation
-	// In a real implementation, you would maintain a list of active SSE connections
-	// and broadcast to them. For now, we'll log the event.
-	log.Infof("Inter-agent communication: %+v", event)
+	// Extract sender agent name from the inter-agent event
+	interAgentData, ok := event["interAgent"].(map[string]interface{})
+	if !ok {
+		log.Errorf("Invalid inter-agent event format: missing interAgent data")
+		return
+	}
+	
+	fromAgent, ok := interAgentData["fromAgent"].(string)
+	if !ok {
+		log.Errorf("Invalid inter-agent event format: missing fromAgent")
+		return
+	}
+	
+	toAgent, ok := interAgentData["toAgent"].(string)
+	if !ok {
+		log.Errorf("Invalid inter-agent event format: missing toAgent")
+		return
+	}
+
+	log.Infof("Broadcasting inter-agent event: %s -> %s", fromAgent, toAgent)
+
+	// Use the connection pool to broadcast to the sending agent's sessions
+	sentCount := s.ssePool.BroadcastToAgent(fromAgent, event)
+
+	if sentCount == 0 {
+		log.Infof("No active SSE connections found for agent: %s", fromAgent)
+	} else {
+		log.Infof("Sent inter-agent event to %d connections for agent: %s", sentCount, fromAgent)
+	}
 }
 
 // registerMultiChatRoutes adds multi-agent chat endpoints to the router

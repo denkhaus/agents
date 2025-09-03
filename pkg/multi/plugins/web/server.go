@@ -54,6 +54,9 @@ type Server struct {
 
 	// Multi-Agent Chat support
 	chatProcessor multi.ChatProcessor
+	
+	// SSE Connection Pool for Inter-Agent Communication
+	ssePool *SSEConnectionPool
 }
 
 // Option configures the Server instance.
@@ -81,6 +84,7 @@ func New(agents map[string]agent.Agent, opts ...Option) *Server {
 		traces:         make(map[string]attribute.Set),
 		memoryExporter: newInMemoryExporter(),
 		sessionSvc:     sessioninmemory.NewSessionService(),
+		ssePool:        NewSSEConnectionPool(),
 	}
 
 	// Apply user-provided options.
