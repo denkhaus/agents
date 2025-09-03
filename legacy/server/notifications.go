@@ -10,17 +10,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/denkhaus/agents/legacy/helper"
 	"github.com/samber/mo"
 	"trpc.group/trpc-go/trpc-a2a-go/protocol"
 	"trpc.group/trpc-go/trpc-a2a-go/taskmanager"
-	"github.com/denkhaus/agents/helper"
 )
 
 // NotificationSender defines push notification capabilities.
 type NotificationSender interface {
 	// SendNotification sends a push notification
 	SendNotification(ctx context.Context, config NotificationConfig, payload interface{}) error
-	
+
 	// WrapTaskManager wraps a task manager with notification capabilities
 	WrapTaskManager(base taskmanager.TaskManager) taskmanager.TaskManager
 }
@@ -206,7 +206,7 @@ type WebhookConfig struct {
 type WebhookSender interface {
 	// SendWebhook sends a webhook notification
 	SendWebhook(ctx context.Context, config WebhookConfig, payload interface{}) error
-	
+
 	// SendWebhookWithRetry sends a webhook with retry logic
 	SendWebhookWithRetry(ctx context.Context, config WebhookConfig, payload interface{}) error
 }

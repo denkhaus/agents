@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/denkhaus/agents/auth"
+	"github.com/denkhaus/agents/legacy/auth"
 	"github.com/samber/mo"
 )
 

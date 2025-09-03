@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/denkhaus/agents/auth"
-	"github.com/denkhaus/agents/client"
+	"github.com/denkhaus/agents/legacy/auth"
+	"github.com/denkhaus/agents/legacy/client"
 	"github.com/samber/mo"
 	"trpc.group/trpc-go/trpc-a2a-go/protocol"
 )

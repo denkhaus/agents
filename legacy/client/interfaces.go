@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/denkhaus/agents/auth"
+	"github.com/denkhaus/agents/legacy/auth"
 	"github.com/samber/mo"
 	"trpc.group/trpc-go/trpc-a2a-go/protocol"
 	"trpc.group/trpc-go/trpc-a2a-go/server"
@@ -136,15 +136,15 @@ func (c ClientConfig) Validate() error {
 	if c.BaseURL == "" {
 		return fmt.Errorf("base URL is required")
 	}
-	
+
 	if timeout, hasTimeout := c.Timeout.Get(); hasTimeout && timeout <= 0 {
 		return fmt.Errorf("timeout must be positive")
 	}
-	
+
 	if retryCount, hasRetryCount := c.RetryCount.Get(); hasRetryCount && retryCount < 0 {
 		return fmt.Errorf("retry count cannot be negative")
 	}
-	
+
 	return nil
 }
 
