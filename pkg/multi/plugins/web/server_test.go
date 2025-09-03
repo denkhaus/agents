@@ -7,7 +7,7 @@
 //
 //
 
-package server
+package web
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/server/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
 	"github.com/gorilla/mux"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"

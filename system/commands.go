@@ -1,17 +1,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
 
 	"github.com/denkhaus/agents/logger"
+	"github.com/denkhaus/agents/pkg/multi"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
-	"trpc.group/trpc-go/trpc-agent-go/server/debug"
 )
 
 // validateConfigCommand validates the system configuration
@@ -116,26 +120,47 @@ func (a *App) runCommand(c *cli.Context) error {
 		)
 	}
 
-	// Start debug server if enabled
-	if c.Bool("debug-server") {
-		go a.startDebugServer(agents, c.String("debug-addr"))
-	}
+	g := new(errgroup.Group)
+	g.Go(func() error {
+		return a.startDebugServer(ctx, envConfig, agents, c.String("debug-addr"))
+	})
 
-	// Start chat system
-	return a.startChatSystem(ctx, agents, envConfig)
+	return g.Wait()
 }
 
 // startDebugServer starts the debug HTTP server
-func (a *App) startDebugServer(agents []shared.TheAgent, addr string) {
+func (a *App) startDebugServer(
+	ctx context.Context,
+	envConfig *config.EnvironmentConfig,
+	agents []shared.TheAgent,
+	addr string,
+) error {
 	debugAgents := make(map[string]agent.Agent)
 	for _, ag := range agents {
 		debugAgents[ag.Info().Name] = ag
 	}
 
-	server := debug.New(debugAgents)
-	logger.Log.Info("Debug server starting", zap.String("address", addr))
+	condenserService, err := a.createCondenser(ctx, envConfig)
+	if err != nil {
+		return err
+	}
+
+	processor := multi.NewChatProcessor(
+		multi.WithSessionService(condenserService),
+		multi.WithSessionID(uuid.New()),
+		multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
+		multi.WithAgents(agents...),
+	)
+
+	server := web.New(debugAgents,
+		web.WithChatProcessor(processor),
+	)
+
+	logger.Log.Info("server is starting", zap.String("address", addr))
 
 	if err := http.ListenAndServe(addr, server.Handler()); err != nil {
-		logger.Log.Fatal("Debug server failed", zap.Error(err))
+		return fmt.Errorf("server failed: %w", err)
 	}
+
+	return nil
 }

@@ -160,6 +160,19 @@ func (p *chatProcessorImpl) GetAgentNameByID(agentID uuid.UUID) string {
 	return ""
 }
 
+// GetAgentByName returns the actual agent instance by name.
+// Returns nil if no agent is found with the given name.
+func (p *chatProcessorImpl) GetAgentByName(name string) shared.TheAgent {
+	for _, agent := range p.agents {
+		if agent.Name() == name {
+			// Return the messaging wrapper (which implements shared.TheAgent and has send_message tool)
+			return agent.wrapper
+		}
+	}
+
+	return nil
+}
+
 // startMessageProcessing starts a goroutine to process incoming messages for the given agent.
 // It listens on the agent's message channel and forwards messages to the agent's runner.
 func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {

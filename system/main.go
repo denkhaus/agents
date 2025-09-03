@@ -1,20 +1,12 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
-	"github.com/denkhaus/agents/pkg/multi"
-	"github.com/denkhaus/agents/pkg/multi/plugins"
-	multicli "github.com/denkhaus/agents/pkg/multi/plugins/cli"
 	"github.com/denkhaus/agents/pkg/provider/config"
-	"github.com/denkhaus/agents/pkg/shared"
-
-	"github.com/google/uuid"
 	"github.com/samber/do"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -53,32 +45,6 @@ func (a *App) Close() {
 	if a.injector != nil {
 		a.injector.Shutdown()
 	}
-}
-
-// startChatSystem initializes and starts the chat interface
-func (a *App) startChatSystem(ctx context.Context, agents []shared.TheAgent, envConfig *config.EnvironmentConfig) error {
-	chatAgents := []shared.TheAgent{shared.NewHumanAgent(shared.AgentInfoHuman)}
-	chatAgents = append(chatAgents, agents...)
-
-	condenserService, err := a.createCondenser(ctx, envConfig)
-	if err != nil {
-		return err
-	}
-
-	chat := multicli.NewCLIMultiAgentChat(
-		plugins.WithProcessorOptions(
-			multi.WithSessionService(condenserService),
-			multi.WithSessionID(uuid.New()),
-			multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
-			multi.WithAgents(chatAgents...),
-		),
-	)
-
-	logger.Log.Info("Chat system ready",
-		zap.Int("agents", len(chatAgents)),
-	)
-
-	return chat.Start(ctx)
 }
 
 // createCLIApp creates and configures the CLI application

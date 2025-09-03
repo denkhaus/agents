@@ -35,4 +35,8 @@ type ChatProcessor interface {
 	// GetAgentNameByID returns the name of an agent given its UUID.
 	// Returns empty string if no agent is found with the given ID.
 	GetAgentNameByID(agentID uuid.UUID) string
+
+	// GetAgentByName returns the actual agent instance by name.
+	// Returns nil if no agent is found with the given name.
+	GetAgentByName(name string) shared.TheAgent
 }

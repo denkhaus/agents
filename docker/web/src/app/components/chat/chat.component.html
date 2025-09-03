@@ -130,6 +130,16 @@
               ></app-eval-tab>
             </mat-tab>
           }
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="tab-label">Multi-Agent</span>
+            </ng-template>
+            <app-multi-agent-chat
+              [sessionId]="sessionId"
+              [userId]="userId"
+              [availableAgents]="availableAgents"
+            ></app-multi-agent-chat>
+          </mat-tab>
         </mat-tab-group>
       </div>
     }

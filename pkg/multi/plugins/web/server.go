@@ -8,7 +8,7 @@
 //
 
 // Package debug provides a HTTP server for debugging and testing.
-package server
+package web
 
 import (
 	"context"
@@ -28,7 +28,8 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/event"
 
 	//itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/server/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -50,6 +51,9 @@ type Server struct {
 
 	traces         map[string]attribute.Set // key: event_id
 	memoryExporter *inMemoryExporter
+
+	// Multi-Agent Chat support
+	chatProcessor multi.ChatProcessor
 }
 
 // Option configures the Server instance.
@@ -94,6 +98,7 @@ func New(agents map[string]agent.Agent, opts ...Option) *Server {
 	})
 	s.router.Use(c.Handler)
 	s.registerRoutes()
+	s.registerMultiChatRoutes()
 
 	provider := sdktrace.NewTracerProvider()
 	provider.RegisterSpanProcessor(sdktrace.NewSimpleSpanProcessor(newApiServerSpanExporter(s.traces)))
@@ -305,9 +310,19 @@ func buildTraceAttributes(attributes attribute.Set) map[string]any {
 func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
 	log.Infof("handleListApps called: path=%s", r.URL.Path)
 	var apps []string
-	for name := range s.agents {
-		apps = append(apps, name)
+	
+	// Prefer agents from chatProcessor if available (they have send_message tools)
+	if s.chatProcessor != nil {
+		for _, agentInfo := range s.chatProcessor.GetAllAgentInfos() {
+			apps = append(apps, agentInfo.Name)
+		}
+	} else {
+		// Fallback to server agents
+		for name := range s.agents {
+			apps = append(apps, name)
+		}
 	}
+	
 	s.writeJSON(w, apps)
 }
 
@@ -753,9 +768,25 @@ func (s *Server) getRunner(appName string) (runner.Runner, error) {
 	}
 	s.mu.RUnlock()
 
-	ag, ok := s.agents[appName]
-	if !ok {
-		return nil, fmt.Errorf("agent not found")
+	var ag agent.Agent
+
+	// Always prefer agents from chatProcessor if available (they have send_message tools)
+	if s.chatProcessor != nil {
+		if agentInfo := s.chatProcessor.GetAgentInfoByAuthor(appName); agentInfo != nil {
+			// Get the actual agent from chatProcessor
+			if processorAgent := s.chatProcessor.GetAgentByName(appName); processorAgent != nil {
+				ag = processorAgent
+			}
+		}
+	}
+	
+	// Only fallback to server agents if chatProcessor is not available or agent not found
+	if ag == nil {
+		var ok bool
+		ag, ok = s.agents[appName]
+		if !ok {
+			return nil, fmt.Errorf("agent not found")
+		}
 	}
 
 	// Compose runner options: user-supplied first, then mandatory sessionSvc.

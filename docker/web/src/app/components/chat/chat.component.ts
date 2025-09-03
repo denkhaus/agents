@@ -74,6 +74,7 @@ import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { MatMenuTrigger, MatMenu, MatMenuItem } from '@angular/material/menu';
 import { ResizableBottomDirective } from '../../directives/resizable-bottom.directive';
 import { TraceEventComponent } from '../trace-tab/trace-event/trace-event.component';
+import { MultiAgentChatComponent } from '../multi-agent-chat/multi-agent-chat.component';
 
 const ROOT_AGENT = 'root_agent';
 
@@ -162,6 +163,7 @@ const BIDI_STREAMING_RESTART_WARNING =
         MatSuffix,
         ResizableBottomDirective,
         TraceEventComponent,
+        MultiAgentChatComponent,
         AsyncPipe,
     ],
 })
@@ -288,6 +290,9 @@ export class ChatComponent implements OnInit, AfterViewInit, OnDestroy {
   bottomPanelVisible = false;
   hoveredEventMessageIndices: number[] = [];
 
+  // Multi-Agent Chat
+  availableAgents: string[] = [];
+
   constructor(
       private sanitizer: DomSanitizer,
       @Inject(SESSION_SERVICE) private sessionService: SessionService,
@@ -398,6 +403,14 @@ export class ChatComponent implements OnInit, AfterViewInit, OnDestroy {
   selectApp(appName: string) {
     if (appName != this.appName) {
       this.agentService.setApp(appName);
+      
+      // Update available agents for multi-agent chat
+      this.apps$.subscribe(apps => {
+        if (apps) {
+          this.availableAgents = apps.filter(app => app !== appName);
+          this.availableAgents.push(appName); // Include current app as well
+        }
+      });
 
       this.isSessionUrlEnabledObs.subscribe((sessionUrlEnabled) => {
         const sessionUrl = this.activatedRoute.snapshot.queryParams['session'];
