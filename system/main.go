@@ -12,15 +12,12 @@ import (
 	"github.com/denkhaus/agents/multi/plugins"
 	multicli "github.com/denkhaus/agents/multi/plugins/cli"
 	"github.com/denkhaus/agents/pkg/provider/config"
-	"github.com/denkhaus/agents/pkg/session/condenser"
 	"github.com/denkhaus/agents/pkg/shared"
 
 	"github.com/google/uuid"
 	"github.com/samber/do"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
-	"trpc.group/trpc-go/trpc-agent-go/model/openai"
-	"trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 )
 
 const (
@@ -56,63 +53,6 @@ func (a *App) Close() {
 	if a.injector != nil {
 		a.injector.Shutdown()
 	}
-}
-
-func (a *App) createCondenser(ctx context.Context, envConfig *config.EnvironmentConfig) (*condenser.Service, error) {
-
-	options := []condenser.ConfigOption{
-		condenser.WithTokenCountingMethod(envConfig.Condenser.TokenCountingMethod),
-	}
-
-	if envConfig.Condenser.LoggingEnabled {
-		options = append(options, condenser.WithLogger(logger.Log))
-	}
-
-	if envConfig.Condenser.MaxContextTokens > 0 {
-		options = append(
-			options, condenser.WithMaxContextTokens(
-				envConfig.Condenser.MaxContextTokens,
-			),
-		)
-	}
-
-	if envConfig.Condenser.TriggerThreshold > 0 {
-		options = append(
-			options, condenser.WithTriggerThreshold(
-				envConfig.Condenser.TriggerThreshold,
-			),
-		)
-	}
-
-	if envConfig.Condenser.SummaryPrompt != "" {
-		options = append(
-			options, condenser.WithSummaryPrompt(
-				envConfig.Condenser.SummaryPrompt,
-			),
-		)
-	}
-
-	if envConfig.Condenser.RecentEventsToKeep > 0 {
-		options = append(
-			options, condenser.WithRecentEventsToKeep(
-				envConfig.Condenser.RecentEventsToKeep,
-			),
-		)
-	}
-
-	// TODO: get Model by provider and name from a real ModelProvider
-	llm := openai.New(envConfig.Condenser.ModelName)
-
-	// Create the condenser service, wrapping the base session service.
-	condenserSessionService, err := condenser.NewWithOptions(
-		inmemory.NewSessionService(), llm, options...,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create condenser service: %w", err)
-	}
-
-	return condenserSessionService, nil
 }
 
 // startChatSystem initializes and starts the chat interface
@@ -218,11 +158,8 @@ func main() {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
 
-	// Create CLI application
-	cliApp := createCLIApp(app)
-
 	// Run the CLI application
-	if err := cliApp.Run(os.Args); err != nil {
+	if err := createCLIApp(app).Run(os.Args); err != nil {
 		logger.Log.Fatal("Application error", zap.Error(err))
 	}
 }
