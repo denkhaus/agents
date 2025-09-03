@@ -47,14 +47,40 @@ export const messageApi = {
   },
 
   convertEventToMessage(event: InterAgentEvent): Message {
-    const content = typeof event.content === 'string' 
-      ? event.content 
-      : event.content.parts?.[0]?.text || ''
+    console.log('Converting event to message:', event)
+    
+    // Safe content extraction with null checks
+    let content = ''
+    let parts: MessagePart[] | undefined = undefined
+    
+    if (typeof event.content === 'string') {
+      content = event.content
+    } else if (event.content && typeof event.content === 'object') {
+      // Check if content has parts array
+      if (Array.isArray(event.content.parts) && event.content.parts.length > 0) {
+        content = event.content.parts[0]?.text || ''
+        parts = event.content.parts as MessagePart[]
+      } else {
+        // Fallback: try to extract text from content object
+        content = JSON.stringify(event.content)
+      }
+    }
+    
+    // Handle timestamp - could be Unix timestamp or already a Date
+    let timestamp: Date
+    if (typeof event.timestamp === 'number') {
+      // Unix timestamp (seconds or milliseconds)
+      timestamp = event.timestamp > 1000000000000 
+        ? new Date(event.timestamp) 
+        : new Date(event.timestamp * 1000)
+    } else {
+      timestamp = new Date()
+    }
 
     return {
       id: event.id || event.invocationId || Date.now().toString(),
       content,
-      timestamp: new Date(event.timestamp * 1000),
+      timestamp,
       sender: event.fromAgent || event.author || 'system',
       type: event.type === 'inter_agent' ? 'inter_agent' : 
             event.type === 'communication' ? 'inter_agent' : 'system',
@@ -65,7 +91,7 @@ export const messageApi = {
         partial: event.partial,
         done: event.done
       },
-      parts: typeof event.content === 'object' ? event.content.parts as MessagePart[] : undefined,
+      parts,
       usageMetadata: event.usageMetadata
     }
   }

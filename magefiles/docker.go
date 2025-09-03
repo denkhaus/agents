@@ -33,7 +33,9 @@ func (Docker) Up() error {
 	printSuccess("Services started successfully!")
 	fmt.Println()
 	printStatus("Service URLs:")
+	fmt.Println("  - React Chat UI: http://localhost:3000")
 	fmt.Println("  - ADK Web Frontend: http://localhost:4200")
+	fmt.Println("  - Backend API: http://localhost:6999")
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
 	printStatus("Use 'mage docker:logs' to view logs")
@@ -210,6 +212,31 @@ func (Docker) Config() error {
 	return sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "config")
 }
 
+// ReactChat starts only the React Chat interface and backend
+func (Docker) ReactChat() error {
+	printStatus("Starting React Chat interface with backend...")
+
+	if err := ensureEnvFile(); err != nil {
+		return err
+	}
+
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "react-chat", "agents", "postgres"); err != nil {
+		return fmt.Errorf("failed to start React Chat services: %w", err)
+	}
+
+	printSuccess("React Chat services started successfully!")
+	fmt.Println()
+	printStatus("Service URLs:")
+	fmt.Println("  - React Chat UI: http://localhost:3000")
+	fmt.Println("  - Backend API: http://localhost:6999")
+	fmt.Println("  - PostgreSQL Database: localhost:6888")
+	fmt.Println()
+	printStatus("Use 'mage docker:logs react-chat' to view React Chat logs")
+	printStatus("Use 'mage docker:down' to stop services")
+
+	return nil
+}
+
 // Help shows available Docker commands and usage examples
 func (Docker) Help() {
 	fmt.Println("Docker Management Commands")
@@ -228,16 +255,21 @@ func (Docker) Help() {
 	fmt.Println("  mage docker:exec        Execute command in service container")
 	fmt.Println("  mage docker:pull        Pull latest images")
 	fmt.Println("  mage docker:config      Validate and show configuration")
+	fmt.Println("  mage docker:reactchat   Start only React Chat interface")
 	fmt.Println("  mage docker:help        Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  mage docker:up                    # Start all services")
-	fmt.Println("  mage docker:logs adk-web          # Show ADK web logs")
-	fmt.Println("  mage docker:build adk-web         # Rebuild ADK web service")
+	fmt.Println("  mage docker:logs react-chat       # Show React Chat logs")
+	fmt.Println("  mage docker:logs web               # Show ADK web logs")
+	fmt.Println("  mage docker:build react-chat      # Rebuild React Chat service")
+	fmt.Println("  mage docker:build web              # Rebuild ADK web service")
 	fmt.Println("  mage docker:exec postgres psql    # Connect to PostgreSQL")
 	fmt.Println()
 	fmt.Println("Service URLs:")
+	fmt.Println("  - React Chat UI: http://localhost:3000")
 	fmt.Println("  - ADK Web Frontend: http://localhost:4200")
+	fmt.Println("  - Backend API: http://localhost:6999")
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
 	fmt.Println("Configuration:")

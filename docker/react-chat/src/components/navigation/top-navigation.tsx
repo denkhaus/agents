@@ -2,6 +2,7 @@
 
 import { useWorkspaceStore } from '@/lib/store'
 import { ThemeToggle } from '@/components/navigation/theme-toggle'
+import { ConnectionStatus } from '@/components/debug/connection-status'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Menu } from 'lucide-react'
@@ -38,6 +39,7 @@ export function TopNavigation() {
       </div>
       
       <div className="flex items-center gap-2">
+        <ConnectionStatus />
         <ThemeToggle />
       </div>
     </header>

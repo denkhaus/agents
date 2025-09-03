@@ -62,28 +62,52 @@ export function useAgentConnection() {
       const sessionId = `session-${Date.now()}`
       const userId = 'user'
 
-      sseService.connect(agentIds, sessionId, userId, {
-        onConnectionStatusChange: (connected) => {
-          console.log('SSE connection status changed:', connected)
-          setConnected(connected)
-        },
-        onInterAgentEvent: (event) => {
-          console.log('Inter-agent event received:', event)
-          addInterAgentEvent(event)
-        },
-        onMessage: (event) => {
-          console.log('Message event received:', event)
-          // Convert event to message and add to appropriate agent session
-          const message = messageApi.convertEventToMessage(event)
-          if (event.fromAgent && agents.some(a => a.id === event.fromAgent)) {
-            addMessage(event.fromAgent, message)
+      let reconnectAttempts = 0
+      const maxReconnectAttempts = 5
+
+      const connectWithRetry = () => {
+        sseService.connect(agentIds, sessionId, userId, {
+          onConnectionStatusChange: (connected) => {
+            console.log('SSE connection status changed:', connected)
+            setConnected(connected)
+            if (connected) {
+              reconnectAttempts = 0 // Reset on successful connection
+            }
+          },
+          onInterAgentEvent: (event) => {
+            console.log('Inter-agent event received:', event)
+            addInterAgentEvent(event)
+          },
+          onMessage: (event) => {
+            console.log('Message event received:', event)
+            try {
+              // Convert event to message and add to appropriate agent session
+              const message = messageApi.convertEventToMessage(event)
+              if (event.fromAgent && agents.some(a => a.id === event.fromAgent)) {
+                addMessage(event.fromAgent, message)
+              }
+            } catch (error) {
+              console.error('Error converting event to message:', error, event)
+            }
+          },
+          onError: (error) => {
+            console.error('SSE error:', error)
+            setConnected(false)
+            
+            // Retry connection with exponential backoff
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++
+              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
+              console.log(`Retrying SSE connection in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
+              setTimeout(connectWithRetry, delay)
+            } else {
+              console.error('Max reconnection attempts reached')
+            }
           }
-        },
-        onError: (error) => {
-          console.error('SSE error:', error)
-          setConnected(false)
-        }
-      })
+        })
+      }
+
+      connectWithRetry()
 
       return () => {
         console.log('Cleaning up SSE connection')

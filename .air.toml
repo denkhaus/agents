@@ -7,31 +7,44 @@ tmp_dir = "/tmp"
 args_bin = ["server"]
 bin = "/tmp/main"
 cmd = "go build -buildvcs=false -trimpath -ldflags='-s -w' -o /tmp/main ./system"
-delay = 500
+delay = 1000
 exclude_dir = [
   ".qoder",
   "legacy",
   "examples",
-  "screenshot",
+  "screenshots",
   "scripts",
   ".git",
   ".github",
   "test_workspace",
+  "docker",
+  "node_modules",
+  "vendor",
+  "tmp",
 ]
 exclude_file = []
 exclude_regex = ["_test.go", "_mock.go", ".*_gen.go"]
 exclude_unchanged = true
 follow_symlink = false
 full_bin = ""
-include_dir = ["cmd", "internal"]
+include_dir = [
+  "system",
+  "pkg",
+  "cmd",
+  "internal",
+  "config",
+  "di",
+  "logger",
+  "magefiles",
+]
 include_ext = ["go"]
 include_file = []
-kill_delay = "0s"
+kill_delay = "2s"
 log = "build-errors.log"
-poll = false
-poll_interval = 0
-rerun = false
-rerun_delay = 200
+poll = true
+poll_interval = 500
+rerun = true
+rerun_delay = 500
 send_interrupt = true
 stop_on_root = false
 

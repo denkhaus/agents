@@ -308,13 +308,27 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "data: %s\n\n", data)
 	flusher.Flush()
 
-	// Keep connection alive and listen for events
-	// In a real implementation, you would:
-	// 1. Register this connection in a connection pool
-	// 2. Listen for inter-agent events and broadcast them
-	// 3. Handle connection cleanup
+	// Register SSE connections for each agent in the connection pool
+	var connections []*SSEConnection
+	for _, agentName := range agentNames {
+		agentName = strings.TrimSpace(agentName)
+		if agentName != "" {
+			conn := s.ssePool.RegisterConnection(sessionID, agentName, "user", w, r.Context())
+			if conn != nil {
+				connections = append(connections, conn)
+				log.Infof("Registered SSE connection for agent: %s, session: %s", agentName, sessionID)
+			}
+		}
+	}
 
-	// For now, we'll keep the connection open and send periodic heartbeats
+	// Cleanup connections when done
+	defer func() {
+		for _, conn := range connections {
+			s.ssePool.UnregisterConnection(conn.SessionID, conn.AgentName)
+		}
+	}()
+
+	// Keep the connection open and send periodic heartbeats
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -333,6 +347,7 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 			data, _ := json.Marshal(heartbeat)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
+			log.Debugf("Sent heartbeat for session %s", sessionID)
 		}
 	}
 }

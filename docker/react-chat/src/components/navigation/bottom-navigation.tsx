@@ -28,9 +28,10 @@ export function BottomNavigation() {
   }
 
   return (
-    <div className="border-t bg-background p-2">
-      <Tabs value={activeAgentId || ''} onValueChange={setActiveAgent}>
-        <TabsList className="grid h-12 w-full" style={{ gridTemplateColumns: `repeat(${agents.length}, 1fr)` }}>
+    <div className="border-t bg-background p-4">
+      <div className="flex justify-center">
+        <Tabs value={activeAgentId || ''} onValueChange={setActiveAgent}>
+          <TabsList className="grid h-12 w-fit max-w-4xl" style={{ gridTemplateColumns: `repeat(${agents.length}, 1fr)` }}>
           {agents.map((agent) => {
             console.log('Rendering agent tab:', agent.name)
             return (
@@ -59,8 +60,9 @@ export function BottomNavigation() {
               </TabsTrigger>
             )
           })}
-        </TabsList>
-      </Tabs>
+          </TabsList>
+        </Tabs>
+      </div>
     </div>
   )
 }

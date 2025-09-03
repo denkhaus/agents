@@ -41,6 +41,14 @@ class SSEService {
       this.handlers.onConnectionStatusChange?.(false)
       this.handlers.onError?.(error)
       console.error('SSE connection error:', error)
+      
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        if (!this.isConnected) {
+          console.log('Attempting to reconnect SSE...')
+          this.connect(agents, sessionId, userId, this.handlers)
+        }
+      }, 5000)
     }
   }
 
@@ -118,7 +126,9 @@ class SSEService {
         break
       
       case 'heartbeat':
-        // Handle heartbeat - could update connection status
+        // Handle heartbeat - update connection status and log
+        console.log('Received heartbeat:', event.timestamp)
+        this.handlers.onConnectionStatusChange?.(true)
         break
       
       default:

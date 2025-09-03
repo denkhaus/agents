@@ -14,19 +14,51 @@ services:
       - "6888:5432" # Use different port to avoid conflicts
 
   ###########################################################################################
-  web:
+  # Legacy Angular Web Client
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.web
+  #   restart: unless-stopped
+  #   networks:
+  #     - agents-network
+  #   environment:
+  #     BACKEND_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
+  #   ports:
+  #     - "4200:4200"
+  #   depends_on:
+  #     - postgres
+  #   # Add health check to ensure the service is ready
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "wget",
+  #         "--quiet",
+  #         "--tries=1",
+  #         "--spider",
+  #         "http://localhost:4200",
+  #       ]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 60s
+
+  ###########################################################################################
+  # New React Chat Client
+  react-chat:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: Dockerfile.react-chat
     restart: unless-stopped
     networks:
       - agents-network
     environment:
-      BACKEND_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
+      NEXT_PUBLIC_API_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
     ports:
-      - "4200:4200"
+      - "3000:3000"
     depends_on:
-      - postgres
+      - agents
     # Add health check to ensure the service is ready
     healthcheck:
       test:
@@ -36,7 +68,7 @@ services:
           "--quiet",
           "--tries=1",
           "--spider",
-          "http://localhost:4200",
+          "http://localhost:3000",
         ]
       interval: 30s
       timeout: 10s
