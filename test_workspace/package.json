@@ -1,0 +1,14 @@
+{
+  "name": "development-project",
+  "version": "0.1.0",
+  "description": "Development project - structure to be determined based on requirements",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["development", "project"],
+  "author": "Development Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

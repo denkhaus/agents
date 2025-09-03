@@ -243,8 +243,17 @@ func (s *Server) registerRoutes() {
 	preflight := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
+	s.router.HandleFunc("/list-apps", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run_sse", preflight).Methods(http.MethodOptions)
+	
+	// Session API OPTIONS handlers
+	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions", preflight).Methods(http.MethodOptions)
+	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}", preflight).Methods(http.MethodOptions)
+	
+	// Debug API OPTIONS handlers
+	s.router.HandleFunc("/debug/trace/{event_id}", preflight).Methods(http.MethodOptions)
+	s.router.HandleFunc("/debug/trace/session/{session_id}", preflight).Methods(http.MethodOptions)
 }
 
 // ---- Handlers -----------------------------------------------------------
@@ -517,6 +526,10 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+
+	// Register SSE connection for inter-agent communication
+	cleanup := s.RegisterSSEConnectionForRequest(req, w, r)
+	defer cleanup()
 
 	rn, err := s.getRunner(req.AppName)
 	if err != nil {

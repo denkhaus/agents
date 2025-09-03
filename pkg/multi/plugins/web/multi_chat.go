@@ -94,7 +94,51 @@ func (s *Server) createInterAgentEvent(fromAgent, toAgent, message string) map[s
 	}
 }
 
-// broadcastInterAgentEvent broadcasts an inter-agent event to sessions of the sending agent
+// createReceivedInterAgentEvent creates an event for the receiving agent
+func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent string, originalEvent map[string]interface{}) map[string]interface{} {
+	eventID := uuid.New().String()
+	timestamp := time.Now()
+
+	// Extract message from original event
+	var message string
+	if content, ok := originalEvent["content"].(map[string]interface{}); ok {
+		if parts, ok := content["parts"].([]map[string]interface{}); ok && len(parts) > 0 {
+			if text, ok := parts[0]["text"].(string); ok {
+				message = text
+			}
+		}
+	}
+
+	return map[string]interface{}{
+		"id":           eventID,
+		"invocationId": eventID,
+		"author":       fromAgent,
+		"timestamp":    timestamp.Unix(),
+		"object":       "inter_agent",
+		"done":         true,
+		"partial":      false,
+		"content": map[string]interface{}{
+			"role": "user",
+			"parts": []map[string]interface{}{
+				{
+					"text": fmt.Sprintf("Received from %s: %s", fromAgent, message),
+				},
+			},
+		},
+		"actions": map[string]interface{}{
+			"stateDelta":           map[string]interface{}{},
+			"artifactDelta":        map[string]interface{}{},
+			"requestedAuthConfigs": map[string]interface{}{},
+		},
+		"interAgent": map[string]interface{}{
+			"fromAgent": fromAgent,
+			"toAgent":   toAgent,
+			"type":      "received",
+		},
+	}
+}
+
+// broadcastInterAgentEvent broadcasts an inter-agent event to both sender and receiver agents
 func (s *Server) broadcastInterAgentEvent(event map[string]interface{}) {
 	// Extract sender agent name from the inter-agent event
 	interAgentData, ok := event["interAgent"].(map[string]interface{})
@@ -117,13 +161,18 @@ func (s *Server) broadcastInterAgentEvent(event map[string]interface{}) {
 
 	log.Infof("Broadcasting inter-agent event: %s -> %s", fromAgent, toAgent)
 
-	// Use the connection pool to broadcast to the sending agent's sessions
-	sentCount := s.ssePool.BroadcastToAgent(fromAgent, event)
+	// Broadcast to sender agent sessions
+	senderCount := s.ssePool.BroadcastToAgent(fromAgent, event)
+	
+	// Create and broadcast received message event to receiver agent
+	receivedEvent := s.createReceivedInterAgentEvent(fromAgent, toAgent, event)
+	receiverCount := s.ssePool.BroadcastToAgent(toAgent, receivedEvent)
 
-	if sentCount == 0 {
-		log.Infof("No active SSE connections found for agent: %s", fromAgent)
+	totalSent := senderCount + receiverCount
+	if totalSent == 0 {
+		log.Infof("No active SSE connections found for agents: %s or %s", fromAgent, toAgent)
 	} else {
-		log.Infof("Sent inter-agent event to %d connections for agent: %s", sentCount, fromAgent)
+		log.Infof("Sent inter-agent event to %d connections (sender: %d, receiver: %d)", totalSent, senderCount, receiverCount)
 	}
 }
 
