@@ -11,8 +11,8 @@ import (
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/acarl005/stripansi"
 	"github.com/chzyer/readline"
-	"github.com/denkhaus/agents/multi"
-	"github.com/denkhaus/agents/multi/plugins"
+	"github.com/denkhaus/agents/pkg/multi"
+	"github.com/denkhaus/agents/pkg/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"github.com/mattn/go-runewidth"
@@ -139,7 +139,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 		readline.PcItem("/clear"),
 		readline.PcItem("/width"),
 	)
-	
+
 	// Add agent names to completer
 	for _, agent := range p.Processor.GetAllAgentInfos() {
 		if agent.Role() != shared.AgentRoleHuman {
@@ -431,7 +431,7 @@ func (p *cliMultiAgentChatImpl) sendMessageToAgent(ctx context.Context, input st
 
 	// Create a cancellable context for this operation
 	agentCtx, cancel := context.WithCancel(ctx)
-	
+
 	// Store the cancel function so it can be called by interrupt handler
 	p.activeMutex.Lock()
 	p.activeCancel = cancel

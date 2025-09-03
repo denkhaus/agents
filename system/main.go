@@ -8,9 +8,9 @@ import (
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
-	"github.com/denkhaus/agents/multi"
-	"github.com/denkhaus/agents/multi/plugins"
-	multicli "github.com/denkhaus/agents/multi/plugins/cli"
+	"github.com/denkhaus/agents/pkg/multi"
+	"github.com/denkhaus/agents/pkg/multi/plugins"
+	multicli "github.com/denkhaus/agents/pkg/multi/plugins/cli"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
 

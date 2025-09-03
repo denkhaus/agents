@@ -105,7 +105,7 @@ func runRemoteAgent() {
 	remoteAgent := buildRemoteAgent(*modelName)
 	server, err := a2a.New(
 		a2a.WithHost(*host),
-		a2a.WithAgent(remoteAgent),
+		a2a.WithAgent(remoteAgent, false),
 	)
 	if err != nil {
 		log.Fatalf("Failed to create a2a server: %v", err)

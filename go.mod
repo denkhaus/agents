@@ -34,7 +34,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	trpc.group/trpc-go/trpc-a2a-go v0.2.3
 	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f
-	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250827071733-e6ae6aa6e9d6
+	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250903061708-c9123c15b069
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3
 	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250829092715-dc49bf15fb03
@@ -121,7 +121,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
-	github.com/gorilla/mux v1.8.1 // indirect
+	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -146,7 +146,7 @@ require (
 	github.com/pgvector/pgvector-go v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rs/cors v1.11.1 // indirect
+	github.com/rs/cors v1.11.1
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/tencent/vectordatabase-sdk-go v1.8.2 // indirect
@@ -166,7 +166,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.37.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.37.0
 	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

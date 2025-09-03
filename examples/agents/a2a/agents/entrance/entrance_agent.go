@@ -50,7 +50,7 @@ func main() {
 	// Create a2a server with the agent
 	server, err := a2a.New(
 		a2a.WithHost(*host),
-		a2a.WithAgent(entranceAgent),
+		a2a.WithAgent(entranceAgent, false),
 		a2a.WithAgentCard(agentCard),
 		a2a.WithExtraA2AOptions(a2aserver.WithBasePath("/a2a/entrance/")),
 	)

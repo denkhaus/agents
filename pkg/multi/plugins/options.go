@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"github.com/denkhaus/agents/multi"
+	"github.com/denkhaus/agents/pkg/multi"
 )
 
 // Options contains configuration for multi-agent chat plugins.

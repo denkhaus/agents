@@ -39,7 +39,7 @@ func main() {
 	// Create a2a server with the agent
 	server, err := a2a.New(
 		a2a.WithHost(*host),
-		a2a.WithAgent(codeCheckAgent),
+		a2a.WithAgent(codeCheckAgent, false),
 		a2a.WithAgentCard(agentCard),
 		a2a.WithExtraA2AOptions(a2aserver.WithBasePath("/a2a/codecheck/")),
 	)
