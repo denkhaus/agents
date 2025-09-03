@@ -155,6 +155,7 @@ func (a *App) startDebugServer(
 
 	server := web.New(debugAgents,
 		web.WithChatProcessor(processor),
+		web.WithLogger(logger.Log),
 	)
 
 	httpServer := &http.Server{

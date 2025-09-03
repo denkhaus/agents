@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
 
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -54,9 +55,10 @@ type Server struct {
 
 	// Multi-Agent Chat support
 	chatProcessor multi.ChatProcessor
-	
+
 	// SSE Connection Pool for Inter-Agent Communication
 	ssePool *SSEConnectionPool
+	logger  *zap.Logger
 }
 
 // Option configures the Server instance.
@@ -258,11 +260,11 @@ func (s *Server) registerRoutes() {
 	s.router.HandleFunc("/list-apps", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run_sse", preflight).Methods(http.MethodOptions)
-	
+
 	// Session API OPTIONS handlers
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}", preflight).Methods(http.MethodOptions)
-	
+
 	// Debug API OPTIONS handlers
 	s.router.HandleFunc("/debug/trace/{event_id}", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/debug/trace/session/{session_id}", preflight).Methods(http.MethodOptions)
@@ -335,7 +337,7 @@ func buildTraceAttributes(attributes attribute.Set) map[string]any {
 func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
 	log.Infof("handleListApps called: path=%s", r.URL.Path)
 	var apps []string
-	
+
 	// Prefer agents from chatProcessor if available (they have send_message tools)
 	if s.chatProcessor != nil {
 		for _, agentInfo := range s.chatProcessor.GetAllAgentInfos() {
@@ -347,7 +349,7 @@ func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
 			apps = append(apps, name)
 		}
 	}
-	
+
 	s.writeJSON(w, apps)
 }
 
@@ -586,7 +588,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Infof("handleRunSSE finished for session %s", req.SessionID)
+	s.logger.Info("handleRunSSE finished", zap.String("sessionID", req.SessionID))
 }
 
 // convertSessionToADKFormat converts an internal session object to the
@@ -808,7 +810,7 @@ func (s *Server) getRunner(appName string) (runner.Runner, error) {
 			}
 		}
 	}
-	
+
 	// Only fallback to server agents if chatProcessor is not available or agent not found
 	if ag == nil {
 		var ok bool

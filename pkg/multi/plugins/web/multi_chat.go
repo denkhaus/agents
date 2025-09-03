@@ -11,14 +11,14 @@ import (
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/log"
+	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
 // BroadcastMessage sends a message from an agent to all connected clients for that agent.
 func (s *Server) BroadcastMessage(info *shared.AgentInfo, content string) {
 	if info == nil {
-		log.Errorf("BroadcastMessage called with nil agent info")
+		s.logger.Error("BroadcastMessage called with nil agent info")
 		return
 	}
 
@@ -42,17 +42,55 @@ func (s *Server) BroadcastMessage(info *shared.AgentInfo, content string) {
 				},
 			},
 		},
-		"actions": map[string]interface{}{
-			"stateDelta":           map[string]interface{}{},
-			"artifactDelta":        map[string]interface{}{},
-			"requestedAuthConfigs": map[string]interface{}{},
-		},
+		"actions": map[string]interface{}{},
 	}
 
-	log.Infof("Broadcasting agent message from: %s", info.Name)
+	s.logger.Info("Broadcasting agent message",
+		zap.String("agent", info.Name),
+		zap.Any("event", event),
+	)
 	s.ssePool.BroadcastToAgent(info.Name, event)
 }
 
+// BroadcastToolCall sends a tool call from an agent to all connected clients for that agent.
+func (s *Server) BroadcastToolCall(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
+	if info == nil {
+		s.logger.Error("BroadcastToolCall called with nil agent info")
+		return
+	}
+
+	eventID := uuid.New().String()
+	timestamp := time.Now()
+
+	// Create an ADK-compatible event for tool call
+	event := map[string]interface{}{
+		"id":           eventID,
+		"invocationId": eventID,
+		"author":       info.Name,
+		"timestamp":    timestamp.Unix(),
+		"object":       "tool_code",
+		"done":         true,
+		"partial":      false,
+		"content": map[string]interface{}{
+			"role": "tool",
+			"parts": []map[string]interface{}{
+				{
+					"functionCall": map[string]interface{}{
+						"name":      functionDef.Name,
+						"arguments": string(functionDef.Arguments),
+					},
+				},
+			},
+		},
+		"actions": map[string]interface{}{},
+	}
+
+	s.logger.Info("Broadcasting agent tool call",
+		zap.String("agent", info.Name),
+		zap.String("toolName", functionDef.Name),
+	)
+	s.ssePool.BroadcastToAgent(info.Name, event)
+}
 
 // MultiChatRequest represents a request to send a message in multi-agent chat
 type MultiChatRequest struct {
@@ -137,11 +175,7 @@ func (s *Server) createInterAgentEvent(fromAgent, toAgent, message string) map[s
 				},
 			},
 		},
-		"actions": map[string]interface{}{
-			"stateDelta":           map[string]interface{}{},
-			"artifactDelta":        map[string]interface{}{},
-			"requestedAuthConfigs": map[string]interface{}{},
-		},
+		"actions": map[string]interface{}{},
 		"interAgent": map[string]interface{}{
 			"fromAgent": fromAgent,
 			"toAgent":   toAgent,
@@ -181,11 +215,7 @@ func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent string, origin
 				},
 			},
 		},
-		"actions": map[string]interface{}{
-			"stateDelta":           map[string]interface{}{},
-			"artifactDelta":        map[string]interface{}{},
-			"requestedAuthConfigs": map[string]interface{}{},
-		},
+		"actions": map[string]interface{}{},
 		"interAgent": map[string]interface{}{
 			"fromAgent": fromAgent,
 			"toAgent":   toAgent,
@@ -196,49 +226,53 @@ func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent string, origin
 
 // broadcastInterAgentEvent broadcasts an inter-agent event to both sender and receiver agents
 func (s *Server) broadcastInterAgentEvent(event map[string]interface{}) {
-	// Extract sender agent name from the inter-agent event
 	interAgentData, ok := event["interAgent"].(map[string]interface{})
 	if !ok {
-		log.Errorf("Invalid inter-agent event format: missing interAgent data")
+		s.logger.Error("Invalid inter-agent event format: missing interAgent data")
 		return
 	}
-	
+
 	fromAgent, ok := interAgentData["fromAgent"].(string)
 	if !ok {
-		log.Errorf("Invalid inter-agent event format: missing fromAgent")
+		s.logger.Error("Invalid inter-agent event format: missing fromAgent")
 		return
 	}
-	
+
 	toAgent, ok := interAgentData["toAgent"].(string)
 	if !ok {
-		log.Errorf("Invalid inter-agent event format: missing toAgent")
+		s.logger.Error("Invalid inter-agent event format: missing toAgent")
 		return
 	}
 
-	log.Infof("Broadcasting inter-agent event: %s -> %s", fromAgent, toAgent)
+	s.logger.Info("Broadcasting inter-agent event",
+		zap.String("fromAgent", fromAgent),
+		zap.String("toAgent", toAgent),
+	)
 
-	// Broadcast to sender agent sessions
 	senderCount := s.ssePool.BroadcastToAgent(fromAgent, event)
-	
-	// Create and broadcast received message event to receiver agent
 	receivedEvent := s.createReceivedInterAgentEvent(fromAgent, toAgent, event)
 	receiverCount := s.ssePool.BroadcastToAgent(toAgent, receivedEvent)
 
 	totalSent := senderCount + receiverCount
 	if totalSent == 0 {
-		log.Infof("No active SSE connections found for agents: %s or %s", fromAgent, toAgent)
+		s.logger.Info("No active SSE connections for inter-agent event",
+			zap.String("fromAgent", fromAgent),
+			zap.String("toAgent", toAgent),
+		)
 	} else {
-		log.Infof("Sent inter-agent event to %d connections (sender: %d, receiver: %d)", totalSent, senderCount, receiverCount)
+		s.logger.Info("Sent inter-agent event",
+			zap.Int("totalSent", totalSent),
+			zap.Int("senderCount", senderCount),
+			zap.Int("receiverCount", receiverCount),
+		)
 	}
 }
 
 // registerMultiChatRoutes adds multi-agent chat endpoints to the router
 func (s *Server) registerMultiChatRoutes() {
-	// Multi-Agent Chat APIs
 	s.router.HandleFunc("/multi-chat/send", s.handleMultiChatSend).Methods(http.MethodPost)
 	s.router.HandleFunc("/multi-chat/start_sse", s.handleMultiChatSSE).Methods(http.MethodGet)
 
-	// OPTIONS handlers for CORS
 	preflight := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -248,7 +282,7 @@ func (s *Server) registerMultiChatRoutes() {
 
 // handleMultiChatSend handles sending messages between agents
 func (s *Server) handleMultiChatSend(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleMultiChatSend called: path=%s", r.URL.Path)
+	s.logger.Info("handleMultiChatSend called", zap.String("path", r.URL.Path))
 
 	if s.chatProcessor == nil {
 		http.Error(w, "Multi-agent chat not configured", http.StatusServiceUnavailable)
@@ -262,20 +296,17 @@ func (s *Server) handleMultiChatSend(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Validate request
 	if req.ToAgent == "" || req.Message == "" {
 		http.Error(w, "toAgent and message are required", http.StatusBadRequest)
 		return
 	}
 
-	// Get agent info
 	toAgentInfo := s.chatProcessor.GetAgentInfoByAuthor(req.ToAgent)
 	if toAgentInfo == nil {
 		http.Error(w, fmt.Sprintf("Agent '%s' not found", req.ToAgent), http.StatusNotFound)
 		return
 	}
 
-	// Determine sender ID
 	var fromAgentID uuid.UUID
 	if req.FromAgent == "" || req.FromAgent == "user" {
 		fromAgentID = shared.AgentIDHuman
@@ -288,39 +319,32 @@ func (s *Server) handleMultiChatSend(w http.ResponseWriter, r *http.Request) {
 		fromAgentID = fromAgentInfo.ID()
 	}
 
-	// Send message using chat processor
 	go func() {
 		ctx := context.Background()
 		err := s.chatProcessor.SendMessageWithProcessing(ctx, fromAgentID, toAgentInfo.ID(), req.Message)
 		if err != nil {
-			log.Errorf("Error sending multi-chat message: %v", err)
+			s.logger.Error("Error sending multi-chat message", zap.Error(err))
 		}
 	}()
 
-	// Return success response
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Message sent successfully",
-		"from":    req.FromAgent,
-		"to":      req.ToAgent,
-	}
+	response := map[string]interface{}{"success": true, "message": "Message sent successfully"}
 	s.writeJSON(w, response)
 }
 
 // handleMultiChatSSE handles SSE connections for multi-agent chat
 func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleMultiChatSSE called: path=%s", r.URL.Path)
+	s.logger.Info("handleMultiChatSSE called",
+		zap.String("path", r.URL.Path),
+		zap.String("query", r.URL.RawQuery),
+	)
 
 	if s.chatProcessor == nil {
 		http.Error(w, "Multi-agent chat not configured", http.StatusServiceUnavailable)
 		return
 	}
 
-	// Parse query parameters
 	agents := r.URL.Query().Get("agents")
 	sessionID := r.URL.Query().Get("sessionId")
-	_ = r.URL.Query().Get("userId") // userID for future use
-
 	if agents == "" {
 		http.Error(w, "agents parameter is required", http.StatusBadRequest)
 		return
@@ -332,17 +356,14 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Parse agent list
 	agentNames := strings.Split(agents, ",")
 
-	// Send initial agent list
-	agentList := make([]map[string]interface{}, 0)
+	var agentList []map[string]interface{}
 	for _, agentName := range agentNames {
 		agentName = strings.TrimSpace(agentName)
 		if agentInfo := s.chatProcessor.GetAgentInfoByAuthor(agentName); agentInfo != nil {
@@ -354,17 +375,11 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	initialEvent := map[string]interface{}{
-		"type":      "agent_list",
-		"agents":    agentList,
-		"timestamp": time.Now().Unix(),
-	}
-
+	initialEvent := map[string]interface{}{"type": "agent_list", "agents": agentList, "timestamp": time.Now().Unix()}
 	data, _ := json.Marshal(initialEvent)
 	fmt.Fprintf(w, "data: %s\n\n", data)
 	flusher.Flush()
 
-	// Register SSE connections for each agent in the connection pool
 	var connections []*SSEConnection
 	for _, agentName := range agentNames {
 		agentName = strings.TrimSpace(agentName)
@@ -372,19 +387,20 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 			conn := s.ssePool.RegisterConnection(sessionID, agentName, "user", w, r.Context())
 			if conn != nil {
 				connections = append(connections, conn)
-				log.Infof("Registered SSE connection for agent: %s, session: %s", agentName, sessionID)
+				s.logger.Info("Registered SSE connection for agent",
+					zap.String("agentName", agentName),
+					zap.String("sessionID", sessionID),
+				)
 			}
 		}
 	}
 
-	// Cleanup connections when done
 	defer func() {
 		for _, conn := range connections {
 			s.ssePool.UnregisterConnection(conn.SessionID, conn.AgentName)
 		}
 	}()
 
-	// Keep the connection open and send periodic heartbeats
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -392,18 +408,14 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("Multi-chat SSE connection closed for session %s", sessionID)
+			s.logger.Info("Multi-chat SSE connection closed", zap.String("sessionID", sessionID))
 			return
 		case <-ticker.C:
-			// Send heartbeat
-			heartbeat := map[string]interface{}{
-				"type":      "heartbeat",
-				"timestamp": time.Now().Unix(),
-			}
+			heartbeat := map[string]interface{}{"type": "heartbeat", "timestamp": time.Now().Unix()}
 			data, _ := json.Marshal(heartbeat)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
-			log.Debugf("Sent heartbeat for session %s", sessionID)
+			s.logger.Debug("Sent heartbeat", zap.String("sessionID", sessionID))
 		}
 	}
 }
@@ -414,54 +426,7 @@ func (s *Server) GetMultiChatAgents() []map[string]interface{} {
 		return nil
 	}
 
-	agents := make([]map[string]interface{}, 0)
-	for _, info := range s.chatProcessor.GetAllAgentInfos() {
-		agents = append(agents, map[string]interface{}{
-			"id":   info.ID().String(),
-			"name": info.Name,
-			"role": string(info.Role()),
-		})
-	}
-	return agents
-}
-p connections when done
-	defer func() {
-		for _, conn := range connections {
-			s.ssePool.UnregisterConnection(conn.SessionID, conn.AgentName)
-		}
-	}()
-
-	// Keep the connection open and send periodic heartbeats
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	ctx := r.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			log.Infof("Multi-chat SSE connection closed for session %s", sessionID)
-			return
-		case <-ticker.C:
-			// Send heartbeat
-			heartbeat := map[string]interface{}{
-				"type":      "heartbeat",
-				"timestamp": time.Now().Unix(),
-			}
-			data, _ := json.Marshal(heartbeat)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			flusher.Flush()
-			log.Debugf("Sent heartbeat for session %s", sessionID)
-		}
-	}
-}
-
-// GetMultiChatAgents returns the list of available agents for multi-agent chat
-func (s *Server) GetMultiChatAgents() []map[string]interface{} {
-	if s.chatProcessor == nil {
-		return nil
-	}
-
-	agents := make([]map[string]interface{}, 0)
+	var agents []map[string]interface{}
 	for _, info := range s.chatProcessor.GetAllAgentInfos() {
 		agents = append(agents, map[string]interface{}{
 			"id":   info.ID().String(),

@@ -111,3 +111,38 @@ Wichtig: jeder Agent muss auch seine eigene ID kennen um Tasks für sich abzuruf
 │   Habe ich Ihre Frage damit beantwortet? Oder kann ich Ihnen als Project Manager anderweitig helfen?                 │
 │                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+Ich habe die Logs gründlich analysiert. Wir sind kurz vor dem Ziel.
+
+  Analyse:
+
+   1. Verbindungsproblem: Die Logs zeigen eindeutig, dass die Haupt-SSE-Verbindung (/multi-chat/start_sse) immer noch ständig abbricht und neu aufgebaut wird. Das ist die Ursache für das "Disconnected"-Label.
+   2. Inter-Agenten-Kommunikation:
+       * Broadcasting inter-agent event {"fromAgent": "researcher", "toAgent": "coder"}: Erfolg! Der researcher sendet die Nachricht korrekt ab.
+       * Sent inter-agent event ... {"receiverCount": 0}: Problem! Die Nachricht konnte nicht an den coder zugestellt werden, weil dessen Verbindung genau in dem Moment unterbrochen war.
+       * Broadcasting agent message {"agent": "coder", ...}: Teilerfolg! Der coder verarbeitet die Nachricht intern trotzdem und generiert eine Antwort. Diese wird auch korrekt zum Senden vorbereitet.
+
+  Schlussfolgerung:
+
+  Die gesamte Anwendung wird durch die instabile Haupt-SSE-Verbindung lahmgelegt. Obwohl die Agenten intern Nachrichten verarbeiten und Antworten generieren, kommen diese bei der Benutzeroberfläche nicht an, weil die Verbindung
+  im entscheidenden Moment getrennt ist.
+
+  Die Frage ist, warum die Verbindung abbricht. Die Logs zeigen einen entscheidenden Hinweis: Die Hauptverbindung (/multi-chat/start_sse) bricht genau in dem Moment ab, in dem eine zweite Verbindung für einen spezifischen
+  Agenten-Lauf geöffnet wird (/run_sse). Dies deutet auf einen Konflikt im Frontend hin, wo das Öffnen der zweiten Verbindung die erste schliesst.
+
+  Ich muss mir den Frontend-Code ansehen, der diese Verbindungen verwaltet. Die Fehlermeldung des Benutzers hat uns den Weg gewiesen: use-agent-connection.tsx. Ich werde diese Datei jetzt suchen und analysieren.
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+ │ ✔ FindFiles '**/use-agent-connection.tsx'                                                                                                                                                                                 │
+ │                                                                                                                                                                                                                            │
+ │    Found 1 matching file(s)                                                                                                                                                                                                │
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+✦ Okay, ich lese jetzt die Datei docker/react-chat/src/hooks/use-agent-connection.tsx. Ich erwarte, hier den Grund zu finden, warum das Öffnen einer neuen Agenten-Verbindung die bestehende Hauptverbindung unterbricht.
+ ╭────────────────────────────────────────────────────────╮
+ │ ✔ ReadFile ...ker/src/hooks/use-agent-connection.tsx  │
+ ╰────────────────────────────────────────────────────────╯
+⠏ Dissecting SSE Implementation (esc to cancel, 3m 41s)
+
+  hast du etwas gefunden?
