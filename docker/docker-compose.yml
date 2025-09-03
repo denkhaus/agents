@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    networks:
+      - agents-network
     environment:
       POSTGRES_USER: ${AGENTS_DB_USER:-agents}
       POSTGRES_PASSWORD: ${AGENTS_DB_PASSWORD:-agents}
@@ -11,11 +13,14 @@ services:
     ports:
       - "6888:5432" # Use different port to avoid conflicts
 
-  adk-web:
+  ###########################################################################################
+  web:
     build:
       context: .
-      dockerfile: Dockerfile.adk-web
+      dockerfile: Dockerfile.web
     restart: unless-stopped
+    networks:
+      - agents-network
     environment:
       BACKEND_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
     ports:
@@ -38,5 +43,36 @@ services:
       retries: 3
       start_period: 60s
 
+  ###########################################################################################
+  agents:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agents
+    env_file: .env
+    ports:
+      - "9451:8080"
+      - "6999:6999"
+      - "2345:2345" # Delve debugger port
+    environment:
+      # Build cache optimization
+      GOCACHE: /tmp/go-build-cache
+    volumes:
+      # Mount entire backend directory for hot-reloading with air
+      - ../:/app/src
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/tmp/go-build-cache
+    working_dir: /app/src
+    command: ["air", "-c", "/app/src/.air.toml"]
+    networks:
+      - agents-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
+  go_mod_cache:
+  go_build_cache:
+
+networks:
+  agents-network:
+    driver: bridge

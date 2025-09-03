@@ -1,0 +1,10 @@
+*
+!.air.toml
+!logger
+!pkg
+!go.mod
+!go.sum
+!config
+!test_workspace
+!multi
+!di

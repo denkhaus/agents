@@ -157,7 +157,7 @@ func createCLIApp(app *App) *cli.App {
 			&cli.StringFlag{
 				Name:    "environment",
 				Aliases: []string{"env", "e"},
-				Value:   "development",
+				Value:   "production",
 				Usage:   "Environment to run (development, production, experiment)",
 				EnvVars: []string{"AGENTS_ENVIRONMENT"},
 			},

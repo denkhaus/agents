@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/denkhaus/agents/pkg/tools/project/repository/postgres/ent"
 	"github.com/denkhaus/agents/pkg/tools/project/shared"
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 // postgresRepository implements the Repository interface using ent ORM
@@ -20,16 +20,8 @@ type postgresRepository struct {
 }
 
 // NewPostgresRepository creates a new PostgreSQL repository using ent ORM
-func NewPostgresRepository(databaseURL string, opts ...Option) (shared.Repository, error) {
-	config := &Config{
-		DatabaseURL:      databaseURL,
-		MaxOpenConns:     25,
-		MaxIdleConns:     5,
-		ConnMaxLifetime:  time.Hour,
-		ConnMaxIdleTime:  time.Minute * 15,
-		AutoMigrate:      true,
-		MigrationTimeout: time.Minute * 5,
-	}
+func NewRepository(opts ...Option) (shared.Repository, error) {
+	config := DefaultConfig()
 
 	repo := &postgresRepository{
 		config: config,
@@ -50,6 +42,9 @@ func NewPostgresRepository(databaseURL string, opts ...Option) (shared.Repositor
 // initialize sets up the ent client and performs migrations
 func (r *postgresRepository) initialize() error {
 	// Open database connection
+
+	r.config.Logger.Info("initialize database", zap.String("database_url", r.config.DatabaseURL))
+
 	db, err := sql.Open("postgres", r.config.DatabaseURL)
 	if err != nil {
 		return NewConnectionError("failed to open database connection", err)
@@ -107,9 +102,4 @@ func (r *postgresRepository) mapError(operation string, err error) error {
 
 	// TODO: Add more specific error mapping for different ent error types
 	return NewConnectionError(fmt.Sprintf("database operation failed: %s", operation), err)
-}
-
-// NewRepository creates a new PostgreSQL repository using ent ORM
-func NewRepository(databaseURL string, opts ...Option) (shared.Repository, error) {
-	return NewPostgresRepository(databaseURL, opts...)
 }

@@ -21,15 +21,15 @@ const (
 // Up starts all Docker services
 func (Docker) Up() error {
 	printStatus("Starting Agents Docker environment...")
-	
+
 	if err := ensureEnvFile(); err != nil {
 		return err
 	}
-	
+
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d"); err != nil {
 		return fmt.Errorf("failed to start services: %w", err)
 	}
-	
+
 	printSuccess("Services started successfully!")
 	fmt.Println()
 	printStatus("Service URLs:")
@@ -38,18 +38,18 @@ func (Docker) Up() error {
 	fmt.Println()
 	printStatus("Use 'mage docker:logs' to view logs")
 	printStatus("Use 'mage docker:down' to stop services")
-	
+
 	return nil
 }
 
 // Down stops all Docker services
 func (Docker) Down() error {
 	printStatus("Stopping Agents Docker environment...")
-	
+
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "down"); err != nil {
 		return fmt.Errorf("failed to stop services: %w", err)
 	}
-	
+
 	printSuccess("Services stopped successfully!")
 	return nil
 }
@@ -57,10 +57,10 @@ func (Docker) Down() error {
 // Restart restarts all Docker services
 func (Docker) Restart() error {
 	printStatus("Restarting Agents Docker environment...")
-	
+
 	mg.Deps(Docker.Down)
 	mg.Deps(Docker.Up)
-	
+
 	printSuccess("Services restarted successfully!")
 	return nil
 }
@@ -70,7 +70,7 @@ func (Docker) Restart() error {
 func (Docker) Logs() error {
 	args := os.Args
 	var service string
-	
+
 	// Check if a service name was provided
 	for i, arg := range args {
 		if strings.Contains(arg, "docker:logs") && i+1 < len(args) {
@@ -78,16 +78,16 @@ func (Docker) Logs() error {
 			break
 		}
 	}
-	
+
 	cmd := []string{"docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "logs", "-f"}
-	
+
 	if service != "" {
 		printStatus(fmt.Sprintf("Showing logs for service: %s", service))
 		cmd = append(cmd, service)
 	} else {
 		printStatus("Showing logs for all services...")
 	}
-	
+
 	return sh.RunV(cmd[0], cmd[1:]...)
 }
 
@@ -96,7 +96,7 @@ func (Docker) Logs() error {
 func (Docker) Build() error {
 	args := os.Args
 	var service string
-	
+
 	// Check if a service name was provided
 	for i, arg := range args {
 		if strings.Contains(arg, "docker:build") && i+1 < len(args) {
@@ -104,20 +104,20 @@ func (Docker) Build() error {
 			break
 		}
 	}
-	
+
 	cmd := []string{"docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "build"}
-	
+
 	if service != "" {
 		printStatus(fmt.Sprintf("Building service: %s", service))
 		cmd = append(cmd, service)
 	} else {
 		printStatus("Building all services...")
 	}
-	
+
 	if err := sh.RunV(cmd[0], cmd[1:]...); err != nil {
 		return fmt.Errorf("failed to build services: %w", err)
 	}
-	
+
 	printSuccess("Build completed!")
 	return nil
 }
@@ -131,28 +131,24 @@ func (Docker) Status() error {
 // Clean removes all containers, networks, and volumes (with confirmation)
 func (Docker) Clean() error {
 	printWarning("This will remove all containers, networks, and volumes!")
-	
+
 	// In a real scenario, you might want to add interactive confirmation
 	// For now, we'll just print the warning and proceed
 	fmt.Print("Are you sure? (y/N): ")
 	var response string
 	fmt.Scanln(&response)
-	
+
 	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 		printStatus("Cleanup cancelled.")
 		return nil
 	}
-	
+
 	printStatus("Cleaning up Docker environment...")
-	
+
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "down", "-v", "--remove-orphans"); err != nil {
 		return fmt.Errorf("failed to clean up: %w", err)
 	}
-	
-	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "build", "--no-cache"); err != nil {
-		return fmt.Errorf("failed to rebuild: %w", err)
-	}
-	
+
 	printSuccess("Cleanup completed!")
 	return nil
 }
@@ -161,15 +157,15 @@ func (Docker) Clean() error {
 // Usage: mage docker:exec service command
 func (Docker) Exec() error {
 	args := os.Args
-	
+
 	if len(args) < 4 {
 		return fmt.Errorf("usage: mage docker:exec <service> <command>")
 	}
-	
+
 	// Find the service and command arguments
 	var service, command string
 	var cmdArgs []string
-	
+
 	for i, arg := range args {
 		if strings.Contains(arg, "docker:exec") {
 			if i+1 < len(args) {
@@ -184,14 +180,14 @@ func (Docker) Exec() error {
 			break
 		}
 	}
-	
+
 	if service == "" || command == "" {
 		return fmt.Errorf("usage: mage docker:exec <service> <command>")
 	}
-	
+
 	cmd := []string{"docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", service, command}
 	cmd = append(cmd, cmdArgs...)
-	
+
 	printStatus(fmt.Sprintf("Executing '%s' in service '%s'", command, service))
 	return sh.RunV(cmd[0], cmd[1:]...)
 }
@@ -199,11 +195,11 @@ func (Docker) Exec() error {
 // Pull pulls the latest images for all services
 func (Docker) Pull() error {
 	printStatus("Pulling latest images...")
-	
+
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "pull"); err != nil {
 		return fmt.Errorf("failed to pull images: %w", err)
 	}
-	
+
 	printSuccess("Images pulled successfully!")
 	return nil
 }
@@ -253,19 +249,19 @@ func (Docker) Help() {
 func ensureEnvFile() error {
 	envPath := filepath.Join(dockerDir, envFile)
 	examplePath := filepath.Join(dockerDir, envFile+".example")
-	
+
 	// Check if .env file exists
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		printWarning(".env file not found. Creating from .env.example...")
-		
+
 		// Copy .env.example to .env
 		if err := sh.Copy(envPath, examplePath); err != nil {
 			return fmt.Errorf("failed to create .env file: %w", err)
 		}
-		
+
 		printSuccess("Created .env file. You can customize it if needed.")
 	}
-	
+
 	return nil
 }
 

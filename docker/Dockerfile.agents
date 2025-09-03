@@ -1,0 +1,40 @@
+# Development Dockerfile with hot reload
+FROM golang:1.25-trixie
+
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+# Install development dependencies including MuPDF for PDF processing
+RUN apt-get update && apt-get install -y \
+    git \
+    ca-certificates \
+    tzdata \
+    gcc \
+    g++ \
+    libc6-dev \
+    curl \
+    bash \
+    nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Air for hot reload (backup option)
+RUN go install github.com/air-verse/air@latest
+
+# Install Mage for build system
+RUN go install github.com/magefile/mage@latest
+
+# Install Delve for debugging
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Set working directory
+WORKDIR /app/src
+
+# Expose ports
+EXPOSE 6999 2345
+
+# Default command (will be overridden by docker-compose)
+CMD ["air", "-c", ".air.toml"]

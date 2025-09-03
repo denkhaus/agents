@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/tools"
 	"github.com/denkhaus/agents/pkg/tools/project/repository/postgres"
@@ -49,8 +50,9 @@ func NewWithDI(injector *do.Injector) (tools.ToolSetFactoryFunc, error) {
 				return nil, fmt.Errorf("database url must be defined if repository type is %s", tsk.RepositoryType)
 			}
 
-			repo, err := postgres.NewPostgresRepository(
-				*tsk.DatabaseURL,
+			repo, err := postgres.NewRepository(
+				postgres.WithLogger(logger.Log),
+				postgres.WithDatabaseURL(*tsk.DatabaseURL),
 				postgres.WithAutoMigrate(true),
 				postgres.WithConnectionPool(25, 5),
 				postgres.WithConnectionLifetime(time.Hour, time.Minute*15),

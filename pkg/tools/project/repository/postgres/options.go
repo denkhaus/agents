@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Config holds configuration for the PostgreSQL repository
@@ -16,18 +18,20 @@ type Config struct {
 	// Migration settings
 	AutoMigrate      bool
 	MigrationTimeout time.Duration
+	Logger           *zap.Logger
 }
 
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		DatabaseURL:      "postgres://localhost/project_management?sslmode=disable",
+		DatabaseURL:      "",
 		MaxOpenConns:     25,
 		MaxIdleConns:     5,
 		ConnMaxLifetime:  time.Hour,
 		ConnMaxIdleTime:  time.Minute * 15,
 		AutoMigrate:      true,
 		MigrationTimeout: time.Minute * 5,
+		Logger:           zap.NewNop(),
 	}
 }
 
@@ -45,6 +49,13 @@ func WithConfig(config *Config) Option {
 func WithDatabaseURL(url string) Option {
 	return func(r *postgresRepository) {
 		r.config.DatabaseURL = url
+	}
+}
+
+// WithLogger sets a logger for debugging reasons
+func WithLogger(logger *zap.Logger) Option {
+	return func(r *postgresRepository) {
+		r.config.Logger = logger
 	}
 }
 

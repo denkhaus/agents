@@ -58,6 +58,15 @@ func (s *Service) condenseSession(ctx context.Context, sess *session.Session) er
 		return fmt.Errorf("failed to create condensed session: %w", err)
 	}
 
+	// Validate that the condensed session is actually smaller
+	if err := s.validateCondensedSession(ctx, sessKey, originalTokens); err != nil {
+		s.logger.Warn("Condensed session validation failed", 
+			zap.String("sessionID", sess.ID),
+			zap.Error(err),
+		)
+		// Continue anyway - validation failure is not fatal
+	}
+
 	// Update metrics
 	s.updateMetrics(originalTokens, projectedTokens, startTime)
 

@@ -30,8 +30,8 @@ func createTokenCounter(llm model.Model, config Config) (TokenCounter, error) {
 		return NewHeuristicTokenCounter(config.CharsPerToken, config.Logger), nil
 
 	case TokenCountingTikToken:
-		// TODO: Implement tiktoken support
-		return nil, fmt.Errorf("tiktoken support not yet implemented")
+		config.Logger.Info("Creating tiktoken-based token counter")
+		return NewTikTokenCounter(config.Logger), nil
 
 	case TokenCountingCustom:
 		return nil, fmt.Errorf("custom token counter must be provided via WithCustomTokenCounter")
