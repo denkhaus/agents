@@ -273,27 +273,21 @@ func (Docker) Help() {
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
 	fmt.Println("Configuration:")
-	fmt.Println("  Environment variables can be customized in docker/.env")
-	fmt.Println("  Backend URL: ADK_BACKEND_URL (default: http://host.docker.internal:6999)")
+	fmt.Println("  Environment variables can be customized in .env (project root)")
+	fmt.Println("  All services use the same .env file for consistent configuration")
 }
 
 // ensureEnvFile creates .env file from .env.example if it doesn't exist
 func ensureEnvFile() error {
-	envPath := filepath.Join(dockerDir, envFile)
-	examplePath := filepath.Join(dockerDir, envFile+".example")
-
-	// Check if .env file exists
-	if _, err := os.Stat(envPath); os.IsNotExist(err) {
-		printWarning(".env file not found. Creating from .env.example...")
-
-		// Copy .env.example to .env
-		if err := sh.Copy(envPath, examplePath); err != nil {
-			return fmt.Errorf("failed to create .env file: %w", err)
-		}
-
-		printSuccess("Created .env file. You can customize it if needed.")
+	// We now use the root .env file, so check if it exists
+	rootEnvPath := ".env"
+	
+	// Check if root .env file exists
+	if _, err := os.Stat(rootEnvPath); os.IsNotExist(err) {
+		return fmt.Errorf("root .env file not found. Please create .env in the project root directory")
 	}
 
+	printStatus("Using existing .env file from project root")
 	return nil
 }
 

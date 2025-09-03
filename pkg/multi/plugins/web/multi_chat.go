@@ -12,7 +12,47 @@ import (
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/log"
+	"trpc.group/trpc-go/trpc-agent-go/model"
 )
+
+// BroadcastMessage sends a message from an agent to all connected clients for that agent.
+func (s *Server) BroadcastMessage(info *shared.AgentInfo, content string) {
+	if info == nil {
+		log.Errorf("BroadcastMessage called with nil agent info")
+		return
+	}
+
+	eventID := uuid.New().String()
+	timestamp := time.Now()
+
+	// Create an ADK-compatible event
+	event := map[string]interface{}{
+		"id":           eventID,
+		"invocationId": eventID,
+		"author":       info.Name,
+		"timestamp":    timestamp.Unix(),
+		"object":       "message",
+		"done":         true,
+		"partial":      false,
+		"content": map[string]interface{}{
+			"role": "assistant",
+			"parts": []map[string]interface{}{
+				{
+					"text": content,
+				},
+			},
+		},
+		"actions": map[string]interface{}{
+			"stateDelta":           map[string]interface{}{},
+			"artifactDelta":        map[string]interface{}{},
+			"requestedAuthConfigs": map[string]interface{}{},
+		},
+	}
+
+	log.Infof("Broadcasting agent message from: %s", info.Name)
+	s.ssePool.BroadcastToAgent(info.Name, event)
+}
+
 
 // MultiChatRequest represents a request to send a message in multi-agent chat
 type MultiChatRequest struct {
@@ -33,8 +73,24 @@ type InterAgentEvent struct {
 }
 
 // WithChatProcessor sets the multi-agent chat processor for the server.
+// It also wires up the necessary callbacks for the processor to communicate back to the web server.
 func WithChatProcessor(processor multi.ChatProcessor) Option {
 	return func(s *Server) {
+		// Define the callback for regular messages.
+		onMessageCallback := func(info *shared.AgentInfo, content string) {
+			s.BroadcastMessage(info, content)
+		}
+
+		// Define the callback for tool calls.
+		onToolCallCallback := func(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
+			s.BroadcastToolCall(info, functionDef)
+		}
+
+		// Set the callbacks on the processor instance.
+		processor.SetOnMessageCallback(onMessageCallback)
+		processor.SetOnToolCallCallback(onToolCallCallback)
+
+		// Now, set the fully wired-up processor on the server.
 		s.chatProcessor = processor
 		s.setupInterAgentInterceptor()
 	}
@@ -322,6 +378,53 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cleanup connections when done
+	defer func() {
+		for _, conn := range connections {
+			s.ssePool.UnregisterConnection(conn.SessionID, conn.AgentName)
+		}
+	}()
+
+	// Keep the connection open and send periodic heartbeats
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Infof("Multi-chat SSE connection closed for session %s", sessionID)
+			return
+		case <-ticker.C:
+			// Send heartbeat
+			heartbeat := map[string]interface{}{
+				"type":      "heartbeat",
+				"timestamp": time.Now().Unix(),
+			}
+			data, _ := json.Marshal(heartbeat)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+			log.Debugf("Sent heartbeat for session %s", sessionID)
+		}
+	}
+}
+
+// GetMultiChatAgents returns the list of available agents for multi-agent chat
+func (s *Server) GetMultiChatAgents() []map[string]interface{} {
+	if s.chatProcessor == nil {
+		return nil
+	}
+
+	agents := make([]map[string]interface{}, 0)
+	for _, info := range s.chatProcessor.GetAllAgentInfos() {
+		agents = append(agents, map[string]interface{}{
+			"id":   info.ID().String(),
+			"name": info.Name,
+			"role": string(info.Role()),
+		})
+	}
+	return agents
+}
+p connections when done
 	defer func() {
 		for _, conn := range connections {
 			s.ssePool.UnregisterConnection(conn.SessionID, conn.AgentName)

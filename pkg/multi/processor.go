@@ -101,6 +101,16 @@ func (p *chatProcessorImpl) initAgents() {
 	}
 }
 
+// SetOnMessageCallback sets the message callback function for the ChatProcessor.
+func (p *chatProcessorImpl) SetOnMessageCallback(onMessage OnMessage) {
+	p.onMessage = onMessage
+}
+
+// SetOnToolCallCallback sets the tool call callback function for the ChatProcessor.
+func (p *chatProcessorImpl) SetOnToolCallCallback(onToolCall OnToolCall) {
+	p.onToolCall = onToolCall
+}
+
 // SetMessageInterceptor sets a message interceptor on the underlying message broker.
 // The interceptor function will be called for every message sent between agents.
 func (p *chatProcessorImpl) SetMessageInterceptor(interceptor messaging.Interceptor) {

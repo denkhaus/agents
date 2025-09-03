@@ -74,6 +74,12 @@ func WithRunnerOptions(opts ...runner.Option) Option {
 	return func(s *Server) { s.runnerOpts = append(s.runnerOpts, opts...) }
 }
 
+// WithLogger provides a zap.Logger to the server.
+// If omitted, a no-op logger is used.
+func WithLogger(logger *zap.Logger) Option {
+	return func(s *Server) { s.logger = logger }
+}
+
 // New creates a new CLI HTTP server with explicit agent registration. The
 // behaviour can be tweaked via functional options.
 func New(agents map[string]agent.Agent, opts ...Option) *Server {
@@ -212,6 +218,12 @@ func (e *inMemoryExporter) getFinishedSpans(sessionID string) []sdktrace.ReadOnl
 
 func (e *inMemoryExporter) clear() {
 	e.spans = make([]sdktrace.ReadOnlySpan, 0)
+}
+
+// SetChatProcessor sets the multi-agent chat processor for the server.
+func (s *Server) SetChatProcessor(p multi.ChatProcessor) {
+	s.chatProcessor = p
+	s.setupInterAgentInterceptor()
 }
 
 // Handler returns the http.Handler for the server.

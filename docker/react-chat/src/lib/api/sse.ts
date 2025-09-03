@@ -13,43 +13,88 @@ class SSEService {
   private eventSource: EventSource | null = null
   private handlers: SSEEventHandler = {}
   private isConnected = false
+  private abortController: AbortController | null = null;
 
   connect(agents: string[], sessionId: string, userId: string, handlers: SSEEventHandler) {
-    this.disconnect() // Close any existing connection
-    this.handlers = handlers
+    this.disconnect(); // Close any existing connection
+    this.handlers = handlers;
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
 
-    const url = apiClient.getSSEUrl(agents, sessionId, userId)
-    this.eventSource = new EventSource(url)
+    const url = apiClient.getSSEUrl(agents, sessionId, userId);
 
-    this.eventSource.onopen = () => {
-      this.isConnected = true
-      this.handlers.onConnectionStatusChange?.(true)
-      console.log('SSE connection established')
-    }
-
-    this.eventSource.onmessage = (event) => {
-      try {
-        const data: InterAgentEvent = JSON.parse(event.data)
-        this.handleEvent(data)
-      } catch (error) {
-        console.error('Error parsing SSE event:', error)
+    fetch(url, {
+      signal,
+      headers: {
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+    }).then(async (response) => {
+      if (!response.body) {
+        throw new Error('No response body');
       }
-    }
 
-    this.eventSource.onerror = (error) => {
-      this.isConnected = false
-      this.handlers.onConnectionStatusChange?.(false)
-      this.handlers.onError?.(error)
-      console.error('SSE connection error:', error)
-      
-      // Attempt to reconnect after a delay
-      setTimeout(() => {
-        if (!this.isConnected) {
-          console.log('Attempting to reconnect SSE...')
-          this.connect(agents, sessionId, userId, this.handlers)
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      this.isConnected = true;
+      this.handlers.onConnectionStatusChange?.(true);
+      console.log('SSE connection established');
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || signal.aborted) {
+            console.log('SSE stream finished or aborted.');
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                this.handleEvent(data);
+              } catch (error) {
+                console.error('Error parsing SSE data:', error, 'Raw data:', line);
+              }
+            }
+          }
         }
-      }, 5000)
-    }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('SSE read error:', error);
+            if (this.handlers.onError) {
+                this.handlers.onError(error as Event);
+            }
+        }
+      } finally {
+        this.isConnected = false;
+        this.handlers.onConnectionStatusChange?.(false);
+        console.log('SSE connection closed.');
+      }
+    }).catch((error) => {
+        if (error.name === 'AbortError') {
+            console.log('SSE fetch aborted by client.');
+            return;
+        }
+      console.error('SSE fetch setup error:', error);
+      this.isConnected = false;
+      this.handlers.onConnectionStatusChange?.(false);
+      if (this.handlers.onError) {
+        this.handlers.onError(error);
+      }
+      
+      // Optional: Reconnect logic
+      setTimeout(() => {
+        if (!this.isConnected && !signal.aborted) {
+          console.log('Attempting to reconnect SSE...');
+          this.connect(agents, sessionId, userId, this.handlers);
+        }
+      }, 5000);
+    });
   }
 
   connectForAgentRun(request: AgentRunRequest, handlers: SSEEventHandler) {
@@ -77,7 +122,6 @@ class SSEService {
       const decoder = new TextDecoder()
 
       this.isConnected = true
-      this.handlers.onConnectionStatusChange?.(true)
 
       try {
         while (true) {
@@ -139,12 +183,15 @@ class SSEService {
   }
 
   disconnect() {
+    if (this.abortController) {
+        this.abortController.abort();
+        this.abortController = null;
+    }
     if (this.eventSource) {
       this.eventSource.close()
       this.eventSource = null
     }
-    this.isConnected = false
-    this.handlers.onConnectionStatusChange?.(false)
+    // Note: isConnected and onConnectionStatusChange are handled in the fetch promise finally block
   }
 
   getConnectionStatus(): boolean {

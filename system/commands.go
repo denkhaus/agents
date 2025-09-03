@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/multi"
@@ -156,11 +157,34 @@ func (a *App) startDebugServer(
 		web.WithChatProcessor(processor),
 	)
 
-	logger.Log.Info("server is starting", zap.String("address", addr))
-
-	if err := http.ListenAndServe(addr, server.Handler()); err != nil {
-		return fmt.Errorf("server failed: %w", err)
+	httpServer := &http.Server{
+		Addr:    addr,
+		Handler: server.Handler(),
 	}
 
+	logger.Log.Info("server is starting", zap.String("address", addr))
+
+	// Start server in goroutine
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error("server failed", zap.Error(err))
+		}
+	}()
+
+	// Wait for context cancellation (shutdown signal)
+	<-ctx.Done()
+	logger.Log.Info("shutting down server...")
+
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Gracefully shutdown the server
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Log.Error("server shutdown failed", zap.Error(err))
+		return err
+	}
+
+	logger.Log.Info("server shutdown complete")
 	return nil
 }

@@ -39,14 +39,14 @@ include_dir = [
 ]
 include_ext = ["go"]
 include_file = []
-kill_delay = "2s"
+kill_delay = "5s"
 log = "build-errors.log"
 poll = true
 poll_interval = 500
 rerun = true
 rerun_delay = 500
-send_interrupt = true
-stop_on_root = false
+send_interrupt = false
+stop_on_root = true
 
 [color]
 app = ""

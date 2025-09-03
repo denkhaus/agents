@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
@@ -118,14 +122,39 @@ func createCLIApp(app *App) *cli.App {
 }
 
 func main() {
+	// Setup signal handling for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle interrupt signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		logger.Log.Info("Received shutdown signal, initiating graceful shutdown...")
+		cancel()
+	}()
+
 	// Create application instance
 	app, err := NewApp()
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
 
-	// Run the CLI application
-	if err := createCLIApp(app).Run(os.Args); err != nil {
+	// Ensure cleanup on exit
+	defer func() {
+		logger.Log.Info("Cleaning up application resources...")
+		app.Close()
+		// Give some time for cleanup
+		time.Sleep(100 * time.Millisecond)
+	}()
+
+	// Run the CLI application with context
+	cliApp := createCLIApp(app)
+	
+	// Create a context-aware version of os.Args
+	if err := cliApp.RunContext(ctx, os.Args); err != nil {
 		logger.Log.Fatal("Application error", zap.Error(err))
 	}
 }

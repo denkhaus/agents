@@ -44,16 +44,24 @@ export interface ADKSession {
 }
 
 export interface InterAgentEvent {
-  id: string
+  id?: string
   type: 'communication' | 'heartbeat' | 'agent_list' | 'inter_agent' | 'system'
   fromAgent?: string
   toAgent?: string
-  content: string | {
-    role: string
-    parts: Array<{
+  content?: string | {
+    role?: string
+    parts?: Array<{
       text?: string
-      functionCall?: unknown
-      functionResponse?: unknown
+      functionCall?: {
+        name: string
+        args: unknown
+        id?: string
+      }
+      functionResponse?: {
+        name: string
+        response: unknown
+        id?: string
+      }
     }>
   }
   message?: string
@@ -73,6 +81,10 @@ export interface InterAgentEvent {
     candidatesTokenCount?: number
     totalTokenCount?: number
   }
+  // Additional backend fields
+  object?: string
+  model?: string
+  created?: number
 }
 
 export interface SSEEventData {
