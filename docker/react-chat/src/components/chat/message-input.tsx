@@ -16,11 +16,11 @@ interface MessageInputProps {
 export function MessageInput({ agentId }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { addMessage, updateMessage } = useChatStore()
+  const { addMessage, updateMessage, currentSessionId } = useChatStore()
   const currentAgentMessageRef = useRef<Message | null>(null)
 
   const handleSend = async () => {
-    if (!message.trim()) return
+    if (!message.trim() || !currentSessionId) return
 
     const userMessage = {
       id: Date.now().toString(),
@@ -36,8 +36,8 @@ export function MessageInput({ agentId }: MessageInputProps) {
     setIsLoading(true)
 
     try {
-      // Generate a session ID (in a real app, this would be managed differently)
-      const sessionId = `session-${agentId}-${Date.now()}`
+      // Use the current session ID from the store
+      const sessionId = currentSessionId
       
       console.log('Sending message to agent:', { agentId, content: userMessage.content, sessionId })
       
@@ -150,6 +150,17 @@ export function MessageInput({ agentId }: MessageInputProps) {
       e.preventDefault()
       handleSend()
     }
+  }
+
+  if (!currentSessionId) {
+    return (
+      <div className="border-t p-4">
+        <div className="text-center text-muted-foreground">
+          <p className="text-sm">No active session</p>
+          <p className="text-xs">Create a new session to start chatting</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -45,7 +45,11 @@ export function useAgentConnection() {
       
       // Auto-select first agent if none is selected
       if (!activeAgentId) {
-        setActiveAgent(agentsData[0].id)
+        // Use async function to handle the promise
+        const selectAgent = async () => {
+          await setActiveAgent(agentsData[0].id)
+        }
+        selectAgent()
       }
     }
   }, [agentsData, setAgents, setActiveAgent, activeAgentId])

@@ -69,6 +69,20 @@ class ApiClient {
     );
   }
 
+  async deleteSession(appName: string, userId: string, sessionId: string): Promise<void> {
+    const url = `/apps/${appName}/users/${userId}/sessions/${sessionId}`;
+    console.log('Attempting to delete session:', { appName, userId, sessionId, url });
+    
+    try {
+      const result = await this.request<void>(url, { method: "DELETE" });
+      console.log('Delete session successful');
+      return result;
+    } catch (error) {
+      console.error('Delete session failed:', error);
+      throw error;
+    }
+  }
+
   async getSession(
     appName: string,
     userId: string,

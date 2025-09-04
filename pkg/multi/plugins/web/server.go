@@ -242,6 +242,8 @@ func (s *Server) registerRoutes() {
 		s.handleCreateSession).Methods(http.MethodPost)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}",
 		s.handleGetSession).Methods(http.MethodGet)
+	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}",
+		s.handleDeleteSession).Methods(http.MethodDelete)
 
 	// Debug APIs
 	s.router.HandleFunc("/debug/trace/{event_id}",
@@ -255,6 +257,9 @@ func (s *Server) registerRoutes() {
 
 	// OPTIONS handlers to allow CORS pre-flight
 	preflight := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.WriteHeader(http.StatusOK)
 	}
 	s.router.HandleFunc("/list-apps", preflight).Methods(http.MethodOptions)
@@ -412,6 +417,26 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeJSON(w, convertSessionToADKFormat(sess))
+}
+
+func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
+	log.Infof("handleDeleteSession called: path=%s", r.URL.Path)
+	vars := mux.Vars(r)
+	appName := vars["appName"]
+	userID := vars["userId"]
+	sessionID := vars["sessionId"]
+	
+	err := s.sessionSvc.DeleteSession(r.Context(), session.Key{
+		AppName:   appName,
+		UserID:    userID,
+		SessionID: sessionID,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // convertContentToMessage converts Google GenAI Content to trpc-agent model.Message
