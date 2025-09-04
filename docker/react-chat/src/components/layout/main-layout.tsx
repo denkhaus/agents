@@ -6,7 +6,6 @@ import { TopNavigation } from '@/components/navigation/top-navigation'
 import { BottomNavigation } from '@/components/navigation/bottom-navigation'
 import { ChatWorkspace } from '@/components/workspace/chat-workspace'
 import { SettingsPanel } from '@/components/workspace/settings-panel'
-import { ApiMonitor } from '@/components/debug/api-monitor'
 import { useEffect } from 'react'
 
 export function MainLayout() {
@@ -45,8 +44,6 @@ export function MainLayout() {
           )}
         </main>
       </div>
-      
-      <ApiMonitor />
     </div>
   )
 }

@@ -14,12 +14,12 @@ COPY react-chat .
 RUN npm install
 
 # Create a non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001
+# RUN addgroup -g 1001 -S nodejs && \
+#     adduser -S reactuser -u 1001
 
 # Change ownership of the app directory
-RUN chown -R reactuser:nodejs /app
-USER reactuser
+# RUN chown -R reactuser:nodejs /app
+# USER reactuser
 
 # Expose the port that the app will run on
 EXPOSE 3000

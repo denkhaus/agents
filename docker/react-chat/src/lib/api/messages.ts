@@ -32,9 +32,9 @@ export const messageApi = {
         onError?.(error)
       },
       onConnectionStatusChange: (connected) => {
-        // Only log connection failures, not status changes
+        // Handle connection status changes gracefully
         if (!connected) {
-          console.error('Agent SSE connection lost')
+          console.log('Agent SSE connection closed normally')
         }
       }
     })
@@ -55,8 +55,36 @@ export const messageApi = {
     } else if (event.content && typeof event.content === 'object') {
       // Check if content has parts array
       if (Array.isArray(event.content.parts) && event.content.parts.length > 0) {
-        content = event.content.parts[0]?.text || ''
-        parts = event.content.parts as MessagePart[]
+        // Extract text content from parts
+        const textParts = event.content.parts.filter(part => part.text)
+        content = textParts.map(part => part.text).join('')
+        
+        // Convert parts to MessagePart format
+        parts = event.content.parts.map(part => {
+          const messagePart: MessagePart = {}
+          
+          if (part.text) {
+            messagePart.text = part.text
+          }
+          
+          if (part.functionCall) {
+            messagePart.functionCall = {
+              name: part.functionCall.name,
+              args: part.functionCall.args,
+              id: part.functionCall.id
+            }
+          }
+          
+          if (part.functionResponse) {
+            messagePart.functionResponse = {
+              name: part.functionResponse.name,
+              response: part.functionResponse.response,
+              id: part.functionResponse.id
+            }
+          }
+          
+          return messagePart
+        })
       } else {
         // Fallback: try to extract text from content object
         content = JSON.stringify(event.content)
@@ -74,13 +102,23 @@ export const messageApi = {
       timestamp = new Date()
     }
 
+    // Determine message type based on event properties
+    let messageType: 'user' | 'agent' | 'inter_agent' | 'system' = 'system'
+    
+    if (event.type === 'inter_agent' || event.type === 'communication') {
+      messageType = 'inter_agent'
+    } else if (event.object === 'tool_call' || event.object === 'tool_response') {
+      messageType = 'system'
+    } else if (event.author && event.author !== 'system') {
+      messageType = 'agent'
+    }
+
     return {
       id: event.id || event.invocationId || Date.now().toString(),
       content,
       timestamp,
       sender: event.fromAgent || event.author || 'system',
-      type: event.type === 'inter_agent' ? 'inter_agent' : 
-            event.type === 'communication' ? 'inter_agent' : 'system',
+      type: messageType,
       metadata: {
         fromAgent: event.fromAgent,
         toAgent: event.toAgent,

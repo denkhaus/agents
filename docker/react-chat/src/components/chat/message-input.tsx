@@ -50,46 +50,73 @@ export function MessageInput({ agentId }: MessageInputProps) {
           // Handle streaming response from agent
           console.log('Received agent response event:', responseEvent)
           
-          // Handle streaming response - always update/create message
           const messageId = responseEvent.id || responseEvent.invocationId || `${agentId}-${Date.now()}`
-          const newContent = responseEvent.content?.parts?.[0]?.text || responseEvent.content || ''
           
-          if (!currentAgentMessageRef.current) {
-            // Create new streaming message
+          // Extract content from event
+          let newContent = ''
+          let parts = undefined
+          
+          if (responseEvent.content?.parts && Array.isArray(responseEvent.content.parts)) {
+            // Handle structured content with parts
+            const textParts = responseEvent.content.parts.filter(part => part.text)
+            if (textParts.length > 0) {
+              newContent = textParts.map(part => part.text).join('')
+            }
+            parts = responseEvent.content.parts
+          } else if (typeof responseEvent.content === 'string') {
+            newContent = responseEvent.content
+          }
+          
+          // Determine message type based on object type
+          let messageType: 'agent' | 'system' = 'agent'
+          if (responseEvent.object === 'tool_call' || responseEvent.object === 'tool_response') {
+            messageType = 'system'
+          }
+          
+          if (!currentAgentMessageRef.current || currentAgentMessageRef.current.id !== messageId) {
+            // Create new message or start new streaming sequence
             const newAgentMessage: Message = {
               id: messageId,
               content: newContent,
-              timestamp: new Date(responseEvent.timestamp * 1000),
+              timestamp: new Date((responseEvent.timestamp || Date.now() / 1000) * 1000),
               sender: agentId,
-              type: 'agent',
+              type: messageType,
               metadata: {
                 invocationId: responseEvent.invocationId,
-                partial: !responseEvent.done,
-                done: responseEvent.done
-              }
+                partial: responseEvent.partial || false,
+                done: responseEvent.done || false
+              },
+              parts: parts
             }
             currentAgentMessageRef.current = newAgentMessage
             addMessage(agentId, newAgentMessage)
           } else {
-            // Accumulate content for streaming
-            const updatedContent = currentAgentMessageRef.current.content + newContent
+            // Update existing streaming message
+            let updatedContent = newContent
+            
+            // For streaming text, accumulate content
+            if (responseEvent.partial && !parts) {
+              updatedContent = currentAgentMessageRef.current.content + newContent
+            }
             
             updateMessage(agentId, currentAgentMessageRef.current.id, {
               content: updatedContent,
               metadata: {
                 ...currentAgentMessageRef.current.metadata,
-                partial: !responseEvent.done,
-                done: responseEvent.done
-              }
+                partial: responseEvent.partial || false,
+                done: responseEvent.done || false
+              },
+              parts: parts || currentAgentMessageRef.current.parts
             })
             
             currentAgentMessageRef.current = {
               ...currentAgentMessageRef.current,
-              content: updatedContent
+              content: updatedContent,
+              parts: parts || currentAgentMessageRef.current.parts
             }
           }
           
-          // Reset reference when done
+          // Reset reference when done or connection closes
           if (responseEvent.done) {
             currentAgentMessageRef.current = null
           }

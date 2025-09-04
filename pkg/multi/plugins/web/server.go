@@ -550,7 +550,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	out, err := rn.Run(context.Background(), req.UserID, req.SessionID,
+	out, err := rn.Run(r.Context(), req.UserID, req.SessionID,
 		convertContentToMessage(req.NewMessage))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -698,22 +698,24 @@ func filterEventParts(e *event.Event, parts []map[string]interface{}, isStreamin
 		return parts
 	}
 
+	// Always include tool calls and tool responses regardless of streaming mode
+	toolResp := isToolResponse(e)
+	hasToolCall := false
+	if len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
+		hasToolCall = true
+	}
+	
+	if toolResp || hasToolCall {
+		return parts
+	}
+
 	if isStreaming {
-		// Drop duplicate aggregated message at end of streaming sequence.
-		if !e.Response.IsPartial && e.Response.Done {
-			return nil
-		}
+		// In streaming mode, include all partial events and the final done event
+		// Don't drop the final event as it may contain important completion info
+		return parts
 	} else {
-		// Non-streaming endpoint should include:
-		//   1. Final assistant messages (Done == true)
-		//   2. Tool response events (object == tool.response)
-		//   3. Function call events which contain ToolCalls.
-		toolResp := isToolResponse(e)
-		hasToolCall := false
-		if len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
-			hasToolCall = true
-		}
-		if !e.Response.Done && !toolResp && !hasToolCall {
+		// Non-streaming endpoint should include final assistant messages
+		if !e.Response.Done {
 			return nil
 		}
 	}
@@ -756,8 +758,7 @@ func addUsageMetadata(adkEvent map[string]interface{}, e *event.Event) {
 // convertEventToADKFormat converts trpc-agent Event to ADK Web UI expected
 // format. The isStreaming flag indicates whether the UI is currently
 // displaying token-level streaming (true) or expecting a single complete
-// response (false). In streaming mode we suppress the final aggregated
-// "done" event content to avoid duplication.
+// response (false).
 func convertEventToADKFormat(e *event.Event, isStreaming bool) map[string]interface{} {
 	// Build basic envelope.
 	adkEvent := buildADKEventEnvelope(e)
@@ -774,9 +775,23 @@ func convertEventToADKFormat(e *event.Event, isStreaming bool) map[string]interf
 	// Filter parts based on streaming mode.
 	parts = filterEventParts(e, parts, isStreaming)
 
-	// Skip event if no meaningful parts.
-	if len(parts) == 0 {
+	// For tool calls and tool responses, always include even if no text parts
+	toolResp := isToolResponse(e)
+	hasToolCall := false
+	if e.Response != nil && len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
+		hasToolCall = true
+	}
+
+	// Skip event if no meaningful parts, unless it's a tool-related event
+	if len(parts) == 0 && !toolResp && !hasToolCall {
 		return nil
+	}
+
+	// Set object type for tool calls and responses
+	if hasToolCall {
+		adkEvent["object"] = "tool_call"
+	} else if toolResp {
+		adkEvent["object"] = "tool_response"
 	}
 
 	content["parts"] = parts
