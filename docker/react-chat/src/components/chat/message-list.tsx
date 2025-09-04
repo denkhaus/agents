@@ -71,13 +71,11 @@ export function MessageList({ agentId }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div ref={scrollAreaRef} className="flex-1 p-4 overflow-y-auto">
-        <div className="space-y-4">
-          {session.messages.map((message: Message) => (
-            <MessageItem key={message.id} message={message} />
-          ))}
-        </div>
+    <div ref={scrollAreaRef} className="flex-1 p-4 overflow-y-auto">
+      <div className="space-y-4">
+        {session.messages.map((message: Message) => (
+          <MessageItem key={message.id} message={message} />
+        ))}
       </div>
     </div>
   );

@@ -16,7 +16,15 @@ import { useEffect } from "react";
 export function MainLayout() {
   const { activeWorkspace, sidebarOpen, sidebarCollapsed } =
     useWorkspaceStore();
-  const { agents } = useChatStore();
+  const { activeAgentId, setActiveAgent, agents } = useChatStore();
+
+  useEffect(() => {
+    // Only set active agent if it's not null and hasn't been set before
+    // This prevents re-setting on subsequent renders if activeAgentId is already managed
+    if (activeAgentId && activeAgentId !== null) {
+      setActiveAgent(activeAgentId);
+    }
+  }, [activeAgentId, setActiveAgent]);
 
   const renderWorkspace = () => {
     switch (activeWorkspace) {
@@ -40,7 +48,7 @@ export function MainLayout() {
             shouldShowBottomNav ? "pb-20" : ""
           }`}
         >
-          <div className="flex-1 overflow-hidden">{renderWorkspace()}</div>
+          <div className="flex-1">{renderWorkspace()}</div>
         </main>
       </div>
     );
@@ -72,7 +80,7 @@ export function MainLayout() {
                 shouldShowBottomNav ? "pb-20" : ""
               }`}
             >
-              <div className="flex-1 overflow-hidden">{renderWorkspace()}</div>
+              <div className="flex-1">{renderWorkspace()}</div>
             </main>
           </ResizablePanel>
         </ResizablePanelGroup>
