@@ -2,31 +2,30 @@
 
 import { useChatStore } from "@/lib/store";
 import { MessageItem } from "./message-item";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef } from "react";
+import { Message } from "@/lib/types";
 
 interface MessageListProps {
   agentId: string;
 }
 
 export function MessageList({ agentId }: MessageListProps) {
-  const { getSession } = useChatStore();
-  const session = getSession(agentId);
+  const { sessions, currentSessionId, isLoadingMessages } = useChatStore();
+  const session =
+    sessions[agentId]?.sessionId === currentSessionId
+      ? sessions[agentId]
+      : undefined;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     const scrollToBottom = () => {
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector(
-          "[data-radix-scroll-area-viewport]"
-        );
-        if (scrollContainer) {
-          // Use requestAnimationFrame to ensure DOM has updated
-          requestAnimationFrame(() => {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-          });
-        }
+      const currentScrollArea = scrollAreaRef.current;
+      if (currentScrollArea) {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          currentScrollArea.scrollTop = currentScrollArea.scrollHeight;
+        });
       }
     };
 
@@ -36,15 +35,11 @@ export function MessageList({ agentId }: MessageListProps) {
   // Also scroll when message content changes (for streaming)
   useEffect(() => {
     const scrollToBottom = () => {
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector(
-          "[data-radix-scroll-area-viewport]"
-        );
-        if (scrollContainer) {
-          requestAnimationFrame(() => {
-            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-          });
-        }
+      const currentScrollArea = scrollAreaRef.current;
+      if (currentScrollArea) {
+        requestAnimationFrame(() => {
+          currentScrollArea.scrollTop = currentScrollArea.scrollHeight;
+        });
       }
     };
 
@@ -52,7 +47,17 @@ export function MessageList({ agentId }: MessageListProps) {
     if (session?.messages && session.messages.length > 0) {
       scrollToBottom();
     }
-  }, [session?.messages?.map((m) => m.content).join("")]);
+  }, [session?.messages?.map((m: Message) => m.content).join("")]);
+
+  if (isLoadingMessages) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <p>Loading messages...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session || session.messages.length === 0) {
     return (
@@ -66,14 +71,14 @@ export function MessageList({ agentId }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4 flex-grow">
-        <div className="space-y-4 min-h-full">
-          {session.messages.map((message) => (
+    <div className="flex-1 flex flex-col min-h-0">
+      <div ref={scrollAreaRef} className="flex-1 p-4 overflow-y-auto">
+        <div className="space-y-4">
+          {session.messages.map((message: Message) => (
             <MessageItem key={message.id} message={message} />
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

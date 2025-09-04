@@ -27,7 +27,7 @@ export function ChatInterface({ agentId }: ChatInterfaceProps) {
     <div className="flex-1 flex flex-col h-full">
       <ChatHeader agentId={agentId} />
       <div className="flex-1 flex">
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           <MessageList agentId={agentId} />
           <MessageInput agentId={agentId} />
         </div>

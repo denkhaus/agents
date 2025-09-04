@@ -14,13 +14,8 @@ import {
 import { useEffect } from "react";
 
 export function MainLayout() {
-  const {
-    activeWorkspace,
-    sidebarOpen,
-    sidebarCollapsed,
-    sidebarWidth,
-    setSidebarWidth,
-  } = useWorkspaceStore();
+  const { activeWorkspace, sidebarOpen, sidebarCollapsed } =
+    useWorkspaceStore();
   const { agents } = useChatStore();
 
   const renderWorkspace = () => {
@@ -40,7 +35,11 @@ export function MainLayout() {
     return (
       <div className="h-screen flex flex-col">
         <TopNavigation />
-        <main className="flex-1 flex flex-col">
+        <main
+          className={`flex-1 flex flex-col ${
+            shouldShowBottomNav ? "pb-20" : ""
+          }`}
+        >
           <div className="flex-1 overflow-hidden">{renderWorkspace()}</div>
         </main>
       </div>
@@ -52,12 +51,15 @@ export function MainLayout() {
       <TopNavigation />
 
       <div className="flex flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="h-full"
+          autoSaveId="resizable-sidebar-layout"
+        >
           <ResizablePanel
-            defaultSize={sidebarCollapsed ? 6 : 20}
+            defaultSize={20} // Set a reasonable default percentage
             minSize={sidebarCollapsed ? 4 : 15}
             maxSize={sidebarCollapsed ? 8 : 35}
-            onResize={(size: number) => setSidebarWidth(size)}
           >
             <WorkspaceSidebar />
           </ResizablePanel>
@@ -65,7 +67,11 @@ export function MainLayout() {
           {!sidebarCollapsed && <ResizableHandle withHandle />}
 
           <ResizablePanel defaultSize={80} minSize={50} className="h-full">
-            <main className="flex flex-col h-full">
+            <main
+              className={`flex flex-col h-full ${
+                shouldShowBottomNav ? "pb-20" : ""
+              }`}
+            >
               <div className="flex-1 overflow-hidden">{renderWorkspace()}</div>
             </main>
           </ResizablePanel>

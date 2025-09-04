@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChatStore } from "@/lib/store";
 import { AgentCard } from "./agent-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,13 +21,25 @@ interface AgentListProps {
 
 export function AgentList({ agentId, onSessionSelect }: AgentListProps) {
   const { agents, isConnected, interAgentEvents } = useChatStore();
-  const [openItems, setOpenItems] = useState<string[]>([
-    "agents",
-    "chat-sessions",
-  ]);
+  const [openItems, setOpenItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedOpenItems = localStorage.getItem("accordionOpenItems");
+      if (storedOpenItems) {
+        setOpenItems(JSON.parse(storedOpenItems));
+      } else {
+        // Set default open items if nothing is stored
+        setOpenItems(["agents", "chat-sessions"]);
+      }
+    }
+  }, []);
 
   const handleValueChange = (value: string[]) => {
     setOpenItems(value);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("accordionOpenItems", JSON.stringify(value));
+    }
   };
 
   return (
