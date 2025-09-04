@@ -50,59 +50,48 @@ export function MessageInput({ agentId }: MessageInputProps) {
           // Handle streaming response from agent
           console.log('Received agent response event:', responseEvent)
           
-          // If this is a streaming chunk, accumulate content
-          if (responseEvent.partial) {
-            if (!currentAgentMessageRef.current) {
-              // Create new message for this agent response
-              const newAgentMessage: Message = {
-                id: responseEvent.id || responseEvent.invocationId || `${agentId}-${Date.now()}`,
-                content: responseEvent.content?.parts?.[0]?.text || '',
-                timestamp: new Date(responseEvent.timestamp * 1000),
-                sender: agentId,
-                type: 'agent',
-                metadata: {
-                  invocationId: responseEvent.invocationId,
-                  partial: true
-                }
-              }
-              currentAgentMessageRef.current = newAgentMessage
-              addMessage(agentId, newAgentMessage)
-            } else {
-              // Update existing message with accumulated content
-              const currentContent = currentAgentMessageRef.current.content
-              const newContent = responseEvent.content?.parts?.[0]?.text || ''
-              const updatedContent = currentContent + newContent
-              
-              updateMessage(agentId, currentAgentMessageRef.current.id, {
-                content: updatedContent,
-                metadata: {
-                  ...currentAgentMessageRef.current.metadata,
-                  partial: responseEvent.partial
-                }
-              })
-              
-              currentAgentMessageRef.current = {
-                ...currentAgentMessageRef.current,
-                content: updatedContent
+          // Handle streaming response - always update/create message
+          const messageId = responseEvent.id || responseEvent.invocationId || `${agentId}-${Date.now()}`
+          const newContent = responseEvent.content?.parts?.[0]?.text || responseEvent.content || ''
+          
+          if (!currentAgentMessageRef.current) {
+            // Create new streaming message
+            const newAgentMessage: Message = {
+              id: messageId,
+              content: newContent,
+              timestamp: new Date(responseEvent.timestamp * 1000),
+              sender: agentId,
+              type: 'agent',
+              metadata: {
+                invocationId: responseEvent.invocationId,
+                partial: !responseEvent.done,
+                done: responseEvent.done
               }
             }
+            currentAgentMessageRef.current = newAgentMessage
+            addMessage(agentId, newAgentMessage)
           } else {
-            // Final message or non-streaming response
-            if (currentAgentMessageRef.current && responseEvent.done) {
-              // Mark the current streaming message as complete
-              updateMessage(agentId, currentAgentMessageRef.current.id, {
-                metadata: {
-                  ...currentAgentMessageRef.current.metadata,
-                  partial: false,
-                  done: true
-                }
-              })
-              currentAgentMessageRef.current = null
-            } else {
-              // Add complete message
-              const agentMessage = messageApi.convertEventToMessage(responseEvent)
-              addMessage(agentId, agentMessage)
+            // Accumulate content for streaming
+            const updatedContent = currentAgentMessageRef.current.content + newContent
+            
+            updateMessage(agentId, currentAgentMessageRef.current.id, {
+              content: updatedContent,
+              metadata: {
+                ...currentAgentMessageRef.current.metadata,
+                partial: !responseEvent.done,
+                done: responseEvent.done
+              }
+            })
+            
+            currentAgentMessageRef.current = {
+              ...currentAgentMessageRef.current,
+              content: updatedContent
             }
+          }
+          
+          // Reset reference when done
+          if (responseEvent.done) {
+            currentAgentMessageRef.current = null
           }
         },
         (error) => {

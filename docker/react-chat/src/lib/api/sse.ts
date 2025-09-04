@@ -10,26 +10,33 @@ export type SSEEventHandler = {
 }
 
 class SSEService {
-  private eventSource: EventSource | null = null
-  private handlers: SSEEventHandler = {}
-  private isConnected = false
-  private abortController: AbortController | null = null;
+  private mainChatAbortController: AbortController | null = null;
+  private agentRunAbortController: AbortController | null = null;
+  private mainChatHandlers: SSEEventHandler = {};
+  private agentRunHandlers: SSEEventHandler = {};
+  private isMainChatConnected = false;
+  private isAgentRunConnected = false;
 
-  connect(agents: string[], sessionId: string, userId: string, handlers: SSEEventHandler) {
-    this.disconnect(); // Close any existing connection
-    this.handlers = handlers;
-    this.abortController = new AbortController();
-    const signal = this.abortController.signal;
+  connectMainChat(agents: string[], sessionId: string, userId: string, handlers: SSEEventHandler) {
+    this.disconnect('mainChat'); // Ensure only one main chat connection
+    this.mainChatHandlers = handlers;
+    this.mainChatAbortController = new AbortController();
+    const signal = this.mainChatAbortController.signal;
 
     const url = apiClient.getSSEUrl(agents, sessionId, userId);
 
     fetch(url, {
+      method: 'GET',
       signal,
       headers: {
         'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
       },
     }).then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`SSE request failed: ${response.status} ${response.statusText}`);
+      }
+      
       if (!response.body) {
         throw new Error('No response body');
       }
@@ -37,15 +44,13 @@ class SSEService {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      this.isConnected = true;
-      this.handlers.onConnectionStatusChange?.(true);
-      console.log('SSE connection established');
+      this.isMainChatConnected = true;
+      this.mainChatHandlers.onConnectionStatusChange?.(true);
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done || signal.aborted) {
-            console.log('SSE stream finished or aborted.');
             break;
           }
 
@@ -56,42 +61,119 @@ class SSEService {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                this.handleEvent(data);
+                this.handleEvent(data, 'mainChat');
               } catch (error) {
-                console.error('Error parsing SSE data:', error, 'Raw data:', line);
+                console.error('Error parsing main chat SSE data:', error, 'Raw data:', line);
               }
             }
           }
         }
       } catch (error) {
         if (error.name !== 'AbortError') {
-            console.error('SSE read error:', error);
-            if (this.handlers.onError) {
-                this.handlers.onError(error as Event);
+            console.error('Main chat SSE read error:', error);
+            if (this.mainChatHandlers.onError) {
+                this.mainChatHandlers.onError(error as Event);
             }
         }
       } finally {
-        this.isConnected = false;
-        this.handlers.onConnectionStatusChange?.(false);
-        console.log('SSE connection closed.');
+        this.isMainChatConnected = false;
+        this.mainChatHandlers.onConnectionStatusChange?.(false);
       }
     }).catch((error) => {
         if (error.name === 'AbortError') {
-            console.log('SSE fetch aborted by client.');
             return;
         }
-      console.error('SSE fetch setup error:', error);
-      this.isConnected = false;
-      this.handlers.onConnectionStatusChange?.(false);
-      if (this.handlers.onError) {
-        this.handlers.onError(error);
+      console.error('Main chat SSE fetch setup error:', error);
+      this.isMainChatConnected = false;
+      this.mainChatHandlers.onConnectionStatusChange?.(false);
+      if (this.mainChatHandlers.onError) {
+        this.mainChatHandlers.onError(error);
       }
       
       // Optional: Reconnect logic
       setTimeout(() => {
-        if (!this.isConnected && !signal.aborted) {
-          console.log('Attempting to reconnect SSE...');
-          this.connect(agents, sessionId, userId, this.handlers);
+        if (!this.isMainChatConnected && !signal.aborted) {
+          this.connectMainChat(agents, sessionId, userId, this.mainChatHandlers);
+        }
+      }, 5000);
+    });
+  }
+
+  connectAgentRun(request: AgentRunRequest, handlers: SSEEventHandler) {
+    this.disconnect('agentRun'); // Ensure only one agent run connection
+    this.agentRunHandlers = handlers;
+    this.agentRunAbortController = new AbortController();
+    const signal = this.agentRunAbortController.signal;
+
+    const url = apiClient.getRunSSEUrl();
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+      body: JSON.stringify(request),
+      signal,
+    }).then(async (response) => {
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      this.isAgentRunConnected = true;
+      this.agentRunHandlers.onConnectionStatusChange?.(true);
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || signal.aborted) {
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                this.handleEvent(data, 'agentRun');
+              } catch (error) {
+                console.error('Error parsing agent run SSE data:', error, 'Raw data:', line);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Agent run SSE read error:', error);
+            if (this.agentRunHandlers.onError) {
+                this.agentRunHandlers.onError(error as Event);
+            }
+        }
+      } finally {
+        this.isAgentRunConnected = false;
+        this.agentRunHandlers.onConnectionStatusChange?.(false);
+      }
+    }).catch((error) => {
+        if (error.name === 'AbortError') {
+            return;
+        }
+      console.error('Agent run SSE fetch setup error:', error);
+      this.isAgentRunConnected = false;
+      this.agentRunHandlers.onConnectionStatusChange?.(false);
+      if (this.agentRunHandlers.onError) {
+        this.agentRunHandlers.onError(error);
+      }
+      
+      // Optional: Reconnect logic
+      setTimeout(() => {
+        if (!this.isAgentRunConnected && !signal.aborted) {
+          this.connectAgentRun(request, this.agentRunHandlers);
         }
       }, 5000);
     });
@@ -157,45 +239,51 @@ class SSEService {
     })
   }
 
-  private handleEvent(event: InterAgentEvent) {
+  private handleEvent(event: InterAgentEvent, connectionType: 'mainChat' | 'agentRun') {
+    const handlers = connectionType === 'mainChat' ? this.mainChatHandlers : this.agentRunHandlers;
+
     switch (event.type) {
       case 'agent_list':
-        // Handle agent list updates
-        this.handlers.onMessage?.(event)
-        break
+        handlers.onMessage?.(event);
+        break;
       
       case 'inter_agent':
       case 'communication':
-        this.handlers.onInterAgentEvent?.(event)
-        break
+        handlers.onInterAgentEvent?.(event);
+        break;
       
       case 'heartbeat':
-        // Handle heartbeat - update connection status and log
-        console.log('Received heartbeat:', event.timestamp)
-        this.handlers.onConnectionStatusChange?.(true)
-        break
+        // Keep connection alive - don't change status on heartbeat
+        // The connection is already established, heartbeat just confirms it's alive
+        break;
       
       default:
-        // Handle other event types
-        this.handlers.onMessage?.(event)
-        break
+        handlers.onMessage?.(event);
+        break;
     }
   }
 
-  disconnect() {
-    if (this.abortController) {
-        this.abortController.abort();
-        this.abortController = null;
+  disconnect(type?: 'mainChat' | 'agentRun') {
+    if (type === 'mainChat' || !type) {
+      if (this.mainChatAbortController) {
+          this.mainChatAbortController.abort();
+          this.mainChatAbortController = null;
+      }
+      this.isMainChatConnected = false;
+      this.mainChatHandlers.onConnectionStatusChange?.(false);
     }
-    if (this.eventSource) {
-      this.eventSource.close()
-      this.eventSource = null
+    if (type === 'agentRun' || !type) {
+      if (this.agentRunAbortController) {
+          this.agentRunAbortController.abort();
+          this.agentRunAbortController = null;
+      }
+      this.isAgentRunConnected = false;
+      this.agentRunHandlers.onConnectionStatusChange?.(false);
     }
-    // Note: isConnected and onConnectionStatusChange are handled in the fetch promise finally block
   }
 
   getConnectionStatus(): boolean {
-    return this.isConnected
+    return this.isMainChatConnected || this.isAgentRunConnected;
   }
 }
 

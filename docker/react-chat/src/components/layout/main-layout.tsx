@@ -13,11 +13,6 @@ export function MainLayout() {
   const { activeWorkspace } = useWorkspaceStore()
   const { agents } = useChatStore()
 
-  useEffect(() => {
-    console.log('MainLayout: activeWorkspace:', activeWorkspace)
-    console.log('MainLayout: agents count:', agents.length)
-  }, [activeWorkspace, agents])
-
   const renderWorkspace = () => {
     switch (activeWorkspace) {
       case 'chat':
@@ -30,7 +25,6 @@ export function MainLayout() {
   }
 
   const shouldShowBottomNav = activeWorkspace === 'chat'
-  console.log('MainLayout: shouldShowBottomNav:', shouldShowBottomNav)
 
   return (
     <div className="h-screen flex flex-col">

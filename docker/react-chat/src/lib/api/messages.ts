@@ -11,8 +11,6 @@ export const messageApi = {
     onResponse?: (event: InterAgentEvent) => void,
     onError?: (error: any) => void
   ): Promise<void> {
-    console.log('messageApi.sendMessage:', { agentId, content, sessionId, userId })
-    
     const request: AgentRunRequest = {
       appName: agentId,
       userID: userId,
@@ -23,13 +21,10 @@ export const messageApi = {
         parts: [{ text: content }]
       }
     }
-
-    console.log('Connecting to agent via SSE for streaming response:', request)
     
     // Use SSE service for streaming responses
-    sseService.connectForAgentRun(request, {
+    sseService.connectAgentRun(request, {
       onMessage: (event) => {
-        console.log('Received agent response:', event)
         onResponse?.(event)
       },
       onError: (error) => {
@@ -37,7 +32,10 @@ export const messageApi = {
         onError?.(error)
       },
       onConnectionStatusChange: (connected) => {
-        console.log('Agent SSE connection status:', connected)
+        // Only log connection failures, not status changes
+        if (!connected) {
+          console.error('Agent SSE connection lost')
+        }
       }
     })
   },
@@ -47,7 +45,6 @@ export const messageApi = {
   },
 
   convertEventToMessage(event: InterAgentEvent): Message {
-    console.log('Converting event to message:', event)
     
     // Safe content extraction with null checks
     let content = ''

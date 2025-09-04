@@ -9,15 +9,7 @@ import { useEffect } from 'react'
 export function BottomNavigation() {
   const { agents, activeAgentId, setActiveAgent } = useChatStore()
 
-  useEffect(() => {
-    console.log('BottomNavigation: agents updated:', agents)
-    console.log('BottomNavigation: activeAgentId:', activeAgentId)
-  }, [agents, activeAgentId])
-
-  console.log('BottomNavigation rendering with agents:', agents.length)
-
   if (agents.length === 0) {
-    console.log('BottomNavigation: No agents available, not rendering')
     return (
       <div className="border-t bg-background p-2">
         <div className="text-center text-sm text-muted-foreground py-2">
@@ -32,9 +24,7 @@ export function BottomNavigation() {
       <div className="flex justify-center">
         <Tabs value={activeAgentId || ''} onValueChange={setActiveAgent}>
           <TabsList className="grid h-12 w-fit max-w-4xl" style={{ gridTemplateColumns: `repeat(${agents.length}, 1fr)` }}>
-          {agents.map((agent) => {
-            console.log('Rendering agent tab:', agent.name)
-            return (
+          {agents.map((agent) => (
               <TabsTrigger
                 key={agent.id}
                 value={agent.id}
@@ -58,8 +48,7 @@ export function BottomNavigation() {
                   />
                 </div>
               </TabsTrigger>
-            )
-          })}
+          ))}
           </TabsList>
         </Tabs>
       </div>

@@ -21,13 +21,11 @@ export function useAgentConnection() {
   const { data: agentsData, isLoading, error, isError, isFetching } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
-      console.log('React Query: Fetching agents from backend...')
       try {
         const result = await agentApi.getAgents()
-        console.log('React Query: Agents fetched successfully:', result)
         return result
       } catch (error) {
-        console.error('React Query: Failed to fetch agents:', error)
+        console.error('Failed to fetch agents:', error)
         throw error
       }
     },
@@ -43,12 +41,10 @@ export function useAgentConnection() {
   // Update store when agents change
   useEffect(() => {
     if (agentsData && agentsData.length > 0) {
-      console.log('Setting agents in store:', agentsData)
       setAgents(agentsData)
       
       // Auto-select first agent if none is selected
       if (!activeAgentId) {
-        console.log('Auto-selecting first agent:', agentsData[0].id)
         setActiveAgent(agentsData[0].id)
       }
     }
@@ -57,7 +53,6 @@ export function useAgentConnection() {
   // Set up SSE connection when agents are available
   useEffect(() => {
     if (agents.length > 0) {
-      console.log('Setting up SSE connection for agents:', agents.map(a => a.id))
       const agentIds = agents.map(agent => agent.id)
       const sessionId = `session-${Date.now()}`
       const userId = 'user'
@@ -66,20 +61,17 @@ export function useAgentConnection() {
       const maxReconnectAttempts = 5
 
       const connectWithRetry = () => {
-        sseService.connect(agentIds, sessionId, userId, {
+        sseService.connectMainChat(agentIds, sessionId, userId, {
           onConnectionStatusChange: (connected) => {
-            console.log('SSE connection status changed:', connected)
             setConnected(connected)
             if (connected) {
               reconnectAttempts = 0 // Reset on successful connection
             }
           },
           onInterAgentEvent: (event) => {
-            console.log('Inter-agent event received:', event)
             addInterAgentEvent(event)
           },
           onMessage: (event) => {
-            console.log('Message event received:', event)
             try {
               // Convert event to message and add to appropriate agent session
               const message = messageApi.convertEventToMessage(event)
@@ -98,7 +90,6 @@ export function useAgentConnection() {
             if (reconnectAttempts < maxReconnectAttempts) {
               reconnectAttempts++
               const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-              console.log(`Retrying SSE connection in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
               setTimeout(connectWithRetry, delay)
             } else {
               console.error('Max reconnection attempts reached')
@@ -110,8 +101,7 @@ export function useAgentConnection() {
       connectWithRetry()
 
       return () => {
-        console.log('Cleaning up SSE connection')
-        sseService.disconnect()
+        sseService.disconnect('mainChat')
       }
     }
   }, [agents, setConnected, addInterAgentEvent, addMessage])
