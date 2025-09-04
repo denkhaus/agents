@@ -112,56 +112,58 @@ export function MessageItem({ message }: MessageItemProps) {
   };
 
   return (
-    <Card className={`max-w-[80%] ${getCardStyle()}`}>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="font-medium text-sm">{getMessageTypeLabel()}</span>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <Card className={`max-w-[90%] ${getCardStyle()}`}>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-medium text-sm">{getMessageTypeLabel()}</span>
 
-          {isInterAgent &&
-            message.metadata?.fromAgent &&
-            message.metadata?.toAgent && (
-              <div className="flex items-center gap-1 text-xs">
-                <Badge variant="secondary" className="px-1 py-0">
-                  {message.metadata.fromAgent}
-                </Badge>
-                <ArrowRight className="h-3 w-3" />
-                <Badge variant="secondary" className="px-1 py-0">
-                  {message.metadata.toAgent}
-                </Badge>
-              </div>
+            {isInterAgent &&
+              message.metadata?.fromAgent &&
+              message.metadata?.toAgent && (
+                <div className="flex items-center gap-1 text-xs">
+                  <Badge variant="secondary" className="px-1 py-0">
+                    {message.metadata.fromAgent}
+                  </Badge>
+                  <ArrowRight className="h-3 w-3" />
+                  <Badge variant="secondary" className="px-1 py-0">
+                    {message.metadata.toAgent}
+                  </Badge>
+                </div>
+              )}
+
+            <span className="text-xs opacity-70 ml-auto">
+              {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+            </span>
+          </div>
+
+          <div className="text-sm">{formatMessageContent()}</div>
+
+          <div className="flex gap-2 mt-2">
+            {message.metadata?.partial && (
+              <Badge variant="outline" className="text-xs">
+                Streaming...
+              </Badge>
             )}
-
-          <span className="text-xs opacity-70 ml-auto">
-            {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-          </span>
-        </div>
-
-        <div className="text-sm">{formatMessageContent()}</div>
-
-        <div className="flex gap-2 mt-2">
-          {message.metadata?.partial && (
-            <Badge variant="outline" className="text-xs">
-              Streaming...
-            </Badge>
-          )}
-          {isToolCall && (
-            <Badge
-              variant="secondary"
-              className="text-xs bg-blue-100 text-blue-800"
-            >
-              Tool Call
-            </Badge>
-          )}
-          {isToolResponse && (
-            <Badge
-              variant="secondary"
-              className="text-xs bg-green-100 text-green-800"
-            >
-              Tool Response
-            </Badge>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            {isToolCall && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-blue-100 text-blue-800"
+              >
+                Tool Call
+              </Badge>
+            )}
+            {isToolResponse && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-green-100 text-green-800"
+              >
+                Tool Response
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

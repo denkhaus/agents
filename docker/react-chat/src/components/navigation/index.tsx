@@ -1,4 +1,4 @@
-export { TopNavigation } from './top-navigation'
-export { BottomNavigation } from './bottom-navigation'
-export { AgentTab } from './agent-tab'
-export { ThemeToggle } from './theme-toggle'
+export { TopNavigation } from "./top-navigation";
+export { AgentNavigationBar } from "./agent-navigation-bar";
+export { AgentTab } from "./agent-tab";
+export { ThemeToggle } from "./theme-toggle";

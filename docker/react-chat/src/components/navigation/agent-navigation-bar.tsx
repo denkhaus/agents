@@ -1,13 +1,12 @@
-'use client'
+"use client";
 
-import { useChatStore } from '@/lib/store'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { useEffect } from 'react'
+import { useChatStore } from "@/lib/store";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export function BottomNavigation() {
-  const { agents, activeAgentId, setActiveAgent } = useChatStore()
+export function AgentNavigationBar() {
+  const { agents, activeAgentId, setActiveAgent } = useChatStore();
 
   if (agents.length === 0) {
     return (
@@ -16,15 +15,18 @@ export function BottomNavigation() {
           No agents available - waiting for connection...
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="border-t bg-background p-4">
       <div className="flex justify-center">
-        <Tabs value={activeAgentId || ''} onValueChange={setActiveAgent}>
-          <TabsList className="grid h-12 w-fit max-w-4xl" style={{ gridTemplateColumns: `repeat(${agents.length}, 1fr)` }}>
-          {agents.map((agent) => (
+        <Tabs value={activeAgentId || ""} onValueChange={setActiveAgent}>
+          <TabsList
+            className="grid h-12 w-fit max-w-4xl"
+            style={{ gridTemplateColumns: `repeat(${agents.length}, 1fr)` }}
+          >
+            {agents.map((agent) => (
               <TabsTrigger
                 key={agent.id}
                 value={agent.id}
@@ -37,21 +39,23 @@ export function BottomNavigation() {
                       {agent.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <span className="truncate text-sm font-medium">
                     {agent.name}
                   </span>
-                  
-                  <Badge 
-                    variant={agent.status === 'online' ? 'default' : 'secondary'}
+
+                  <Badge
+                    variant={
+                      agent.status === "online" ? "default" : "secondary"
+                    }
                     className="h-2 w-2 p-0 rounded-full"
                   />
                 </div>
               </TabsTrigger>
-          ))}
+            ))}
           </TabsList>
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

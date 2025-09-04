@@ -1,4 +1,4 @@
-import { create, SetState, GetState } from "zustand";
+import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
   Agent,
@@ -42,14 +42,25 @@ interface ChatStore {
 }
 
 // Helper function to convert ADK events to messages
-const convertADKEventToMessage = (event: any, agentId: string): Message => {
+const convertADKEventToMessage = (event: { 
+  id?: string; 
+  invocationId?: string; 
+  author?: string; 
+  timestamp?: number; 
+  content?: { 
+    parts?: Array<{ text?: string }> 
+  }; 
+  done?: boolean; 
+  partial?: boolean; 
+  object?: string 
+}, agentId: string): Message => {
   let content = "";
   let parts = undefined;
 
   if (event.content?.parts && Array.isArray(event.content.parts)) {
-    const textParts = event.content.parts.filter((part: any) => part.text);
+    const textParts = event.content.parts.filter((part: { text?: string }) => part.text);
     if (textParts.length > 0) {
-      content = textParts.map((part: any) => part.text).join("");
+      content = textParts.map((part: { text?: string }) => part.text).join("");
     }
     parts = event.content.parts;
   }
@@ -64,7 +75,7 @@ const convertADKEventToMessage = (event: any, agentId: string): Message => {
   return {
     id: event.id || event.invocationId || Date.now().toString(),
     content,
-    timestamp: new Date(event.timestamp * 1000),
+    timestamp: new Date((event.timestamp || Date.now() / 1000) * 1000),
     sender: event.author || agentId,
     type: messageType,
     metadata: {
@@ -78,7 +89,7 @@ const convertADKEventToMessage = (event: any, agentId: string): Message => {
 
 export const useChatStore = create<ChatStore>()(
   persist(
-    (set: SetState<ChatStore>, get: GetState<ChatStore>) => ({
+    (set, get) => ({
       // Initial state
       agents: [],
       sessions: {},
@@ -149,47 +160,66 @@ export const useChatStore = create<ChatStore>()(
         set({ activeAgentId: agentId });
 
         if (agentId) {
-          // Load available sessions for this agent
-          await get().loadSessions(agentId);
+          try {
+            // Load available sessions for this agent
+            await get().loadSessions(agentId);
 
-          // If we have a persisted currentSessionId, check if it exists in available sessions
-          const currentSessionId = get().currentSessionId;
-          const availableSessions = get().availableSessions[agentId] || [];
+            // If we have a persisted currentSessionId, check if it exists in available sessions
+            const currentSessionId = get().currentSessionId;
+            const availableSessions = get().availableSessions[agentId] || [];
 
-          if (
-            currentSessionId &&
-            availableSessions.some((s: ADKSession) => s.id === currentSessionId)
-          ) {
-            try {
-              await get().loadSessionMessages(agentId, currentSessionId);
-            } catch (error) {
+            if (
+              currentSessionId &&
+              availableSessions.some((s: ADKSession) => s.id === currentSessionId)
+            ) {
+              try {
+                await get().loadSessionMessages(agentId, currentSessionId);
+              } catch (error) {
+                console.warn(
+                  "Failed to load persisted session, clearing current session:",
+                  error
+                );
+                set({ currentSessionId: null });
+              }
+            } else if (currentSessionId) {
+              // If currentSessionId is set but not found in availableSessions (e.g., deleted on backend)
               console.warn(
-                "Failed to load persisted session, clearing current session:",
-                error
+                `Persisted session ID ${currentSessionId} not found for agent ${agentId}, clearing.`
               );
               set({ currentSessionId: null });
             }
-          } else if (currentSessionId) {
-            // If currentSessionId is set but not found in availableSessions (e.g., deleted on backend)
-            console.warn(
-              `Persisted session ID ${currentSessionId} not found for agent ${agentId}, clearing.`
-            );
-            set({ currentSessionId: null });
-          }
 
-          // If no persisted session was loaded or found, load the most recent available session
-          if (!get().currentSessionId && availableSessions.length > 0) {
-            const mostRecentSession = availableSessions.sort(
-              (a: ADKSession, b: ADKSession) =>
-                b.lastUpdateTime - a.lastUpdateTime
-            )[0];
-            await get().loadSessionMessages(agentId, mostRecentSession.id);
-          } else if (
-            !get().currentSessionId &&
-            availableSessions.length === 0
-          ) {
-            // If no sessions are available, create a new one
-            await get().createSession(agentId);
+            // If no persisted session was loaded or found, load the most recent available session
+            if (!get().currentSessionId && availableSessions.length > 0) {
+              const mostRecentSession = availableSessions.sort(
+                (a: ADKSession, b: ADKSession) =>
+                  b.lastUpdateTime - a.lastUpdateTime
+              )[0];
+              await get().loadSessionMessages(agentId, mostRecentSession.id);
+            } else if (
+              !get().currentSessionId &&
+              availableSessions.length === 0
+            ) {
+              // If no sessions are available, create a new one
+              await get().createSession(agentId);
+            }
+            
+            // Final check to ensure we have a current session
+            const finalSessionId = get().currentSessionId;
+            
+            // If we still don't have a session, force create one
+            if (!finalSessionId) {
+              console.warn('No session ID set after agent activation, force creating session');
+              await get().createSession(agentId);
+            }
+          } catch (error) {
+            console.error('Error in setActiveAgent:', error);
+            // Fallback: try to create a session anyway
+            try {
+              await get().createSession(agentId);
+            } catch (createError) {
+              console.error('Failed to create fallback session:', createError);
+            }
           }
         }
       },
@@ -283,8 +313,8 @@ export const useChatStore = create<ChatStore>()(
           );
 
           if (session && session.events) {
-            const messages = session.events.map((event: any) =>
-              convertADKEventToMessage(event, agentId)
+            const messages = session.events.map((event: unknown) =>
+              convertADKEventToMessage(event as Parameters<typeof convertADKEventToMessage>[0], agentId)
             );
 
             const chatSession: ChatSession = {
@@ -315,16 +345,27 @@ export const useChatStore = create<ChatStore>()(
       },
 
       deleteSession: async (agentId: string, sessionId: string) => {
+        console.log('ChatStore: Starting deleteSession for', { agentId, sessionId });
+        
         try {
           // Try to delete from backend first
           try {
+            console.log('ChatStore: Calling apiClient.deleteSession...');
             await apiClient.deleteSession(agentId, "user", sessionId);
-            console.log("Session deleted from backend successfully");
+            console.log("ChatStore: Session deleted from backend successfully");
           } catch (backendError) {
             console.warn(
-              "Backend delete failed, proceeding with local deletion:",
+              "ChatStore: Backend delete failed, proceeding with local deletion:",
               backendError
             );
+            
+            // Check if it's a CORS error and provide specific handling
+            if (backendError instanceof Error && backendError.message.includes('CORS')) {
+              console.log('ChatStore: CORS error detected - session will be removed locally only');
+              // For CORS errors, we'll just proceed with local deletion
+              // The session might still exist on the server, but we can't delete it from the browser
+            }
+            
             // Continue with local deletion even if backend fails
           }
 

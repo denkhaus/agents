@@ -9,7 +9,7 @@ export const messageApi = {
     sessionId: string, 
     userId: string = 'user',
     onResponse?: (event: InterAgentEvent) => void,
-    onError?: (error: any) => void
+    onError?: (error: Error) => void
   ): Promise<void> {
     const request: AgentRunRequest = {
       appName: agentId,
@@ -29,7 +29,7 @@ export const messageApi = {
       },
       onError: (error) => {
         console.error('SSE error during agent communication:', error)
-        onError?.(error)
+        onError?.(error instanceof Error ? error : new Error('Unknown error'))
       },
       onConnectionStatusChange: (connected) => {
         // Handle connection status changes gracefully

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { ChatHeader } from "./chat-header";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
 import { useChatStore } from "@/lib/store";
+import { AgentNavigationBar } from "../navigation";
 
 interface ChatInterfaceProps {
   agentId: string;
@@ -24,13 +24,16 @@ export function ChatInterface({ agentId }: ChatInterfaceProps) {
   }, [agentId, loadSessions]);
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      <ChatHeader agentId={agentId} />
-      <div className="flex-1 flex">
-        <div className="flex-1 flex flex-col min-h-0">
-          <MessageList agentId={agentId} />
-          <MessageInput agentId={agentId} />
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="border-b">
+        <AgentNavigationBar />
+      </div>
+
+      <div className="overflow-auto h-[80vh]">
+        <MessageList agentId={agentId} />
+      </div>
+      <div className="sticky bg-background border-t">
+        <MessageInput agentId={agentId} />
       </div>
     </div>
   );

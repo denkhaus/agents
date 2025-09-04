@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/api/client'
 import { agentApi } from '@/lib/api/agents'
 
 export function DirectApiTest() {
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<unknown>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,9 +32,9 @@ export function DirectApiTest() {
         raw: rawResult,
         processed: agentResult
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('API test error:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -64,14 +64,14 @@ export function DirectApiTest() {
             </div>
           )}
           
-          {result && (
+          {result && typeof result === 'object' && result !== null ? (
             <div className="text-green-500">
               <strong>Success!</strong> API calls completed:
               <pre className="mt-2 p-2 bg-gray-100 rounded text-black text-xs overflow-auto max-h-64">
                 {JSON.stringify(result, null, 2)}
               </pre>
             </div>
-          )}
+          ) : null}
         </div>
       </CardContent>
     </Card>

@@ -56,16 +56,24 @@ export function MessageInput({ agentId }: MessageInputProps) {
           let newContent = ''
           let parts = undefined
           
-          if (responseEvent.content?.parts && Array.isArray(responseEvent.content.parts)) {
+          if (typeof responseEvent.content === 'object' && responseEvent.content !== null && 'parts' in responseEvent.content && Array.isArray(responseEvent.content.parts)) {
             // Handle structured content with parts
-            const textParts = responseEvent.content.parts.filter(part => part.text)
+            const textParts = responseEvent.content.parts.filter((part: { text?: string }) => part.text)
             if (textParts.length > 0) {
-              newContent = textParts.map(part => part.text).join('')
+              newContent = textParts.map((part: { text?: string }) => part.text).join('')
             }
             parts = responseEvent.content.parts
           } else if (typeof responseEvent.content === 'string') {
             newContent = responseEvent.content
           }
+          
+          // Debug streaming
+          console.log('Streaming event:', { 
+            messageId, 
+            newContent, 
+            partial: responseEvent.partial, 
+            currentContent: currentAgentMessageRef.current?.content 
+          })
           
           // Determine message type based on object type
           let messageType: 'agent' | 'system' = 'agent'
@@ -98,29 +106,30 @@ export function MessageInput({ agentId }: MessageInputProps) {
             // Accumulate streaming content for the same message
             let updatedContent: string
             
-            if (responseEvent.partial && messageType === 'agent' && !parts) {
-              // For streaming text responses, accumulate the content
-              updatedContent = (currentAgentMessageRef.current.content || '') + newContent
+            if (responseEvent.partial) {
+              // For streaming responses, the server typically sends the full content so far, not just the delta
+              // So we should replace, not accumulate
+              updatedContent = newContent
             } else {
-              // For tool calls or complete responses, replace content
+              // For complete responses, replace content
               updatedContent = newContent
             }
             
-            updateMessage(agentId, currentAgentMessageRef.current.id, {
+            updateMessage(agentId, currentAgentMessageRef.current!.id, {
               content: updatedContent,
               metadata: {
-                ...currentAgentMessageRef.current.metadata,
+                ...currentAgentMessageRef.current!.metadata,
                 partial: responseEvent.partial || false,
                 done: responseEvent.done || false
               },
-              parts: parts || currentAgentMessageRef.current.parts
+              parts: parts || currentAgentMessageRef.current!.parts
             })
             
             // Update the reference
             currentAgentMessageRef.current = {
-              ...currentAgentMessageRef.current,
+              ...currentAgentMessageRef.current!,
               content: updatedContent,
-              parts: parts || currentAgentMessageRef.current.parts
+              parts: parts || currentAgentMessageRef.current!.parts
             }
           }
           

@@ -12,7 +12,7 @@ interface ApiCall {
   url: string
   timestamp: Date
   status?: number
-  response?: any
+  response?: unknown
   error?: string
   duration?: number
 }
@@ -26,7 +26,7 @@ export function ApiMonitor() {
     const originalFetch = window.fetch
     
     window.fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : input.url
+      const url = typeof input === 'string' ? input : (input as Request).url
       const method = init?.method || 'GET'
       const startTime = Date.now()
       
@@ -138,14 +138,14 @@ export function ApiMonitor() {
                       Error: {call.error}
                     </div>
                   )}
-                  {call.response && (
+                  {call.response && typeof call.response === 'object' && call.response !== null ? (
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground">Response</summary>
                       <pre className="mt-1 p-1 bg-muted rounded text-xs overflow-auto max-h-20">
                         {JSON.stringify(call.response, null, 2)}
                       </pre>
                     </details>
-                  )}
+                  ) : null}
                   {call.duration && (
                     <div className="text-muted-foreground text-xs">
                       Duration: {call.duration}ms

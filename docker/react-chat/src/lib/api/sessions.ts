@@ -4,10 +4,10 @@ import { Message } from '@/lib/types'
 export interface BackendSession {
   id: string
   appName: string
-  userId: string
+  userId?: string
   createTime: number
   lastUpdateTime: number
-  state: Record<string, any>
+  state: Record<string, unknown>
   events: BackendEvent[]
 }
 
@@ -22,12 +22,12 @@ export interface BackendEvent {
       text?: string
       functionCall?: {
         name: string
-        args: any
+        args: unknown
         id?: string
       }
       functionResponse?: {
         name: string
-        response: any
+        response: unknown
         id?: string
       }
     }>
@@ -41,7 +41,10 @@ export const sessionApi = {
   async getSessions(appName: string, userId: string = 'user'): Promise<BackendSession[]> {
     try {
       const response = await apiClient.getSessions(appName, userId)
-      return response.data || []
+      return (response || []).map(session => ({
+        ...session,
+        events: session.events as BackendEvent[]
+      }))
     } catch (error) {
       console.error('Error fetching sessions:', error)
       return []
@@ -51,7 +54,10 @@ export const sessionApi = {
   async getSession(appName: string, sessionId: string, userId: string = 'user'): Promise<BackendSession | null> {
     try {
       const response = await apiClient.getSession(appName, userId, sessionId)
-      return response.data || null
+      return response ? {
+        ...response,
+        events: response.events as BackendEvent[]
+      } : null
     } catch (error) {
       console.error('Error fetching session:', error)
       return null
@@ -61,7 +67,10 @@ export const sessionApi = {
   async createSession(appName: string, userId: string = 'user'): Promise<BackendSession | null> {
     try {
       const response = await apiClient.createSession(appName, userId)
-      return response.data || null
+      return response ? {
+        ...response,
+        events: response.events as BackendEvent[]
+      } : null
     } catch (error) {
       console.error('Error creating session:', error)
       return null

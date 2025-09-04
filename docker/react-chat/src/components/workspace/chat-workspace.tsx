@@ -52,7 +52,7 @@ export function ChatWorkspace() {
           >
             <div className="h-screen">
               <AgentList
-                agentId={activeAgentId}
+                agentId={activeAgentId || undefined}
                 onSessionSelect={(sessionId) => {
                   console.log("Selected session:", sessionId);
                 }}

@@ -69,7 +69,7 @@ class SSEService {
           }
         }
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if ((error as Error).name !== 'AbortError') {
             console.error('Main chat SSE read error:', error);
             if (this.mainChatHandlers.onError) {
                 this.mainChatHandlers.onError(error as Event);
@@ -151,7 +151,7 @@ class SSEService {
           }
         }
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if ((error as Error).name !== 'AbortError') {
             console.error('Agent run SSE read error:', error);
             if (this.agentRunHandlers.onError) {
                 this.agentRunHandlers.onError(error as Event);

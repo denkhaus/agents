@@ -47,7 +47,11 @@ export function useAgentConnection() {
       if (!activeAgentId) {
         // Use async function to handle the promise
         const selectAgent = async () => {
-          await setActiveAgent(agentsData[0].id)
+          try {
+            await setActiveAgent(agentsData[0].id)
+          } catch (error) {
+            console.error('Failed to set active agent:', error)
+          }
         }
         selectAgent()
       }

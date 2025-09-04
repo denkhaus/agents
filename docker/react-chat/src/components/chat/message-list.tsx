@@ -51,7 +51,7 @@ export function MessageList({ agentId }: MessageListProps) {
 
   if (isLoadingMessages) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <p>Loading messages...</p>
         </div>
@@ -61,7 +61,7 @@ export function MessageList({ agentId }: MessageListProps) {
 
   if (!session || session.messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <p>No messages yet</p>
           <p className="text-sm">Start a conversation with this agent</p>

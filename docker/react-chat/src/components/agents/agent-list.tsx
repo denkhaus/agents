@@ -20,7 +20,7 @@ interface AgentListProps {
 }
 
 export function AgentList({ agentId, onSessionSelect }: AgentListProps) {
-  const { agents, isConnected, interAgentEvents } = useChatStore();
+  const { agents, interAgentEvents } = useChatStore();
   const [openItems, setOpenItems] = useState<string[]>([]);
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export function AgentList({ agentId, onSessionSelect }: AgentListProps) {
                     </p>
                   </div>
                 ) : (
-                  agents.map((agent: any, index: number) => (
+                  agents.map((agent, index: number) => (
                     <div key={agent.id}>
                       <AgentCard agent={agent} />
                       {index < agents.length - 1 && (

@@ -30,24 +30,63 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    });
+    console.log(`API Request: ${options.method || 'GET'} ${url}`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error:", response.status, errorText);
-      throw new Error(
-        `API request failed: ${response.status} ${response.statusText} - ${errorText}`
-      );
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+        mode: 'cors',
+        credentials: 'omit',
+        ...options,
+      });
+
+      console.log(`API Response: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error:", response.status, errorText);
+        throw new Error(
+          `API request failed: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      // Handle empty responses (like DELETE operations)
+      const contentLength = response.headers.get('content-length');
+      const contentType = response.headers.get('content-type');
+      
+      // Check if response has content and is JSON
+      if (response.status === 204 || contentLength === '0') {
+        // No content responses (like DELETE operations)
+        return undefined as T;
+      } else if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        return data;
+      } else {
+        // Try to get text content for non-JSON responses
+        const text = await response.text();
+        return (text || undefined) as T;
+      }
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('Network error - API server may be unreachable:', error);
+        throw new Error('Network error: Unable to connect to API server. Please check if the server is running.');
+      }
+      
+      // Handle CORS errors specifically
+      if (error instanceof TypeError && (
+        error.message.includes('CORS') || 
+        error.message.includes('cross-origin') ||
+        error.message.includes('Failed to fetch')
+      )) {
+        console.error('CORS error detected:', error);
+        throw new Error('CORS error: The API server does not allow this request from the browser. This operation will be performed locally only.');
+      }
+      
+      throw error;
     }
-
-    const data = await response.json();
-    return data;
   }
 
   // Agent endpoints
