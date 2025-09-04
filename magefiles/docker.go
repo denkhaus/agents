@@ -15,7 +15,6 @@ type Docker mg.Namespace
 
 const (
 	dockerDir = "./docker"
-	envFile   = ".env"
 )
 
 // Up starts all Docker services
@@ -281,7 +280,7 @@ func (Docker) Help() {
 func ensureEnvFile() error {
 	// We now use the root .env file, so check if it exists
 	rootEnvPath := ".env"
-	
+
 	// Check if root .env file exists
 	if _, err := os.Stat(rootEnvPath); os.IsNotExist(err) {
 		return fmt.Errorf("root .env file not found. Please create .env in the project root directory")

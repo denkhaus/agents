@@ -56,7 +56,7 @@ services:
     volumes:
       - ./react-chat:/app
       - /app/node_modules
-    user: "${UID}:${GID}"
+    #user: "1000:1000"
     depends_on:
       - agents
     # Add health check to ensure the service is ready
