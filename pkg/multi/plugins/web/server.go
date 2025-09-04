@@ -731,6 +731,16 @@ func addResponseMetadata(adkEvent map[string]interface{}, e *event.Event) {
 
 	adkEvent["done"] = e.Response.Done
 	adkEvent["partial"] = e.Response.IsPartial
+	
+	// Ensure partial flag is correctly set for streaming
+	if e.Response.IsPartial {
+		adkEvent["partial"] = true
+		adkEvent["done"] = false
+	} else if e.Response.Done {
+		adkEvent["partial"] = false
+		adkEvent["done"] = true
+	}
+	
 	if e.Response.Object != "" {
 		adkEvent["object"] = e.Response.Object
 	}

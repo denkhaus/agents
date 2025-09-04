@@ -73,8 +73,12 @@ export function MessageInput({ agentId }: MessageInputProps) {
             messageType = 'system'
           }
           
-          if (!currentAgentMessageRef.current || currentAgentMessageRef.current.id !== messageId) {
-            // Create new message or start new streaming sequence
+          // Check if this is a streaming continuation of the same message
+          const isSameMessage = currentAgentMessageRef.current && 
+                               currentAgentMessageRef.current.id === messageId
+          
+          if (!isSameMessage) {
+            // Create new message for new invocation
             const newAgentMessage: Message = {
               id: messageId,
               content: newContent,
@@ -91,12 +95,15 @@ export function MessageInput({ agentId }: MessageInputProps) {
             currentAgentMessageRef.current = newAgentMessage
             addMessage(agentId, newAgentMessage)
           } else {
-            // Update existing streaming message
-            let updatedContent = newContent
+            // Accumulate streaming content for the same message
+            let updatedContent: string
             
-            // For streaming text, accumulate content
-            if (responseEvent.partial && !parts) {
-              updatedContent = currentAgentMessageRef.current.content + newContent
+            if (responseEvent.partial && messageType === 'agent' && !parts) {
+              // For streaming text responses, accumulate the content
+              updatedContent = (currentAgentMessageRef.current.content || '') + newContent
+            } else {
+              // For tool calls or complete responses, replace content
+              updatedContent = newContent
             }
             
             updateMessage(agentId, currentAgentMessageRef.current.id, {
@@ -109,6 +116,7 @@ export function MessageInput({ agentId }: MessageInputProps) {
               parts: parts || currentAgentMessageRef.current.parts
             })
             
+            // Update the reference
             currentAgentMessageRef.current = {
               ...currentAgentMessageRef.current,
               content: updatedContent,

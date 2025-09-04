@@ -16,13 +16,39 @@ export function MessageList({ agentId }: MessageListProps) {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        if (scrollContainer) {
+          // Use requestAnimationFrame to ensure DOM has updated
+          requestAnimationFrame(() => {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight
+          })
+        }
       }
     }
+
+    scrollToBottom()
   }, [session?.messages])
+
+  // Also scroll when message content changes (for streaming)
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        if (scrollContainer) {
+          requestAnimationFrame(() => {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight
+          })
+        }
+      }
+    }
+
+    // Scroll when any message content changes
+    if (session?.messages && session.messages.length > 0) {
+      scrollToBottom()
+    }
+  }, [session?.messages?.map(m => m.content).join('')])
 
   if (!session || session.messages.length === 0) {
     return (
@@ -36,9 +62,9 @@ export function MessageList({ agentId }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <ScrollArea ref={scrollAreaRef} className="h-full p-4">
-        <div className="space-y-4">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+        <div className="space-y-4 min-h-full">
           {session.messages.map((message) => (
             <MessageItem key={message.id} message={message} />
           ))}
