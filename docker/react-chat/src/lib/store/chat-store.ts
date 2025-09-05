@@ -7,6 +7,7 @@ import {
   AgentEvent,
   ADKSession,
 } from "@/lib/types";
+import { ConnectionStatus } from "@/lib/types/streaming";
 import { apiClient } from "@/lib/api";
 
 interface ChatStore {
@@ -39,6 +40,12 @@ interface ChatStore {
   loadSessionMessages: (agentId: string, sessionId: string) => Promise<void>;
   setCurrentSession: (sessionId: string | null) => void;
   deleteSession: (agentId: string, sessionId: string) => Promise<void>;
+
+  // New Simplified Operations for Streaming
+  addStreamingMessage: (agentId: string, messageId: string, initialContent: string, metadata?: Partial<Message>) => void;
+  updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>) => void;
+  finalizeMessage: (messageId: string) => void;
+  setConnectionStatus: (agentId: string, status: ConnectionStatus) => void;
 }
 
 // Helper function to convert ADK events to messages
@@ -410,6 +417,176 @@ export const useChatStore = create<ChatStore>()(
           // Don't throw error to prevent UI from breaking
           // The session will be removed from local state even if backend fails
         }
+      },
+
+      // New Simplified Operations for Streaming
+      addStreamingMessage: (agentId: string, messageId: string, initialContent: string, metadata?: Partial<Message>) => {
+        // console.log(`[CHAT STORE] addStreamingMessage called`, { agentId, messageId, contentLength: initialContent.length });
+        
+        const sessions = get().sessions;
+        const session = sessions[agentId];
+
+        if (!session) {
+          // console.warn(`Cannot add streaming message: no session found for agent ${agentId}`);
+          return;
+        }
+
+        // Check if message already exists (prevent duplicates)
+        const existingMessageIndex = session.messages.findIndex(msg => msg.id === messageId);
+        if (existingMessageIndex !== -1) {
+          // Message exists - this is expected for streaming, just return silently
+          // console.log(`[CHAT STORE] Message already exists, skipping add`, { messageId });
+          return;
+        }
+
+        const newMessage: Message = {
+          id: messageId,
+          content: initialContent,
+          timestamp: new Date(),
+          sender: metadata?.sender || agentId,
+          type: metadata?.type || 'agent',
+          metadata: {
+            partial: true,
+            done: false,
+            streamingKey: messageId,
+            ...metadata?.metadata
+          },
+          ...metadata
+        };
+
+        // console.log(`[CHAT STORE] Adding new streaming message`, {
+        //   messageId,
+        //   contentLength: newMessage.content.length,
+        //   sender: newMessage.sender,
+        //   type: newMessage.type
+        // });
+
+        const updatedSession = {
+          ...session,
+          messages: [...session.messages, newMessage],
+          lastActivity: new Date(),
+        };
+
+        set({
+          sessions: {
+            ...sessions,
+            [agentId]: updatedSession,
+          },
+        });
+      },
+
+      updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>) => {
+        // console.log(`[CHAT STORE] updateStreamingMessage called`, { messageId, contentLength: content.length });
+        
+        const sessions = get().sessions;
+        let messageFound = false;
+        
+        // Find the session containing the message
+        for (const [agentId, session] of Object.entries(sessions)) {
+          const messageIndex = session.messages.findIndex(msg => msg.id === messageId);
+          
+          if (messageIndex !== -1) {
+            messageFound = true;
+            const updatedMessages = [...session.messages];
+            const currentMessage = updatedMessages[messageIndex];
+            
+            // Update the message with accumulated content
+            updatedMessages[messageIndex] = {
+              ...currentMessage,
+              content, // This should be the full accumulated content
+              timestamp: new Date(), // Update timestamp for last update
+              metadata: {
+                ...currentMessage.metadata,
+                ...metadata,
+                streamingKey: messageId // Ensure streamingKey is preserved
+              }
+            };
+
+            // console.log(`[CHAT STORE] Updating existing message`, {
+            //   messageId,
+            //   oldContentLength: currentMessage.content.length,
+            //   newContentLength: content.length,
+            //   isPartial: updatedMessages[messageIndex].metadata?.partial,
+            //   isDone: updatedMessages[messageIndex].metadata?.done
+            // });
+
+            const updatedSession = {
+              ...session,
+              messages: updatedMessages,
+              lastActivity: new Date(),
+            };
+
+            set({
+              sessions: {
+                ...sessions,
+                [agentId]: updatedSession,
+              },
+            });
+            break;
+          }
+        }
+        
+        if (!messageFound) {
+          // console.warn(`UpdateStreamingMessage: Message with ID ${messageId} not found`);
+        }
+      },
+
+      finalizeMessage: (messageId: string) => {
+        // console.log(`[CHAT STORE] finalizeMessage called`, { messageId });
+        
+        const sessions = get().sessions;
+        let messageFound = false;
+        
+        // Find and finalize the message
+        for (const [agentId, session] of Object.entries(sessions)) {
+          const messageIndex = session.messages.findIndex(msg => msg.id === messageId);
+          
+          if (messageIndex !== -1) {
+            messageFound = true;
+            const updatedMessages = [...session.messages];
+            const currentMessage = updatedMessages[messageIndex];
+            
+            updatedMessages[messageIndex] = {
+              ...currentMessage,
+              metadata: {
+                ...currentMessage.metadata,
+                partial: false,
+                done: true,
+                finalizedAt: new Date().toISOString()
+              }
+            };
+
+            // console.log(`[CHAT STORE] Finalizing message`, {
+            //   messageId,
+            //   wasPartial: currentMessage.metadata?.partial,
+            //   contentLength: currentMessage.content.length
+            // });
+
+            const updatedSession = {
+              ...session,
+              messages: updatedMessages,
+              lastActivity: new Date(),
+            };
+
+            set({
+              sessions: {
+                ...sessions,
+                [agentId]: updatedSession,
+              },
+            });
+            break;
+          }
+        }
+        
+        if (!messageFound) {
+          // console.warn(`FinalizeMessage: Message with ID ${messageId} not found`);
+        }
+      },
+
+      setConnectionStatus: (agentId: string, status: ConnectionStatus) => {
+        // Update agent connection status if needed
+        // This could be expanded to track per-agent connection states
+        console.log(`Connection status for ${agentId}:`, status);
       },
     }),
     {

@@ -3,7 +3,6 @@
 import { useWorkspaceStore, useChatStore } from "@/lib/store";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 import { TopNavigation } from "@/components/navigation/top-navigation";
-import { AgentNavigationBar } from "@/components/navigation/agent-navigation-bar";
 import { ChatWorkspace } from "@/components/workspace/chat-workspace";
 import { SettingsPanel } from "@/components/workspace/settings-panel";
 import {

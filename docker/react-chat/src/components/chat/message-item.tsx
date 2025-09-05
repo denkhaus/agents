@@ -19,6 +19,20 @@ export function MessageItem({ message }: MessageItemProps) {
   const isToolResponse = message.parts?.some((part) => part.functionResponse);
 
   const formatMessageContent = () => {
+    // Priority 1: Use message.content if it's available and complete (especially for finalized messages)
+    if (message.content && (!message.metadata?.partial || message.metadata?.done)) {
+      return (
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          {message.sender === "user" ? (
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          ) : (
+            <Markdown>{message.content}</Markdown>
+          )}
+        </div>
+      );
+    }
+
+    // Priority 2: Use parts if available
     if (message.parts && message.parts.length > 0) {
       return message.parts.map((part, index) => (
         <div key={index}>
@@ -79,7 +93,7 @@ export function MessageItem({ message }: MessageItemProps) {
       ));
     }
 
-    // Fallback content rendering
+    // Priority 3: Fallback to content
     if (message.content) {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { ConnectionDebugger } from '@/components/debug/connection-debugger'
 import { useState } from 'react'
 
 export function SettingsPanel() {
@@ -122,6 +123,9 @@ export function SettingsPanel() {
         <Button onClick={handleSaveSettings} className="w-full">
           Save Settings
         </Button>
+        
+        {/* Debug Section */}
+        <ConnectionDebugger />
       </div>
     </div>
   )

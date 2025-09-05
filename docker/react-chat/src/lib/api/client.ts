@@ -30,7 +30,10 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    console.log(`API Request: ${options.method || 'GET'} ${url}`);
+    console.log(`[API CLIENT] API Request: ${options.method || 'GET'} ${url}`, {
+      headers: options.headers,
+      hasBody: !!options.body
+    });
 
     try {
       const response = await fetch(url, {
@@ -43,11 +46,16 @@ class ApiClient {
         ...options,
       });
 
-      console.log(`API Response: ${response.status} ${response.statusText}`);
+      console.log(`[API CLIENT] API Response: ${response.status} ${response.statusText}`, {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("API Error:", response.status, errorText);
+        console.error("[API CLIENT] API Error:", response.status, errorText);
         throw new Error(
           `API request failed: ${response.status} ${response.statusText} - ${errorText}`
         );
@@ -63,15 +71,17 @@ class ApiClient {
         return undefined as T;
       } else if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
+        console.log(`[API CLIENT] API Response JSON:`, typeof data === 'object' ? JSON.stringify(data).substring(0, 200) : data);
         return data;
       } else {
         // Try to get text content for non-JSON responses
         const text = await response.text();
+        console.log(`[API CLIENT] API Response Text:`, text.substring(0, 200));
         return (text || undefined) as T;
       }
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('Network error - API server may be unreachable:', error);
+        console.error('[API CLIENT] Network error - API server may be unreachable:', error);
         throw new Error('Network error: Unable to connect to API server. Please check if the server is running.');
       }
       
@@ -81,10 +91,11 @@ class ApiClient {
         error.message.includes('cross-origin') ||
         error.message.includes('Failed to fetch')
       )) {
-        console.error('CORS error detected:', error);
+        console.error('[API CLIENT] CORS error detected:', error);
         throw new Error('CORS error: The API server does not allow this request from the browser. This operation will be performed locally only.');
       }
       
+      console.error('[API CLIENT] Request error:', error);
       throw error;
     }
   }

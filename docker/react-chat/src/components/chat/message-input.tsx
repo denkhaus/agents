@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
 import { useChatStore } from "@/lib/store";
-import { messageApi } from "@/lib/api";
+import { useStreamingManager } from "@/hooks/use-streaming-manager";
 import { toast } from "sonner";
-import { Message } from "@/lib/types";
+import { Message, SendMessageOptions } from "@/lib/types";
 
 interface MessageInputProps {
   agentId: string;
@@ -16,171 +16,55 @@ interface MessageInputProps {
 export function MessageInput({ agentId }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { addMessage, updateMessage, currentSessionId } = useChatStore();
-  const currentAgentMessageRef = useRef<Message | null>(null);
+  const { addMessage, currentSessionId } = useChatStore();
+  const streamingManager = useStreamingManager();
 
   const handleSend = async () => {
     if (!message.trim() || !currentSessionId) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       content: message.trim(),
       timestamp: new Date(),
-      sender: "user" as const,
-      type: "user" as const,
+      sender: "user",
+      type: "user",
     };
 
     // Add user message immediately
     addMessage(agentId, userMessage);
+    const messageContent = message.trim();
     setMessage("");
     setIsLoading(true);
 
     try {
-      // Use the current session ID from the store
-      const sessionId = currentSessionId;
-
-      await messageApi.sendMessage(
-        agentId,
-        userMessage.content,
-        sessionId,
-        "user",
-        (responseEvent) => {
-          // Handle streaming response from agent
-
-          // Handle the final stream termination event
-          if (
-            responseEvent.done === true &&
-            !responseEvent.id &&
-            !responseEvent.content
-          ) {
-            currentAgentMessageRef.current = null;
-            return;
-          }
-
-          const messageId =
-            responseEvent.id ||
-            responseEvent.invocationId ||
-            `${agentId}-${Date.now()}`;
-
-          // Extract content from event
-          let newContent = "";
-          let parts = undefined;
-
-          if (
-            typeof responseEvent.content === "object" &&
-            responseEvent.content !== null &&
-            "parts" in responseEvent.content &&
-            Array.isArray(responseEvent.content.parts)
-          ) {
-            // Handle structured content with parts
-            const textParts = responseEvent.content.parts.filter(
-              (part: { text?: string }) => part.text
-            );
-            if (textParts.length > 0) {
-              newContent = textParts
-                .map((part: { text?: string }) => part.text)
-                .join("");
-            }
-            parts = responseEvent.content.parts;
-          } else if (typeof responseEvent.content === "string") {
-            newContent = responseEvent.content;
-          }
-
-          // Determine message type based on object type
-          let messageType: "agent" | "system" = "agent";
-          if (
-            responseEvent.object === "tool_call" ||
-            responseEvent.object === "tool_response"
-          ) {
-            messageType = "system";
-          }
-
-          // Check if this is a streaming continuation of the same message
-          // For streaming responses, we should continue the same message if:
-          // 1. We have a current message reference
-          // 2. The message ID matches OR it's a partial response from the same invocation
-          const isSameMessage =
-            currentAgentMessageRef.current &&
-            (currentAgentMessageRef.current.id === messageId ||
-              (responseEvent.partial &&
-                currentAgentMessageRef.current.metadata?.invocationId ===
-                  responseEvent.invocationId));
-
-          if (!isSameMessage) {
-            // Create new message for new invocation (like Angular)
-            const newAgentMessage: Message = {
-              id: messageId,
-              content: newContent,
-              timestamp: new Date(
-                (responseEvent.timestamp || Date.now() / 1000) * 1000
-              ),
-              sender: agentId,
-              type: messageType,
-              metadata: {
-                invocationId: responseEvent.invocationId,
-                partial: responseEvent.partial || false,
-                done: responseEvent.done || false,
-              },
-              parts: parts,
-            };
-            currentAgentMessageRef.current = newAgentMessage;
-            console.log(
-              `[DEBUG] Adding NEW message: "${newContent.substring(
-                0,
-                50
-              )}..." (partial: ${responseEvent.partial})`
-            );
-            addMessage(agentId, newAgentMessage);
-          } else {
-            // Accumulate streaming content (like Angular: streamingTextMessage.text += newChunk)
-            const existingContent =
-              currentAgentMessageRef.current?.content || "";
-            const updatedContent = existingContent + newContent;
-
-            // Update the reference
-            currentAgentMessageRef.current = {
-              ...currentAgentMessageRef.current!,
-              content: updatedContent,
-              metadata: {
-                ...currentAgentMessageRef.current!.metadata,
-                partial: responseEvent.partial || false,
-                done: responseEvent.done || false,
-              },
-              parts: parts || currentAgentMessageRef.current!.parts,
-            };
-
-            // Update the message in the store (like Angular: streamingTextMessageSubject.next)
-            console.log(
-              `[DEBUG] UPDATING message: "${updatedContent.substring(
-                0,
-                50
-              )}..." (length: ${updatedContent.length})`
-            );
-            updateMessage(agentId, currentAgentMessageRef.current!.id, {
-              content: updatedContent,
-              metadata: currentAgentMessageRef.current!.metadata,
-              parts: currentAgentMessageRef.current!.parts,
-            });
-          }
-
-          // Reset reference when done or connection closes
-          if (responseEvent.done) {
-            // Clear any pending updates and force final update
-            if (updateTimeoutRef.current) {
-              clearTimeout(updateTimeoutRef.current);
-              updateTimeoutRef.current = null;
-            }
-            currentAgentMessageRef.current = null;
-          }
-        },
-        (error) => {
-          console.error("Error during agent communication:", error);
-          toast.error("Failed to communicate with agent");
+      // Send message using StreamingMessageManager
+      console.log(`[MESSAGE INPUT] Sending message to agent ${agentId}:`, {
+        content: messageContent.substring(0, 50) + '...',
+        sessionId: currentSessionId,
+        messageLength: messageContent.length
+      })
+      
+      const options: SendMessageOptions = {
+        sessionId: currentSessionId,
+        userId: "user",
+        onError: (error: Error) => {
+          console.error(`[MESSAGE INPUT] Error in message sending callback for agent ${agentId}:`, error)
+          toast.error(`Failed to send message to ${agentId}: ${error.message}`)
         }
-      );
+      }
+      
+      console.log(`[MESSAGE INPUT] Calling streamingManager.sendUserMessage`);
+      await streamingManager.sendUserMessage(agentId, messageContent, options);
+      console.log(`[MESSAGE INPUT] Completed streamingManager.sendUserMessage`);
+
+      console.log(`[MESSAGE INPUT] Message sent to agent ${agentId} successfully`);
     } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("Failed to send message");
+      console.error("[MESSAGE INPUT] Error sending message:", {
+        agentId,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      toast.error(`Failed to send message to ${agentId}`);
     } finally {
       setIsLoading(false);
     }
@@ -228,9 +112,6 @@ export function MessageInput({ agentId }: MessageInputProps) {
           )}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
-        Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to send
-      </p>
     </div>
   );
 }

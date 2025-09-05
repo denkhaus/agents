@@ -1,162 +1,71 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
-
-interface ApiCall {
-  id: string
-  method: string
-  url: string
-  timestamp: Date
-  status?: number
-  response?: unknown
-  error?: string
-  duration?: number
-}
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ApiMonitor() {
-  const [apiCalls, setApiCalls] = useState<ApiCall[]>([])
-  const [isVisible, setIsVisible] = useState(true)
+  const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
-    // Override fetch to monitor API calls
-    const originalFetch = window.fetch
+    // Override console.log to capture API logs
+    const originalLog = console.log;
+    const originalError = console.error;
     
-    window.fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : (input as Request).url
-      const method = init?.method || 'GET'
-      const startTime = Date.now()
+    console.log = function(...args) {
+      // Capture API-related logs
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
       
-      const callId = `${Date.now()}-${Math.random()}`
-      
-      // Add the call to our list
-      const newCall: ApiCall = {
-        id: callId,
-        method,
-        url,
-        timestamp: new Date(),
+      if (message.includes('API') || message.includes('apiClient')) {
+        setLogs(prev => [...prev.slice(-50), `[LOG] ${message}`]);
       }
       
-      setApiCalls(prev => [newCall, ...prev.slice(0, 19)]) // Keep last 20 calls
+      originalLog.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+      // Capture API-related errors
+      const message = args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+      ).join(' ');
       
-      try {
-        const response = await originalFetch(input, init)
-        const duration = Date.now() - startTime
-        const responseClone = response.clone()
-        
-        try {
-          const responseData = await responseClone.json()
-          
-          setApiCalls(prev => prev.map(call => 
-            call.id === callId 
-              ? { ...call, status: response.status, response: responseData, duration }
-              : call
-          ))
-        } catch {
-          // Response is not JSON
-          setApiCalls(prev => prev.map(call => 
-            call.id === callId 
-              ? { ...call, status: response.status, duration }
-              : call
-          ))
-        }
-        
-        return response
-      } catch (error) {
-        const duration = Date.now() - startTime
-        setApiCalls(prev => prev.map(call => 
-          call.id === callId 
-            ? { ...call, error: error instanceof Error ? error.message : 'Unknown error', duration }
-            : call
-        ))
-        throw error
+      if (message.includes('API') || message.includes('apiClient')) {
+        setLogs(prev => [...prev.slice(-50), `[ERROR] ${message}`]);
       }
-    }
-
+      
+      originalError.apply(console, args);
+    };
+    
     return () => {
-      window.fetch = originalFetch
-    }
-  }, [])
-
-  const clearCalls = () => setApiCalls([])
-
-  if (!isVisible) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <Button onClick={() => setIsVisible(true)} size="sm">
-          Show API Monitor
-        </Button>
-      </div>
-    )
-  }
+      console.log = originalLog;
+      console.error = originalError;
+    };
+  }, []);
 
   return (
-    <Card className="fixed bottom-4 right-4 w-96 max-h-96 z-50 bg-background border shadow-lg">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-sm">API Monitor</CardTitle>
-          <div className="flex gap-2">
-            <Badge variant="outline">{apiCalls.length} calls</Badge>
-            <Button onClick={clearCalls} size="sm" variant="outline">Clear</Button>
-            <Button onClick={() => setIsVisible(false)} size="sm" variant="outline">Hide</Button>
-          </div>
-        </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>API Monitor</CardTitle>
       </CardHeader>
-      <CardContent className="p-2">
-        <ScrollArea className="h-64">
-          {apiCalls.length === 0 ? (
-            <div className="text-center text-muted-foreground py-4">
-              No API calls yet
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {apiCalls.map((call) => (
-                <div key={call.id} className="border rounded p-2 text-xs">
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={call.method === 'GET' ? 'default' : 'secondary'} className="text-xs">
-                        {call.method}
-                      </Badge>
-                      {call.status && (
-                        <Badge variant={call.status < 400 ? 'default' : 'destructive'} className="text-xs">
-                          {call.status}
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-muted-foreground">
-                      {call.timestamp.toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="font-mono text-xs break-all mb-1">
-                    {call.url}
-                  </div>
-                  {call.error && (
-                    <div className="text-red-500 text-xs">
-                      Error: {call.error}
-                    </div>
-                  )}
-                  {call.response && typeof call.response === 'object' && call.response !== null ? (
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground">Response</summary>
-                      <pre className="mt-1 p-1 bg-muted rounded text-xs overflow-auto max-h-20">
-                        {JSON.stringify(call.response, null, 2)}
-                      </pre>
-                    </details>
-                  ) : null}
-                  {call.duration && (
-                    <div className="text-muted-foreground text-xs">
-                      Duration: {call.duration}ms
-                    </div>
-                  )}
+      <CardContent>
+        <div className="h-64 overflow-y-auto bg-muted p-2 rounded">
+          {logs.length > 0 ? (
+            <pre className="text-xs font-mono">
+              {logs.map((log, index) => (
+                <div 
+                  key={index} 
+                  className={log.includes('ERROR') ? "text-red-500" : "text-muted-foreground"}
+                >
+                  {log}
                 </div>
               ))}
-            </div>
+            </pre>
+          ) : (
+            <p className="text-muted-foreground text-sm">No API logs yet...</p>
           )}
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
-  )
+  );
 }
