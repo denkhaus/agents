@@ -1,11 +1,16 @@
-import { InterAgentEvent, AgentRunRequest } from '@/lib/types'
+import { AgentEvent, AgentRunRequest } from '@/lib/types'
 import { apiClient } from './client'
 
 export type SSEEventHandler = {
-  onMessage?: (event: InterAgentEvent) => void
-  onInterAgentEvent?: (event: InterAgentEvent) => void
+  /** Handles all types of agent events: regular responses, tool calls, system messages */
+  onMessage?: (event: AgentEvent) => void
+  /** Specifically handles inter-agent communication events */
+  onInterAgentEvent?: (event: AgentEvent) => void
+  /** Handles agent status changes */
   onAgentStatusChange?: (agentId: string, status: string) => void
+  /** Handles connection status changes */
   onConnectionStatusChange?: (connected: boolean) => void
+  /** Handles connection and parsing errors */
   onError?: (error: Event) => void
 }
 
@@ -101,6 +106,10 @@ class SSEService {
     });
   }
 
+  /**
+   * Connects to agent run SSE endpoint for user-to-agent communication.
+   * Used for sending messages to agents and receiving their responses.
+   */
   connectAgentRun(request: AgentRunRequest, handlers: SSEEventHandler) {
     this.disconnect('agentRun'); // Ensure only one agent run connection
     this.agentRunHandlers = handlers;
@@ -154,7 +163,7 @@ class SSEService {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                this.handleEvent(data, 'agentRun', this.agentRunHandlers);
+                this.handleEvent(data, 'agentRun');
               } catch (error) {
                 console.error('Error parsing agent run SSE data:', error, 'Raw data:', line);
               }
@@ -200,15 +209,11 @@ class SSEService {
   }
 
 
-  private handleEvent(event: InterAgentEvent, connectionType: 'mainChat' | 'agentRun') {
+  private handleEvent(event: AgentEvent, connectionType: 'mainChat' | 'agentRun') {
     const handlers = connectionType === 'mainChat' ? this.mainChatHandlers : this.agentRunHandlers;
-
-    // Log event for debugging
-    console.log('SSE Event received:', { type: event.type, object: event.object, connectionType, event });
 
     // Handle stream termination event
     if (event.done === true && !event.type && !event.object && !event.content) {
-      console.log('Stream termination event received for', connectionType);
       if (connectionType === 'agentRun') {
         this.isAgentRunConnected = false;
         handlers.onConnectionStatusChange?.(false);

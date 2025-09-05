@@ -10,7 +10,8 @@ export interface Message {
     eventType?: string;
     partial?: boolean;
     done?: boolean;
-    invocationId?: string; // Add invocationId here
+    invocationId?: string;
+    addedToUI?: boolean; // Track if message has been added to UI
   };
   parts?: MessagePart[];
   usageMetadata?: {

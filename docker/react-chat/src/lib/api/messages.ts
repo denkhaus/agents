@@ -1,14 +1,24 @@
 import { apiClient } from './client'
 import { sseService } from './sse'
-import { AgentRunRequest, Message, MessagePart, InterAgentEvent, MultiChatRequest } from '@/lib/types'
+import { AgentRunRequest, Message, MessagePart, AgentEvent, MultiChatRequest } from '@/lib/types'
 
 export const messageApi = {
+  /**
+   * Sends a message from a user to an agent and handles the streaming response.
+   * 
+   * @param agentId - The ID of the agent to send the message to
+   * @param content - The message content
+   * @param sessionId - The session ID for the conversation
+   * @param userId - The user ID (defaults to 'user')
+   * @param onResponse - Callback for handling agent response events (includes regular responses, tool calls, etc.)
+   * @param onError - Callback for handling errors
+   */
   async sendMessage(
     agentId: string, 
     content: string, 
     sessionId: string, 
     userId: string = 'user',
-    onResponse?: (event: InterAgentEvent) => void,
+    onResponse?: (event: AgentEvent) => void,
     onError?: (error: Error) => void
   ): Promise<void> {
     const request: AgentRunRequest = {
@@ -44,7 +54,14 @@ export const messageApi = {
     return apiClient.sendMessage(request)
   },
 
-  convertEventToMessage(event: InterAgentEvent): Message {
+  /**
+   * Converts an AgentEvent (from SSE stream) to a Message object for display.
+   * Handles all types of events: regular agent responses, inter-agent communication, tool calls, etc.
+   * 
+   * @param event - The agent event to convert
+   * @returns A Message object suitable for display in the chat interface
+   */
+  convertEventToMessage(event: AgentEvent): Message {
     
     // Safe content extraction with null checks
     let content = ''

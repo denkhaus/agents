@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { agentApi, sseService } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 import { messageApi } from "@/lib/api";
-import { log } from "console";
 
 export function useAgentConnection() {
   const {
@@ -13,8 +12,6 @@ export function useAgentConnection() {
     setConnected,
     addInterAgentEvent,
     addMessage,
-    updateMessage,
-    getSession,
     agents,
     activeAgentId,
     setActiveAgent,
@@ -92,63 +89,93 @@ export function useAgentConnection() {
             try {
               // Handle ONLY inter-agent and system messages
               // User-initiated messages are handled by MessageInput component
-              console.log("SSE Main Chat Event:", {
-                type: event.type,
-                object: event.object,
-                fromAgent: event.fromAgent,
-                toAgent: event.toAgent,
-                partial: event.partial
-              });
+              console.log(
+                "use-agent-connection: SSE Main Chat Event:",
+                JSON.stringify({
+                  type: event.type,
+                  object: event.object,
+                  fromAgent: event.fromAgent,
+                  toAgent: event.toAgent,
+                  partial: event.partial,
+                })
+              );
 
               // Handle inter-agent messages based on object type as well as event type
-              if (event.type === 'inter_agent' || event.type === 'communication' || event.object === 'inter_agent') {
+              if (
+                event.type === "inter_agent" ||
+                event.type === "communication" ||
+                event.object === "inter_agent"
+              ) {
                 const message = messageApi.convertEventToMessage(event);
                 // Display inter-agent messages in the INITIATING agent's chat
-                const targetAgentId = event.fromAgent || event.toAgent || event.author;
-                if (targetAgentId && agents.some(a => a.id === targetAgentId)) {
+                const targetAgentId =
+                  event.fromAgent || event.toAgent || event.author;
+                if (
+                  targetAgentId &&
+                  agents.some((a) => a.id === targetAgentId)
+                ) {
                   addMessage(targetAgentId, {
                     ...message,
-                    type: 'inter_agent' as const,
+                    type: "inter_agent" as const,
                     metadata: {
                       ...message.metadata,
                       fromAgent: event.fromAgent || event.author,
                       toAgent: event.toAgent,
-                      eventType: event.type || 'inter_agent'
-                    }
+                      eventType: event.type || "inter_agent",
+                    },
                   });
-                  console.log('Added inter-agent message:', {
-                    targetAgentId,
-                    fromAgent: event.fromAgent || event.author,
-                    toAgent: event.toAgent,
-                    content: message.content
-                  });
+                  console.log(
+                    "use-agent-connection: Added inter-agent message:",
+                    JSON.stringify({
+                      targetAgentId,
+                      fromAgent: event.fromAgent || event.author,
+                      toAgent: event.toAgent,
+                      content: message.content,
+                    })
+                  );
                 } else {
-                  console.warn('No valid target agent for inter-agent message:', event);
+                  console.warn(
+                    "use-agent-connection: No valid target agent for inter-agent message:",
+                    event
+                  );
                 }
-              } else if (event.object === 'message' && (event.fromAgent || event.author)) {
+              } else if (
+                event.object === "message" &&
+                (event.fromAgent || event.author)
+              ) {
                 // Handle regular messages from other agents
                 const message = messageApi.convertEventToMessage(event);
                 const sourceAgent = event.fromAgent || event.author;
-                if (sourceAgent && agents.some(a => a.id === sourceAgent)) {
+                if (sourceAgent && agents.some((a) => a.id === sourceAgent)) {
                   addMessage(sourceAgent, message);
-                  console.log('Added regular message from agent:', sourceAgent);
+                  console.log(
+                    "use-agent-connection: Added regular message from agent:",
+                    JSON.stringify(sourceAgent)
+                  );
                 }
               } else {
                 // Log other events for debugging (these should be handled by MessageInput)
-                console.log('SSE event (should be handled by MessageInput):', {
-                  type: event.type,
-                  object: event.object,
-                  partial: event.partial,
-                  fromAgent: event.fromAgent,
-                  author: event.author
-                });
+                console.log(
+                  "use-agent-connection: SSE event (should be handled by MessageInput):",
+                  JSON.stringify({
+                    type: event.type,
+                    object: event.object,
+                    partial: event.partial,
+                    fromAgent: event.fromAgent,
+                    author: event.author,
+                  })
+                );
               }
             } catch (error) {
-              console.error("Error processing inter-agent message:", error, event);
+              console.error(
+                "use-agent-connection: Error processing inter-agent message:",
+                error,
+                event
+              );
             }
           },
           onError: (error) => {
-            console.error("SSE error:", error);
+            console.error("use-agent-connection: SSE error:", error);
             setConnected(false);
 
             // Retry connection with exponential backoff
@@ -160,7 +187,9 @@ export function useAgentConnection() {
               );
               setTimeout(connectWithRetry, delay);
             } else {
-              console.error("Max reconnection attempts reached");
+              console.error(
+                "use-agent-connection: Max reconnection attempts reached"
+              );
             }
           },
         });

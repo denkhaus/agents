@@ -43,7 +43,16 @@ export interface ADKSession {
   events: unknown[]
 }
 
-export interface InterAgentEvent {
+/**
+ * Represents all types of events in the agent system.
+ * This includes:
+ * - Regular agent responses to user messages (object: 'message', 'tool_call', etc.)
+ * - Inter-agent communication (type: 'inter_agent', 'communication')
+ * - System events (type: 'heartbeat', 'agent_list', 'system')
+ * 
+ * Despite the legacy name, this type handles ALL agent events, not just inter-agent ones.
+ */
+export interface AgentEvent {
   id?: string
   type: 'communication' | 'heartbeat' | 'agent_list' | 'inter_agent' | 'system'
   fromAgent?: string
@@ -87,7 +96,12 @@ export interface InterAgentEvent {
   created?: number
 }
 
+/**
+ * @deprecated Use AgentEvent instead. This alias is kept for backward compatibility.
+ */
+export type InterAgentEvent = AgentEvent
+
 export interface SSEEventData {
   type: string
-  data: InterAgentEvent
+  data: AgentEvent
 }

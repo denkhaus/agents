@@ -1,6 +1,6 @@
 'use client'
 
-import type { InterAgentEvent } from '@/lib/types'
+import type { AgentEvent } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -8,7 +8,7 @@ import { ArrowRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface InterAgentEventProps {
-  event: InterAgentEvent
+  event: AgentEvent
 }
 
 export function InterAgentEvent({ event }: InterAgentEventProps) {

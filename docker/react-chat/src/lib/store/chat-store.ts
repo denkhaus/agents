@@ -4,7 +4,7 @@ import {
   Agent,
   Message,
   ChatSession,
-  InterAgentEvent,
+  AgentEvent,
   ADKSession,
 } from "@/lib/types";
 import { apiClient } from "@/lib/api";
@@ -15,7 +15,7 @@ interface ChatStore {
   sessions: Record<string, ChatSession>;
   activeAgentId: string | null;
   isConnected: boolean;
-  interAgentEvents: InterAgentEvent[];
+  interAgentEvents: AgentEvent[];
   availableSessions: Record<string, ADKSession[]>; // agentId -> sessions
   currentSessionId: string | null;
   isLoadingMessages: boolean;
@@ -30,7 +30,7 @@ interface ChatStore {
   ) => void;
   setActiveAgent: (agentId: string | null) => void;
   setConnected: (connected: boolean) => void;
-  addInterAgentEvent: (event: InterAgentEvent) => void;
+  addInterAgentEvent: (event: AgentEvent) => void;
   clearInterAgentEvents: () => void;
   createSession: (agentId: string) => Promise<void>;
   getSession: (agentId: string) => ChatSession | undefined;
@@ -226,7 +226,7 @@ export const useChatStore = create<ChatStore>()(
 
       setConnected: (connected: boolean) => set({ isConnected: connected }),
 
-      addInterAgentEvent: (event: InterAgentEvent) => {
+      addInterAgentEvent: (event: AgentEvent) => {
         const currentEvents = get().interAgentEvents;
         set({
           interAgentEvents: [...currentEvents, event],
