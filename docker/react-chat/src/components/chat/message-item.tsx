@@ -97,6 +97,7 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const getCardStyle = () => {
     if (isUser) return "bg-primary text-primary-foreground";
+    if (isInterAgent) return "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950";
     if (isToolCall) return "border-blue-200 dark:border-blue-800";
     if (isToolResponse) return "border-green-200 dark:border-green-800";
     if (isSystem) return "border-orange-200 dark:border-orange-800";
@@ -105,6 +106,9 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const getMessageTypeLabel = () => {
     if (isUser) return "You";
+    if (isInterAgent && message.metadata?.fromAgent && message.metadata?.toAgent) {
+      return `${message.metadata.fromAgent} -> ${message.metadata.toAgent}`;
+    }
     if (isToolCall) return `${message.sender} (Tool Call)`;
     if (isToolResponse) return `${message.sender} (Tool Response)`;
     if (isSystem) return `${message.sender} (System)`;
@@ -159,6 +163,14 @@ export function MessageItem({ message }: MessageItemProps) {
                 className="text-xs bg-green-100 text-green-800"
               >
                 Tool Response
+              </Badge>
+            )}
+            {isInterAgent && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-purple-100 text-purple-800"
+              >
+                Inter-Agent
               </Badge>
             )}
           </div>

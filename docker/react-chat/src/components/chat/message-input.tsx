@@ -50,6 +50,13 @@ export function MessageInput({ agentId }: MessageInputProps) {
           // Handle streaming response from agent
           console.log('Received agent response event:', responseEvent)
           
+          // Handle the final stream termination event
+          if (responseEvent.done === true && !responseEvent.id && !responseEvent.content) {
+            console.log('Stream completed - final termination event received')
+            currentAgentMessageRef.current = null
+            return
+          }
+          
           const messageId = responseEvent.id || responseEvent.invocationId || `${agentId}-${Date.now()}`
           
           // Extract content from event
@@ -67,13 +74,6 @@ export function MessageInput({ agentId }: MessageInputProps) {
             newContent = responseEvent.content
           }
           
-          // Debug streaming
-          console.log('Streaming event:', { 
-            messageId, 
-            newContent, 
-            partial: responseEvent.partial, 
-            currentContent: currentAgentMessageRef.current?.content 
-          })
           
           // Determine message type based on object type
           let messageType: 'agent' | 'system' = 'agent'
@@ -106,10 +106,9 @@ export function MessageInput({ agentId }: MessageInputProps) {
             // Accumulate streaming content for the same message
             let updatedContent: string
             
-            if (responseEvent.partial) {
-              // For streaming responses, the server typically sends the full content so far, not just the delta
-              // So we should replace, not accumulate
-              updatedContent = newContent
+            if (responseEvent.partial && newContent) {
+              // For streaming responses, accumulate the new content with existing content
+              updatedContent = (currentAgentMessageRef.current?.content || '') + newContent
             } else {
               // For complete responses, replace content
               updatedContent = newContent

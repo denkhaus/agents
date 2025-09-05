@@ -115,12 +115,23 @@ class SSEService {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
       body: JSON.stringify(request),
       signal,
     }).then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Agent run SSE request failed: ${response.status} ${response.statusText}`);
+      }
+      
       if (!response.body) {
         throw new Error('No response body');
+      }
+
+      // Check if response is actually SSE
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('text/event-stream')) {
+        console.warn('Response is not SSE, content-type:', contentType);
       }
 
       const reader = response.body.getReader();
@@ -143,10 +154,15 @@ class SSEService {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                this.handleEvent(data, 'agentRun');
+                this.handleEvent(data, 'agentRun', this.agentRunHandlers);
               } catch (error) {
                 console.error('Error parsing agent run SSE data:', error, 'Raw data:', line);
               }
+            } else if (line.trim() === '' || line.startsWith(':')) {
+              // Skip empty lines and comments
+              continue;
+            } else if (line.trim() !== '' && !line.startsWith('event:') && !line.startsWith('id:')) {
+              console.warn('Unexpected SSE line format:', line);
             }
           }
         }
@@ -189,6 +205,16 @@ class SSEService {
 
     // Log event for debugging
     console.log('SSE Event received:', { type: event.type, object: event.object, connectionType, event });
+
+    // Handle stream termination event
+    if (event.done === true && !event.type && !event.object && !event.content) {
+      console.log('Stream termination event received for', connectionType);
+      if (connectionType === 'agentRun') {
+        this.isAgentRunConnected = false;
+        handlers.onConnectionStatusChange?.(false);
+      }
+      return;
+    }
 
     switch (event.type) {
       case 'agent_list':

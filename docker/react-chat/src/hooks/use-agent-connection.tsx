@@ -1,32 +1,41 @@
-'use client'
+"use client";
 
-import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import { agentApi, sseService } from '@/lib/api'
-import { useChatStore } from '@/lib/store'
-import { messageApi } from '@/lib/api'
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { agentApi, sseService } from "@/lib/api";
+import { useChatStore } from "@/lib/store";
+import { messageApi } from "@/lib/api";
+import { log } from "console";
 
 export function useAgentConnection() {
-  const { 
-    setAgents, 
-    setConnected, 
-    addInterAgentEvent, 
+  const {
+    setAgents,
+    setConnected,
+    addInterAgentEvent,
     addMessage,
+    updateMessage,
+    getSession,
     agents,
     activeAgentId,
-    setActiveAgent
-  } = useChatStore()
+    setActiveAgent,
+  } = useChatStore();
 
   // Fetch agents with better error handling
-  const { data: agentsData, isLoading, error, isError, isFetching } = useQuery({
-    queryKey: ['agents'],
+  const {
+    data: agentsData,
+    isLoading,
+    error,
+    isError,
+    isFetching,
+  } = useQuery({
+    queryKey: ["agents"],
     queryFn: async () => {
       try {
-        const result = await agentApi.getAgents()
-        return result
+        const result = await agentApi.getAgents();
+        return result;
       } catch (error) {
-        console.error('Failed to fetch agents:', error)
-        throw error
+        console.error("Failed to fetch agents:", error);
+        throw error;
       }
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -36,89 +45,140 @@ export function useAgentConnection() {
     gcTime: 0, // Don't cache data
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-  })
+  });
 
   // Update store when agents change
   useEffect(() => {
     if (agentsData && agentsData.length > 0) {
-      setAgents(agentsData)
-      
+      setAgents(agentsData);
+
       // Auto-select first agent if none is selected
       if (!activeAgentId) {
         // Use async function to handle the promise
         const selectAgent = async () => {
           try {
-            await setActiveAgent(agentsData[0].id)
+            await setActiveAgent(agentsData[0].id);
           } catch (error) {
-            console.error('Failed to set active agent:', error)
+            console.error("Failed to set active agent:", error);
           }
-        }
-        selectAgent()
+        };
+        selectAgent();
       }
     }
-  }, [agentsData, setAgents, setActiveAgent, activeAgentId])
+  }, [agentsData, setAgents, setActiveAgent, activeAgentId]);
 
   // Set up SSE connection when agents are available
   useEffect(() => {
     if (agents.length > 0) {
-      const agentIds = agents.map(agent => agent.id)
-      const sessionId = `session-${Date.now()}`
-      const userId = 'user'
+      const agentIds = agents.map((agent) => agent.id);
+      const sessionId = `session-${Date.now()}`;
+      const userId = "user";
 
-      let reconnectAttempts = 0
-      const maxReconnectAttempts = 5
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 5;
 
       const connectWithRetry = () => {
         sseService.connectMainChat(agentIds, sessionId, userId, {
           onConnectionStatusChange: (connected) => {
-            setConnected(connected)
+            setConnected(connected);
             if (connected) {
-              reconnectAttempts = 0 // Reset on successful connection
+              reconnectAttempts = 0; // Reset on successful connection
             }
           },
           onInterAgentEvent: (event) => {
-            addInterAgentEvent(event)
+            addInterAgentEvent(event);
           },
           onMessage: (event) => {
             try {
-              // Convert event to message and add to appropriate agent session
-              const message = messageApi.convertEventToMessage(event)
-              if (event.fromAgent && agents.some(a => a.id === event.fromAgent)) {
-                addMessage(event.fromAgent, message)
+              // Handle ONLY inter-agent and system messages
+              // User-initiated messages are handled by MessageInput component
+              console.log("SSE Main Chat Event:", {
+                type: event.type,
+                object: event.object,
+                fromAgent: event.fromAgent,
+                toAgent: event.toAgent,
+                partial: event.partial
+              });
+
+              // Handle inter-agent messages based on object type as well as event type
+              if (event.type === 'inter_agent' || event.type === 'communication' || event.object === 'inter_agent') {
+                const message = messageApi.convertEventToMessage(event);
+                // Display inter-agent messages in the INITIATING agent's chat
+                const targetAgentId = event.fromAgent || event.toAgent || event.author;
+                if (targetAgentId && agents.some(a => a.id === targetAgentId)) {
+                  addMessage(targetAgentId, {
+                    ...message,
+                    type: 'inter_agent' as const,
+                    metadata: {
+                      ...message.metadata,
+                      fromAgent: event.fromAgent || event.author,
+                      toAgent: event.toAgent,
+                      eventType: event.type || 'inter_agent'
+                    }
+                  });
+                  console.log('Added inter-agent message:', {
+                    targetAgentId,
+                    fromAgent: event.fromAgent || event.author,
+                    toAgent: event.toAgent,
+                    content: message.content
+                  });
+                } else {
+                  console.warn('No valid target agent for inter-agent message:', event);
+                }
+              } else if (event.object === 'message' && (event.fromAgent || event.author)) {
+                // Handle regular messages from other agents
+                const message = messageApi.convertEventToMessage(event);
+                const sourceAgent = event.fromAgent || event.author;
+                if (sourceAgent && agents.some(a => a.id === sourceAgent)) {
+                  addMessage(sourceAgent, message);
+                  console.log('Added regular message from agent:', sourceAgent);
+                }
+              } else {
+                // Log other events for debugging (these should be handled by MessageInput)
+                console.log('SSE event (should be handled by MessageInput):', {
+                  type: event.type,
+                  object: event.object,
+                  partial: event.partial,
+                  fromAgent: event.fromAgent,
+                  author: event.author
+                });
               }
             } catch (error) {
-              console.error('Error converting event to message:', error, event)
+              console.error("Error processing inter-agent message:", error, event);
             }
           },
           onError: (error) => {
-            console.error('SSE error:', error)
-            setConnected(false)
-            
+            console.error("SSE error:", error);
+            setConnected(false);
+
             // Retry connection with exponential backoff
             if (reconnectAttempts < maxReconnectAttempts) {
-              reconnectAttempts++
-              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-              setTimeout(connectWithRetry, delay)
+              reconnectAttempts++;
+              const delay = Math.min(
+                1000 * Math.pow(2, reconnectAttempts),
+                30000
+              );
+              setTimeout(connectWithRetry, delay);
             } else {
-              console.error('Max reconnection attempts reached')
+              console.error("Max reconnection attempts reached");
             }
-          }
-        })
-      }
+          },
+        });
+      };
 
-      connectWithRetry()
+      connectWithRetry();
 
       return () => {
-        sseService.disconnect('mainChat')
-      }
+        sseService.disconnect("mainChat");
+      };
     }
-  }, [agents, setConnected, addInterAgentEvent, addMessage])
+  }, [agents, setConnected, addInterAgentEvent, addMessage]);
 
   return {
     agents: agentsData || [],
     isLoading,
     error,
     isError,
-    isFetching
-  }
+    isFetching,
+  };
 }

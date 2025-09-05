@@ -565,6 +565,9 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering
 
 	// Register SSE connection for inter-agent communication
 	cleanup := s.RegisterSSEConnectionForRequest(req, w, r)
@@ -612,6 +615,10 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
+
+	// Send a final event to properly close the stream
+	fmt.Fprintf(w, "data: {\"done\": true}\n\n")
+	flusher.Flush()
 
 	s.logger.Info("handleRunSSE finished", zap.String("sessionID", req.SessionID))
 }
