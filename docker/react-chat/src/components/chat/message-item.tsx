@@ -4,12 +4,74 @@ import { Message } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BrainCircuit, Cog, Play, Flag } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 
 interface MessageItemProps {
   message: Message;
 }
+
+const StructuredPart = ({ part }: { part: any }) => {
+  const partType = Object.keys(part)[0];
+  const content = part[partType]?.content;
+  if (!content) return null;
+
+  const config = {
+    planning: {
+      Icon: Cog,
+      title: "Planning",
+      style: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
+      titleStyle: "text-yellow-800 dark:text-yellow-200",
+    },
+    reasoning: {
+      Icon: BrainCircuit,
+      title: "Reasoning",
+      style: "bg-purple-50 border-purple-200 dark:bg-purple-950 dark:border-purple-800",
+      titleStyle: "text-purple-800 dark:text-purple-200",
+    },
+    action: {
+      Icon: Play,
+      title: "Action",
+      style: "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800",
+      titleStyle: "text-blue-800 dark:text-blue-200",
+    },
+    final_answer: {
+      Icon: Flag,
+      title: "Final Answer",
+      style: "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800",
+      titleStyle: "text-green-800 dark:text-green-200",
+    },
+  }[partType];
+
+  if (!config) return null;
+
+  const { Icon, title, style, titleStyle } = config;
+
+  const renderContent = () => (
+    <div className={`mt-2 p-3 border rounded-lg ${style}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={`h-5 w-5 ${titleStyle}`} />
+        <strong className={titleStyle}>{title}</strong>
+      </div>
+      <div className="prose prose-sm max-w-none dark:prose-invert">
+        <Markdown>{content}</Markdown>
+      </div>
+    </div>
+  );
+
+  if (partType === 'reasoning') {
+    return (
+      <details className="mt-2">
+        <summary className="cursor-pointer text-sm text-purple-600 hover:text-purple-800">
+          Show Reasoning
+        </summary>
+        {renderContent()}
+      </details>
+    );
+  }
+
+  return renderContent();
+};
 
 export function MessageItem({ message }: MessageItemProps) {
   const isUser = message.sender === "user";
@@ -17,9 +79,23 @@ export function MessageItem({ message }: MessageItemProps) {
   const isSystem = message.type === "system";
   const isToolCall = message.parts?.some((part) => part.functionCall);
   const isToolResponse = message.parts?.some((part) => part.functionResponse);
+  const isToolCode = message.parts?.some((part) => part.tool_code);
+  const hasStructuredThoughts = message.metadata?.hasStructuredThoughts;
 
   const formatMessageContent = () => {
-    // Priority 1: Use message.content if it's available and complete (especially for finalized messages)
+    // Priority 1: Handle structured thoughts if they exist
+    if (hasStructuredThoughts && message.parts && message.parts.length > 0) {
+      return message.parts.map((part, index) => (
+        <div key={index}>
+          <StructuredPart part={part} />
+          {/* Also render tool calls/responses if they are mixed in */}
+          {part.functionCall && <ToolCallPart part={part.functionCall} />}
+          {part.functionResponse && <ToolResponsePart part={part.functionResponse} />}
+        </div>
+      ));
+    }
+
+    // Priority 2: Use message.content if it's available and complete
     if (message.content && (!message.metadata?.partial || message.metadata?.done)) {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -32,7 +108,7 @@ export function MessageItem({ message }: MessageItemProps) {
       );
     }
 
-    // Priority 2: Use parts if available
+    // Priority 3: Use parts if available (for regular, non-structured messages)
     if (message.parts && message.parts.length > 0) {
       return message.parts.map((part, index) => (
         <div key={index}>
@@ -45,55 +121,14 @@ export function MessageItem({ message }: MessageItemProps) {
               )}
             </div>
           )}
-          {part.functionCall && (
-            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <strong className="text-blue-800 dark:text-blue-200">
-                  Tool Call: {part.functionCall.name}
-                </strong>
-                {part.functionCall.id && (
-                  <Badge variant="outline" className="text-xs">
-                    {part.functionCall.id}
-                  </Badge>
-                )}
-              </div>
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-800">
-                  View Parameters
-                </summary>
-                <pre className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-w-full">
-                  {JSON.stringify(part.functionCall.args, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
-          {part.functionResponse && (
-            <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <strong className="text-green-800 dark:text-green-200">
-                  Tool Response: {part.functionResponse.name}
-                </strong>
-                {part.functionResponse.id && (
-                  <Badge variant="outline" className="text-xs">
-                    {part.functionResponse.id}
-                  </Badge>
-                )}
-              </div>
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-green-600 hover:text-green-800">
-                  View Response
-                </summary>
-                <pre className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-h-40 max-w-full">
-                  {JSON.stringify(part.functionResponse.response, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
+          {part.functionCall && <ToolCallPart part={part.functionCall} />}
+          {part.functionResponse && <ToolResponsePart part={part.functionResponse} />}
+          {part.tool_code && <ToolCodePart part={part.tool_code} />}
         </div>
       ));
     }
 
-    // Priority 3: Fallback to content
+    // Priority 4: Fallback to content
     if (message.content) {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -114,6 +149,7 @@ export function MessageItem({ message }: MessageItemProps) {
     if (isInterAgent) return "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950";
     if (isToolCall) return "border-blue-200 dark:border-blue-800";
     if (isToolResponse) return "border-green-200 dark:border-green-800";
+    if (isToolCode) return "border-slate-200 dark:border-slate-800";
     if (isSystem) return "border-orange-200 dark:border-orange-800";
     return "";
   };
@@ -123,8 +159,10 @@ export function MessageItem({ message }: MessageItemProps) {
     if (isInterAgent && message.metadata?.fromAgent && message.metadata?.toAgent) {
       return `${message.metadata.fromAgent} -> ${message.metadata.toAgent}`;
     }
+    if (hasStructuredThoughts) return `${message.sender} (Thinking)`;
     if (isToolCall) return `${message.sender} (Tool Call)`;
     if (isToolResponse) return `${message.sender} (Tool Response)`;
+    if (isToolCode) return `${message.sender} (Tool Code)`;
     if (isSystem) return `${message.sender} (System)`;
     return message.sender;
   };
@@ -163,6 +201,14 @@ export function MessageItem({ message }: MessageItemProps) {
                 Streaming...
               </Badge>
             )}
+            {hasStructuredThoughts && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-purple-100 text-purple-800"
+              >
+                Structured Thought
+              </Badge>
+            )}
             {isToolCall && (
               <Badge
                 variant="secondary"
@@ -179,6 +225,14 @@ export function MessageItem({ message }: MessageItemProps) {
                 Tool Response
               </Badge>
             )}
+            {isToolCode && (
+              <Badge
+                variant="secondary"
+                className="text-xs bg-slate-100 text-slate-800"
+              >
+                Tool Code
+              </Badge>
+            )}
             {isInterAgent && (
               <Badge
                 variant="secondary"
@@ -193,3 +247,67 @@ export function MessageItem({ message }: MessageItemProps) {
     </div>
   );
 }
+
+// Helper components for different tool parts to keep the main component clean
+
+const ToolCallPart = ({ part }: { part: any }) => (
+  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+    <div className="flex items-center gap-2 mb-2">
+      <strong className="text-blue-800 dark:text-blue-200">
+        Tool Call: {part.name}
+      </strong>
+      {part.id && (
+        <Badge variant="outline" className="text-xs">
+          {part.id}
+        </Badge>
+      )}
+    </div>
+    <details className="mt-2">
+      <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-800">
+        View Parameters
+      </summary>
+      <pre className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-w-full">
+        {JSON.stringify(part.args, null, 2)}
+      </pre>
+    </details>
+  </div>
+);
+
+const ToolResponsePart = ({ part }: { part: any }) => (
+  <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+    <div className="flex items-center gap-2 mb-2">
+      <strong className="text-green-800 dark:text-green-200">
+        Tool Response: {part.name}
+      </strong>
+      {part.id && (
+        <Badge variant="outline" className="text-xs">
+          {part.id}
+        </Badge>
+      )}
+    </div>
+    <details className="mt-2">
+      <summary className="cursor-pointer text-sm text-green-600 hover:text-green-800">
+        View Response
+      </summary>
+      <pre className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-h-40 max-w-full">
+        {JSON.stringify(part.response, null, 2)}
+      </pre>
+    </details>
+  </div>
+);
+
+const ToolCodePart = ({ part }: { part: any }) => (
+  <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+    <div className="flex items-center gap-2 mb-2">
+      <strong className="text-slate-800 dark:text-slate-200">
+        Tool Code
+      </strong>
+    </div>
+    <div className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-w-full">
+      <Markdown>{`\
+${part.code}
+\
+`}</Markdown>
+    </div>
+  </div>
+);

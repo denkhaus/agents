@@ -57,6 +57,26 @@ export class InterAgentProcessor extends BaseMessageProcessor {
       return null
     }
 
+    // Determine the correct agent for this message based on event type
+    const fromAgent = event.fromAgent || event.interAgent?.fromAgent || event.author
+    const toAgent = event.toAgent || event.interAgent?.toAgent
+    const eventType = event.interAgent?.type || event.type || 'inter_agent'
+    
+    // For "received" events, only show in the target agent's window
+    if (eventType === 'received' && toAgent && context.agentId !== toAgent) {
+      return null
+    }
+    
+    // For "communication" events, only show in the sender's window
+    if (eventType === 'communication' && fromAgent && context.agentId !== fromAgent) {
+      return null
+    }
+    
+    // For other inter-agent events, check if this agent is involved
+    if (fromAgent && toAgent && context.agentId !== fromAgent && context.agentId !== toAgent) {
+      return null
+    }
+
     const baseMessage = this.createBaseMessage(event, context, 'inter_agent')
     
     const message: Message = {
@@ -65,9 +85,9 @@ export class InterAgentProcessor extends BaseMessageProcessor {
       parts,
       metadata: {
         ...baseMessage.metadata,
-        fromAgent: event.fromAgent || event.author,
-        toAgent: event.toAgent,
-        eventType: event.type || 'inter_agent',
+        fromAgent,
+        toAgent,
+        eventType,
       }
     } as Message
 

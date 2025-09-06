@@ -12,7 +12,7 @@ interface InterAgentEventProps {
 }
 
 export function InterAgentEvent({ event }: InterAgentEventProps) {
-  const isInterAgentCommunication = event.type === 'inter_agent' || event.type === 'communication'
+  const isInterAgentCommunication = event.object === 'inter_agent' || event.type === 'communication'
   
   const getEventContent = () => {
     if (typeof event.content === 'string') {
@@ -29,8 +29,14 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
     return event.message || 'No content'
   }
 
+  const getEventType = () => {
+    // Backend uses "object" for main classification, "type" for system events
+    return event.object || event.type || 'unknown'
+  }
+
   const getEventTypeVariant = () => {
-    switch (event.type) {
+    const eventType = getEventType()
+    switch (eventType) {
       case 'inter_agent':
       case 'communication':
         return 'default'
@@ -38,13 +44,18 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
         return 'outline'
       case 'agent_list':
         return 'secondary'
+      case 'message':
+        return 'default'
+      case 'tool_code':
+        return 'destructive'
       default:
         return 'outline'
     }
   }
 
   const getEventTypeColor = () => {
-    switch (event.type) {
+    const eventType = getEventType()
+    switch (eventType) {
       case 'inter_agent':
       case 'communication':
         return 'border-l-blue-500'
@@ -52,6 +63,10 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
         return 'border-l-green-500'
       case 'agent_list':
         return 'border-l-purple-500'
+      case 'message':
+        return 'border-l-blue-400'
+      case 'tool_code':
+        return 'border-l-orange-500'
       default:
         return 'border-l-gray-500'
     }
@@ -62,22 +77,22 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
       <CardContent className="p-3">
         <div className="flex items-start justify-between mb-2">
           <Badge variant={getEventTypeVariant()} className="text-xs">
-            {event.type.replace('_', ' ').toUpperCase()}
+            {getEventType().replace('_', ' ').toUpperCase()}
           </Badge>
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(event.timestamp * 1000), { addSuffix: true })}
           </span>
         </div>
 
-        {isInterAgentCommunication && event.fromAgent && event.toAgent && (
+        {isInterAgentCommunication && (event.fromAgent || event.interAgent?.fromAgent) && (event.toAgent || event.interAgent?.toAgent) && (
           <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {event.fromAgent.slice(0, 2).toUpperCase()}
+                  {(event.fromAgent || event.interAgent?.fromAgent || 'Unknown').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">{event.fromAgent}</span>
+              <span className="text-sm font-medium">{event.fromAgent || event.interAgent?.fromAgent || 'Unknown'}</span>
             </div>
             
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -85,10 +100,10 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {event.toAgent.slice(0, 2).toUpperCase()}
+                  {(event.toAgent || event.interAgent?.toAgent || 'Unknown').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">{event.toAgent}</span>
+              <span className="text-sm font-medium">{event.toAgent || event.interAgent?.toAgent || 'Unknown'}</span>
             </div>
           </div>
         )}

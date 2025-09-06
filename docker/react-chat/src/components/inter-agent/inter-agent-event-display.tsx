@@ -12,7 +12,7 @@ export function InterAgentEventDisplay() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">Inter-Agent Communication</h3>
           <Button
@@ -38,26 +38,30 @@ export function InterAgentEventDisplay() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        {interAgentEvents.length === 0 ? (
-          <div className="text-center py-8">
-            <Activity className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No inter-agent events yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Communication between agents will appear here
-            </p>
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full">
+          <div className="p-4">
+            {interAgentEvents.length === 0 ? (
+              <div className="text-center py-8">
+                <Activity className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No inter-agent events yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Communication between agents will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {interAgentEvents.map((event, index) => (
+                  <InterAgentEvent
+                    key={event.id || event.invocationId || `${event.timestamp}-${index}`}
+                    event={event}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="space-y-1">
-            {interAgentEvents.map((event) => (
-              <InterAgentEvent
-                key={event.id || event.invocationId || event.timestamp}
-                event={event}
-              />
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     </div>
   )
 }

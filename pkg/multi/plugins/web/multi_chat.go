@@ -415,7 +415,7 @@ func (s *Server) handleMultiChatSSE(w http.ResponseWriter, r *http.Request) {
 			data, _ := json.Marshal(heartbeat)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
-			s.logger.Debug("Sent heartbeat", zap.String("sessionID", sessionID))
+			s.logger.Debug("Sent heartbeat", zap.String("sessionID", sessionID)) // Test change for Air
 		}
 	}
 }

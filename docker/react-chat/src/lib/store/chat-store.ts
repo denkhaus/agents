@@ -43,9 +43,10 @@ interface ChatStore {
 
   // New Simplified Operations for Streaming
   addStreamingMessage: (agentId: string, messageId: string, initialContent: string, metadata?: Partial<Message>) => void;
-  updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>) => void;
+  updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>, parts?: Message['parts']) => void;
   finalizeMessage: (messageId: string) => void;
   setConnectionStatus: (agentId: string, status: ConnectionStatus) => void;
+  persistMessageToBackend: (agentId: string, sessionId: string, message: Message) => Promise<void>;
 }
 
 // Helper function to convert ADK events to messages
@@ -132,6 +133,15 @@ export const useChatStore = create<ChatStore>()(
               [agentId]: updatedSession,
             },
           });
+
+          // Persist message to backend if it's a user message or has structured thoughts
+          const shouldPersist = message.type === 'user' || 
+                               message.metadata?.hasStructuredThoughts ||
+                               message.sender === 'user';
+          
+          if (shouldPersist && session.sessionId) {
+            get().persistMessageToBackend(agentId, session.sessionId, message);
+          }
         }
       },
 
@@ -320,13 +330,37 @@ export const useChatStore = create<ChatStore>()(
           );
 
           if (session && session.events) {
-            const messages = session.events.map((event: unknown) =>
+            const backendMessages = session.events.map((event: unknown) =>
               convertADKEventToMessage(event as Parameters<typeof convertADKEventToMessage>[0], agentId)
             );
 
+            // Get existing session to preserve local messages (like reasoning messages)
+            const existingSession = get().sessions[agentId];
+            let finalMessages = backendMessages;
+
+            if (existingSession && existingSession.sessionId === sessionId) {
+              // Preserve local messages that don't exist in backend
+              const localMessages = existingSession.messages.filter(localMsg => {
+                // Keep messages that are:
+                // 1. Reasoning messages (hasStructuredThoughts)
+                // 2. User messages that might not be synced yet
+                // 3. Messages with partial/streaming state
+                return (
+                  localMsg.metadata?.hasStructuredThoughts ||
+                  localMsg.type === 'user' ||
+                  localMsg.metadata?.partial ||
+                  !backendMessages.some(backendMsg => backendMsg.id === localMsg.id)
+                );
+              });
+
+              // Merge local and backend messages, sort by timestamp
+              finalMessages = [...localMessages, ...backendMessages]
+                .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            }
+
             const chatSession: ChatSession = {
               agentId,
-              messages,
+              messages: finalMessages,
               isActive: true,
               lastActivity: new Date(session.lastUpdateTime * 1000),
               sessionId: session.id,
@@ -475,7 +509,7 @@ export const useChatStore = create<ChatStore>()(
         });
       },
 
-      updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>) => {
+      updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>, parts?: Message['parts']) => {
         // console.log(`[CHAT STORE] updateStreamingMessage called`, { messageId, contentLength: content.length });
         
         const sessions = get().sessions;
@@ -494,6 +528,7 @@ export const useChatStore = create<ChatStore>()(
             updatedMessages[messageIndex] = {
               ...currentMessage,
               content, // This should be the full accumulated content
+              parts: parts || currentMessage.parts, // Update parts if provided
               timestamp: new Date(), // Update timestamp for last update
               metadata: {
                 ...currentMessage.metadata,
@@ -587,6 +622,31 @@ export const useChatStore = create<ChatStore>()(
         // Update agent connection status if needed
         // This could be expanded to track per-agent connection states
         console.log(`Connection status for ${agentId}:`, status);
+      },
+
+      persistMessageToBackend: async (agentId: string, sessionId: string, message: Message) => {
+        try {
+          // Convert message to backend event format
+          const eventData = {
+            id: message.id,
+            invocationId: message.id,
+            author: message.sender,
+            timestamp: Math.floor(message.timestamp.getTime() / 1000),
+            object: message.metadata?.hasStructuredThoughts ? "reasoning" : "message",
+            done: true,
+            partial: false,
+            content: {
+              role: message.type === 'user' ? 'user' : 'assistant',
+              parts: message.parts || [{ text: message.content }]
+            }
+          };
+
+          await apiClient.addSessionEvent(agentId, 'user', sessionId, eventData);
+          console.log(`[CHAT STORE] Message persisted to backend:`, { agentId, sessionId, messageId: message.id });
+        } catch (error) {
+          console.warn(`[CHAT STORE] Failed to persist message to backend:`, error);
+          // Don't throw error to prevent UI from breaking
+        }
       },
     }),
     {

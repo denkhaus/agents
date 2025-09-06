@@ -80,6 +80,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.agents
     env_file: ../.env
+    restart: unless-stopped
     ports:
       - "9451:8080"
       - "6999:6999"

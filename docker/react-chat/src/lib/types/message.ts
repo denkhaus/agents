@@ -20,6 +20,7 @@ export interface Message {
     model?: string; // AI model used
     created?: number; // Creation timestamp
     finalizedAt?: string; // When the message was finalized
+    hasStructuredThoughts?: boolean; // Whether the message contains structured thoughts
   };
   parts?: MessagePart[];
   usageMetadata?: {

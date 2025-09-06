@@ -205,7 +205,7 @@ export class StreamingMessageManager {
     sessionId: string
   ): void {
     // Handle inter-agent messages - route to appropriate agent based on fromAgent/toAgent
-    const targetAgentId = event.fromAgent || event.toAgent || primaryAgentId
+    const targetAgentId = event.toAgent || event.fromAgent || primaryAgentId
     
     const context: MessageProcessingContext = {
       agentId: targetAgentId,

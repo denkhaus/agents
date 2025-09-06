@@ -54,7 +54,9 @@ export interface ADKSession {
  */
 export interface AgentEvent {
   id?: string
-  type: 'communication' | 'heartbeat' | 'agent_list' | 'inter_agent' | 'system'
+  // Backend uses "object" field for event classification, "type" only for specific events
+  object?: 'message' | 'tool_code' | 'inter_agent' | string
+  type?: 'heartbeat' | 'agent_list' | 'system' | string // Only for system events
   fromAgent?: string
   toAgent?: string
   content?: string | {
@@ -91,9 +93,9 @@ export interface AgentEvent {
     totalTokenCount?: number
   }
   // Additional backend fields
-  object?: string
   model?: string
   created?: number
+  actions?: Record<string, unknown>
 }
 
 /**

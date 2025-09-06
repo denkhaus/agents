@@ -143,6 +143,21 @@ class ApiClient {
     );
   }
 
+  async addSessionEvent(
+    appName: string,
+    userId: string,
+    sessionId: string,
+    eventData: any
+  ): Promise<void> {
+    return this.request<void>(
+      `/apps/${appName}/users/${userId}/sessions/${sessionId}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify(eventData),
+      }
+    );
+  }
+
   // Agent run endpoints
   async runAgent(request: AgentRunRequest): Promise<unknown> {
     return this.request("/run", {
