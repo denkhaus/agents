@@ -32,6 +32,7 @@ import (
 	//itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/shared"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -245,8 +246,9 @@ func (s *Server) registerRoutes() {
 		s.handleGetSession).Methods(http.MethodGet)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}",
 		s.handleDeleteSession).Methods(http.MethodDelete)
-	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events",
-		s.handleAddSessionEvent).Methods(http.MethodPost)
+	// s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events",
+	// 	s.handleAddSessionEvent).Methods(http.MethodPost)
+	s.router.HandleFunc("/agents", s.handleGetAgents).Methods(http.MethodGet)
 
 	// Debug APIs
 	s.router.HandleFunc("/debug/trace/{event_id}",
@@ -272,7 +274,8 @@ func (s *Server) registerRoutes() {
 	// Session API OPTIONS handlers
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}", preflight).Methods(http.MethodOptions)
-	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events", preflight).Methods(http.MethodOptions)
+	// s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events", preflight).Methods(http.MethodOptions)
+	s.router.HandleFunc("/agents", preflight).Methods(http.MethodOptions)
 
 	// Debug API OPTIONS handlers
 	s.router.HandleFunc("/debug/trace/{event_id}", preflight).Methods(http.MethodOptions)
@@ -429,7 +432,7 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	appName := vars["appName"]
 	userID := vars["userId"]
 	sessionID := vars["sessionId"]
-	
+
 	err := s.sessionSvc.DeleteSession(r.Context(), session.Key{
 		AppName:   appName,
 		UserID:    userID,
@@ -439,95 +442,156 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) handleAddSessionEvent(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleAddSessionEvent called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	appName := vars["appName"]
-	userID := vars["userId"]
-	sessionID := vars["sessionId"]
+// func (s *Server) handleAddSessionEvent(w http.ResponseWriter, r *http.Request) {
+// 	log.Infof("handleAddSessionEvent called: path=%s", r.URL.Path)
+// 	vars := mux.Vars(r)
+// 	appName := vars["appName"]
+// 	userID := vars["userId"]
+// 	sessionID := vars["sessionId"]
+// 
+// 	var eventData map[string]interface{}
+// 	if err := json.NewDecoder(r.Body).Decode(&eventData); err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+// 	defer r.Body.Close()
+// 
+// 	// Get the session
+// 	sess, err := s.sessionSvc.GetSession(r.Context(), session.Key{
+// 		AppName:   appName,
+// 		UserID:    userID,
+// 		SessionID: sessionID,
+// 	})
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	if sess == nil {
+// 		http.Error(w, "Session not found", http.StatusNotFound)
+// 		return
+// 	}
+// 
+// 	// Create a new event from the provided data
+// 	newEvent := event.Event{
+// 		ID:           eventData["id"].(string),
+// 		InvocationID: eventData["invocationId"].(string),
+// 		Author:       eventData["author"].(string),
+// 		Timestamp:    time.Unix(int64(eventData["timestamp"].(float64)), 0),
+// 	}
+// 
+// 	// Add response data if provided
+// 	if content, ok := eventData["content"]; ok {
+// 		newEvent.Response = &model.Response{
+// 			ID:        eventData["id"].(string),
+// 			Object:    eventData["object"].(string),
+// 			Done:      eventData["done"].(bool),
+// 			IsPartial: eventData["partial"].(bool),
+// 		}
+// 
+// 		// Handle content structure
+// 		if contentMap, ok := content.(map[string]interface{}); ok {
+// 			if parts, ok := contentMap["parts"].([]interface{}); ok {
+// 				var choices []model.Choice
+// 				var messageContent strings.Builder
+// 
+// 				for _, part := range parts {
+// 					if partMap, ok := part.(map[string]interface{}); ok {
+// 						if text, ok := partMap["text"].(string); ok {
+// 							messageContent.WriteString(text)
+// 						}
+// 					}
+// 				}
+// 
+// 				choice := model.Choice{
+// 					Message: model.Message{
+// 						Role:    model.Role(contentMap["role"].(string)),
+// 						Content: messageContent.String(),
+// 					},
+// 				}
+// 				choices = append(choices, choice)
+// 				newEvent.Response.Choices = choices
+// 			}
+// 		}
+// 	}
+// 
+// 	// Add the event to the session
+// 	err = s.sessionSvc.AddEvent(r.Context(), session.Key{
+// 		AppName:   appName,
+// 		UserID:    userID,
+// 		SessionID: sessionID,
+// 	}, newEvent)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 
+// 	w.WriteHeader(http.StatusCreated)
+// 	s.writeJSON(w, map[string]string{"status": "event added"})
+// }
 
-	var eventData map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&eventData); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+func (s *Server) handleGetAgents(w http.ResponseWriter, r *http.Request) {
+	log.Infof("handleGetAgents called: path=%s", r.URL.Path)
+
+	// Return all available agents with their canonical IDs and metadata
+	agents := []map[string]interface{}{
+		{
+			"id":           shared.AgentIDHuman.String(),
+			"name":         "human",
+			"displayName":  "Human",
+			"type":         "human",
+			"status":       "online",
+			"capabilities": []string{"input", "feedback", "decision_making"},
+		},
+		{
+			"id":           shared.AgentIDCoder.String(),
+			"name":         "coder",
+			"displayName":  "Coder",
+			"type":         "ai",
+			"status":       "online",
+			"capabilities": []string{"code_generation", "debugging", "refactoring"},
+		},
+		{
+			"id":           shared.AgentIDProjectManager.String(),
+			"name":         "project_manager",
+			"displayName":  "Project Manager",
+			"type":         "ai",
+			"status":       "online",
+			"capabilities": []string{"task_management", "planning", "coordination"},
+		},
+		{
+			"id":           shared.AgentIDResearcher.String(),
+			"name":         "researcher",
+			"displayName":  "Researcher",
+			"type":         "ai",
+			"status":       "online",
+			"capabilities": []string{"research", "analysis", "fact_checking"},
+		},
+		{
+			"id":           shared.AgentIDDebugger.String(),
+			"name":         "debugger",
+			"displayName":  "Debugger",
+			"type":         "ai",
+			"status":       "online",
+			"capabilities": []string{"debugging", "error_analysis", "testing"},
+		},
+		{
+			"id":           shared.AgentIDSupervisor.String(),
+			"name":         "supervisor",
+			"displayName":  "Supervisor",
+			"type":         "ai",
+			"status":       "online",
+			"capabilities": []string{"supervision", "coordination", "decision_making"},
+		},
 	}
-	defer r.Body.Close()
 
-	// Get the session
-	sess, err := s.sessionSvc.GetSession(r.Context(), session.Key{
-		AppName:   appName,
-		UserID:    userID,
-		SessionID: sessionID,
+	s.writeJSON(w, map[string]interface{}{
+		"agents": agents,
+		"total":  len(agents),
 	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if sess == nil {
-		http.Error(w, "Session not found", http.StatusNotFound)
-		return
-	}
-
-	// Create a new event from the provided data
-	newEvent := event.Event{
-		ID:           eventData["id"].(string),
-		InvocationID: eventData["invocationId"].(string),
-		Author:       eventData["author"].(string),
-		Timestamp:    time.Unix(int64(eventData["timestamp"].(float64)), 0),
-	}
-
-	// Add response data if provided
-	if content, ok := eventData["content"]; ok {
-		newEvent.Response = &model.Response{
-			ID:        eventData["id"].(string),
-			Object:    eventData["object"].(string),
-			Done:      eventData["done"].(bool),
-			IsPartial: eventData["partial"].(bool),
-		}
-
-		// Handle content structure
-		if contentMap, ok := content.(map[string]interface{}); ok {
-			if parts, ok := contentMap["parts"].([]interface{}); ok {
-				var choices []model.Choice
-				var messageContent strings.Builder
-
-				for _, part := range parts {
-					if partMap, ok := part.(map[string]interface{}); ok {
-						if text, ok := partMap["text"].(string); ok {
-							messageContent.WriteString(text)
-						}
-					}
-				}
-
-				choice := model.Choice{
-					Message: model.Message{
-						Role:    model.Role(contentMap["role"].(string)),
-						Content: messageContent.String(),
-					},
-				}
-				choices = append(choices, choice)
-				newEvent.Response.Choices = choices
-			}
-		}
-	}
-
-	// Add the event to the session
-	err = s.sessionSvc.AddEvent(r.Context(), session.Key{
-		AppName:   appName,
-		UserID:    userID,
-		SessionID: sessionID,
-	}, newEvent)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	s.writeJSON(w, map[string]string{"status": "event added"})
 }
 
 // convertContentToMessage converts Google GenAI Content to trpc-agent model.Message
@@ -827,7 +891,7 @@ func filterEventParts(e *event.Event, parts []map[string]interface{}, isStreamin
 	if len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
 		hasToolCall = true
 	}
-	
+
 	if toolResp || hasToolCall {
 		return parts
 	}
@@ -854,7 +918,7 @@ func addResponseMetadata(adkEvent map[string]interface{}, e *event.Event) {
 
 	adkEvent["done"] = e.Response.Done
 	adkEvent["partial"] = e.Response.IsPartial
-	
+
 	// Ensure partial flag is correctly set for streaming
 	if e.Response.IsPartial {
 		adkEvent["partial"] = true
@@ -863,7 +927,7 @@ func addResponseMetadata(adkEvent map[string]interface{}, e *event.Event) {
 		adkEvent["partial"] = false
 		adkEvent["done"] = true
 	}
-	
+
 	if e.Response.Object != "" {
 		adkEvent["object"] = e.Response.Object
 	}

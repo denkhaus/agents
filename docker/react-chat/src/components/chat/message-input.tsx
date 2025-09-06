@@ -8,6 +8,7 @@ import { useChatStore } from "@/lib/store";
 import { useStreamingManager } from "@/hooks/use-streaming-manager";
 import { toast } from "sonner";
 import { Message, SendMessageOptions } from "@/lib/types";
+import { AGENT_IDS } from "@/lib/constants/agents";
 
 interface MessageInputProps {
   agentId: string;
@@ -26,7 +27,7 @@ export function MessageInput({ agentId }: MessageInputProps) {
       id: Date.now().toString(),
       content: message.trim(),
       timestamp: new Date(),
-      sender: "user",
+      sender: AGENT_IDS.HUMAN,
       type: "user",
     };
 
@@ -46,7 +47,7 @@ export function MessageInput({ agentId }: MessageInputProps) {
       
       const options: SendMessageOptions = {
         sessionId: currentSessionId,
-        userId: "user",
+        userId: AGENT_IDS.HUMAN,
         onError: (error: Error) => {
           console.error(`[MESSAGE INPUT] Error in message sending callback for agent ${agentId}:`, error)
           toast.error(`Failed to send message to ${agentId}: ${error.message}`)

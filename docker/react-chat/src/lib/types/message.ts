@@ -1,12 +1,14 @@
+import { AgentId } from '../constants/agents';
+
 export interface Message {
   id: string;
   content: string;
   timestamp: Date;
-  sender: "user" | string; // 'user' or agent ID
-  type: "user" | "agent" | "inter_agent" | "system";
+  sender: AgentId; // Always use agent IDs - including HUMAN agent ID
+  type: "user" | "agent" | "inter_agent" | "system" | "reasoning";
   metadata?: {
-    fromAgent?: string;
-    toAgent?: string;
+    fromAgent?: AgentId;
+    toAgent?: AgentId;
     eventType?: string;
     partial?: boolean;
     done?: boolean;
@@ -45,7 +47,7 @@ export interface MessagePart {
 }
 
 export interface ChatSession {
-  agentId: string;
+  agentId: AgentId;
   messages: Message[];
   isActive: boolean;
   lastActivity: Date;
@@ -53,6 +55,6 @@ export interface ChatSession {
 }
 
 export interface TypingIndicator {
-  agentId: string;
+  agentId: AgentId;
   isTyping: boolean;
 }

@@ -5,6 +5,7 @@ import { Message } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
 import { useStreamingManager } from "@/hooks/use-streaming-manager";
 import { useChatStore } from "@/lib/store";
+import { parseStructuredThoughts } from "@/lib/parsing";
 
 interface MessageStreamingProps {
   agentId: string;
@@ -13,22 +14,7 @@ interface MessageStreamingProps {
   onStatusChange?: (status: ConnectionStatus) => void;
 }
 
-const tagRegex = /(\/\*(\w+)\*\/)\n?([\s\S]*?)(?=\/\*|$)/g;
-
-const parseStructuredThoughts = (text: string) => {
-  const parts: any[] = [];
-  let match;
-  tagRegex.lastIndex = 0; // Reset regex state
-
-  while ((match = tagRegex.exec(text)) !== null) {
-    const tagName = match[2].toLowerCase();
-    const content = match[3].trim();
-    if (content) {
-      parts.push({ [tagName]: { content } });
-    }
-  }
-  return parts;
-};
+import { parseStructuredThoughts } from "@/lib/parsing";
 
 export function MessageStreaming({
   agentId,

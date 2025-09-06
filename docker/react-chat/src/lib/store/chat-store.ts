@@ -9,6 +9,8 @@ import {
 } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
 import { apiClient } from "@/lib/api";
+import { AGENT_IDS, AgentId } from "@/lib/constants/agents";
+import { parseStructuredThoughts } from "@/lib/parsing";
 
 interface ChatStore {
   // State
@@ -46,7 +48,7 @@ interface ChatStore {
   updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>, parts?: Message['parts']) => void;
   finalizeMessage: (messageId: string) => void;
   setConnectionStatus: (agentId: string, status: ConnectionStatus) => void;
-  persistMessageToBackend: (agentId: string, sessionId: string, message: Message) => Promise<void>;
+  
 }
 
 // Helper function to convert ADK events to messages
@@ -76,7 +78,7 @@ const convertADKEventToMessage = (event: {
   let messageType: "user" | "agent" | "inter_agent" | "system" = "agent";
   if (event.object === "tool_call" || event.object === "tool_response") {
     messageType = "system";
-  } else if (event.author === "user") {
+  } else if (event.author === AGENT_IDS.HUMAN) {
     messageType = "user";
   }
 
@@ -133,15 +135,6 @@ export const useChatStore = create<ChatStore>()(
               [agentId]: updatedSession,
             },
           });
-
-          // Persist message to backend if it's a user message or has structured thoughts
-          const shouldPersist = message.type === 'user' || 
-                               message.metadata?.hasStructuredThoughts ||
-                               message.sender === 'user';
-          
-          if (shouldPersist && session.sessionId) {
-            get().persistMessageToBackend(agentId, session.sessionId, message);
-          }
         }
       },
 
@@ -254,7 +247,7 @@ export const useChatStore = create<ChatStore>()(
 
       createSession: async (agentId: string) => {
         try {
-          const newSession = await apiClient.createSession(agentId, "user");
+          const newSession = await apiClient.createSession(agentId, AGENT_IDS.HUMAN);
 
           const chatSession: ChatSession = {
             agentId,
@@ -308,7 +301,7 @@ export const useChatStore = create<ChatStore>()(
 
       loadSessions: async (agentId: string) => {
         try {
-          const sessions = await apiClient.getSessions(agentId, "user");
+          const sessions = await apiClient.getSessions(agentId, AGENT_IDS.HUMAN);
           set({
             availableSessions: {
               ...get().availableSessions,
@@ -325,14 +318,27 @@ export const useChatStore = create<ChatStore>()(
         try {
           const session = await apiClient.getSession(
             agentId,
-            "user",
+            AGENT_IDS.HUMAN,
             sessionId
           );
 
           if (session && session.events) {
             const backendMessages = session.events.map((event: unknown) =>
               convertADKEventToMessage(event as Parameters<typeof convertADKEventToMessage>[0], agentId)
-            );
+            ).map(message => {
+              const structuredParts = parseStructuredThoughts(message.content);
+              if (structuredParts.length > 0) {
+                return {
+                  ...message,
+                  parts: structuredParts,
+                  metadata: {
+                    ...message.metadata,
+                    hasStructuredThoughts: true,
+                  }
+                };
+              }
+              return message;
+            });
 
             // Get existing session to preserve local messages (like reasoning messages)
             const existingSession = get().sessions[agentId];
@@ -347,7 +353,7 @@ export const useChatStore = create<ChatStore>()(
                 // 3. Messages with partial/streaming state
                 return (
                   localMsg.metadata?.hasStructuredThoughts ||
-                  localMsg.type === 'user' ||
+                  localMsg.sender === AGENT_IDS.HUMAN ||
                   localMsg.metadata?.partial ||
                   !backendMessages.some(backendMsg => backendMsg.id === localMsg.id)
                 );
@@ -392,7 +398,7 @@ export const useChatStore = create<ChatStore>()(
           // Try to delete from backend first
           try {
             console.log('ChatStore: Calling apiClient.deleteSession...');
-            await apiClient.deleteSession(agentId, "user", sessionId);
+            await apiClient.deleteSession(agentId, AGENT_IDS.HUMAN, sessionId);
             console.log("ChatStore: Session deleted from backend successfully");
           } catch (backendError) {
             console.warn(
@@ -624,30 +630,7 @@ export const useChatStore = create<ChatStore>()(
         console.log(`Connection status for ${agentId}:`, status);
       },
 
-      persistMessageToBackend: async (agentId: string, sessionId: string, message: Message) => {
-        try {
-          // Convert message to backend event format
-          const eventData = {
-            id: message.id,
-            invocationId: message.id,
-            author: message.sender,
-            timestamp: Math.floor(message.timestamp.getTime() / 1000),
-            object: message.metadata?.hasStructuredThoughts ? "reasoning" : "message",
-            done: true,
-            partial: false,
-            content: {
-              role: message.type === 'user' ? 'user' : 'assistant',
-              parts: message.parts || [{ text: message.content }]
-            }
-          };
-
-          await apiClient.addSessionEvent(agentId, 'user', sessionId, eventData);
-          console.log(`[CHAT STORE] Message persisted to backend:`, { agentId, sessionId, messageId: message.id });
-        } catch (error) {
-          console.warn(`[CHAT STORE] Failed to persist message to backend:`, error);
-          // Don't throw error to prevent UI from breaking
-        }
-      },
+      
     }),
     {
       name: "chat-session-storage",

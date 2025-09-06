@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, BrainCircuit, Cog, Play, Flag } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
+import { AGENT_IDS } from "@/lib/constants/agents";
 
 interface MessageItemProps {
   message: Message;
@@ -74,7 +75,7 @@ const StructuredPart = ({ part }: { part: any }) => {
 };
 
 export function MessageItem({ message }: MessageItemProps) {
-  const isUser = message.sender === "user";
+  const isUser = message.sender === AGENT_IDS.HUMAN;
   const isInterAgent = message.type === "inter_agent";
   const isSystem = message.type === "system";
   const isToolCall = message.parts?.some((part) => part.functionCall);
@@ -99,7 +100,7 @@ export function MessageItem({ message }: MessageItemProps) {
     if (message.content && (!message.metadata?.partial || message.metadata?.done)) {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          {message.sender === "user" ? (
+          {message.sender === AGENT_IDS.HUMAN ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <Markdown>{message.content}</Markdown>
@@ -114,7 +115,7 @@ export function MessageItem({ message }: MessageItemProps) {
         <div key={index}>
           {part.text && (
             <div className="prose prose-sm max-w-none dark:prose-invert">
-              {message.sender === "user" ? (
+              {message.sender === AGENT_IDS.HUMAN ? (
                 <p className="whitespace-pre-wrap">{part.text}</p>
               ) : (
                 <Markdown>{part.text}</Markdown>
@@ -132,7 +133,7 @@ export function MessageItem({ message }: MessageItemProps) {
     if (message.content) {
       return (
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          {message.sender === "user" ? (
+          {message.sender === AGENT_IDS.HUMAN ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <Markdown>{message.content}</Markdown>

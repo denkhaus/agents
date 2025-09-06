@@ -1,5 +1,7 @@
+import { AgentId } from '../constants/agents';
+
 export interface Agent {
-  id: string
+  id: AgentId
   name: string
   status: 'online' | 'offline' | 'busy'
   capabilities: string[]
@@ -10,7 +12,7 @@ export interface Agent {
 export interface AgentInfo {
   name: string
   role?: string
-  id?: string
+  id?: AgentId
   capabilities?: string[]
   status?: Agent['status']
 }
