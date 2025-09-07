@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 )
@@ -85,7 +86,7 @@ func (pool *SSEConnectionPool) UnregisterConnection(sessionID, agentID uuid.UUID
 }
 
 // SendEventToConnection sends an event to a specific SSE connection
-func (pool *SSEConnectionPool) SendEventToConnection(conn *SSEConnection, event map[string]interface{}) {
+func (pool *SSEConnectionPool) SendEventToConnection(conn *SSEConnection, event *schema.LLMEvent) {
 	select {
 	case <-conn.Context.Done():
 		// Connection is closed, skip sending
@@ -109,7 +110,7 @@ func (pool *SSEConnectionPool) SendEventToConnection(conn *SSEConnection, event 
 }
 
 // BroadcastToAgent sends an event to all connections of a specific agent
-func (pool *SSEConnectionPool) BroadcastToAgent(agentID uuid.UUID, event map[string]interface{}) int {
+func (pool *SSEConnectionPool) BroadcastToAgent(agentID uuid.UUID, event *schema.LLMEvent) int {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 

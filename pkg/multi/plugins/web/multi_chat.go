@@ -1,10 +1,12 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/denkhaus/agents/pkg/multi"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -18,32 +20,23 @@ func (s *Server) BroadcastMessage(info *shared.AgentInfo, content string) {
 		return
 	}
 
-	eventID := uuid.New().String()
-	timestamp := time.Now()
-
-	// Create an ADK-compatible event
-	event := map[string]interface{}{
-		"id":           eventID,
-		"invocationId": eventID,
-		"author":       info.Name,
-		"timestamp":    timestamp.Unix(),
-		"object":       "message",
-		"done":         true,
-		"partial":      false,
-		"content": map[string]interface{}{
-			"role": "assistant",
-			"parts": []map[string]interface{}{
-				{
-					"text": content,
-				},
-			},
+	event := &schema.LLMEvent{
+		ID:           uuid.New().String(),
+		InvocationID: uuid.New().String(),
+		Author:       info.Name,
+		Timestamp:    time.Now().Unix(),
+		Type:         schema.EventTypeAssistant,
+		Done:         true,
+		Partial:      false,
+		Role:         model.RoleAssistant,
+		Parts: []schema.Part{
+			&schema.TextPart{Content: content},
 		},
-		"actions": map[string]interface{}{},
 	}
 
 	s.logger.Info("Broadcasting agent message",
 		zap.String("agent", info.Name),
-		zap.Any("event", event),
+		zap.String("content", content),
 	)
 
 	s.ssePool.BroadcastToAgent(info.ID(), event)
@@ -56,30 +49,27 @@ func (s *Server) BroadcastToolCall(info *shared.AgentInfo, functionDef model.Fun
 		return
 	}
 
-	eventID := uuid.New().String()
-	timestamp := time.Now()
+	// Parse arguments for structured storage
+	var args interface{}
+	if err := json.Unmarshal(functionDef.Arguments, &args); err != nil {
+		args = string(functionDef.Arguments) // fallback to string
+	}
 
-	// Create an ADK-compatible event for tool call
-	event := map[string]interface{}{
-		"id":           eventID,
-		"invocationId": eventID,
-		"author":       info.Name,
-		"timestamp":    timestamp.Unix(),
-		"object":       "tool_code",
-		"done":         true,
-		"partial":      false,
-		"content": map[string]interface{}{
-			"role": "tool",
-			"parts": []map[string]interface{}{
-				{
-					"functionCall": map[string]interface{}{
-						"name":      functionDef.Name,
-						"arguments": string(functionDef.Arguments),
-					},
-				},
+	event := &schema.LLMEvent{
+		ID:           uuid.New().String(),
+		InvocationID: uuid.New().String(),
+		Author:       info.Name,
+		Timestamp:    time.Now().Unix(),
+		Type:         schema.EventTypeToolCall,
+		Done:         true,
+		Partial:      false,
+		Role:         model.RoleTool,
+		Parts: []schema.Part{
+			&schema.FunctionCallPart{
+				Name: functionDef.Name,
+				Args: args,
 			},
 		},
-		"actions": map[string]interface{}{},
 	}
 
 	s.logger.Info("Broadcasting agent tool call",
@@ -138,103 +128,51 @@ func (s *Server) setupInterAgentInterceptor() {
 	})
 }
 
-// createInterAgentEvent creates an ADK-compatible event for inter-agent communication
-func (s *Server) createInterAgentEvent(fromAgent, toAgent uuid.UUID, message string) map[string]interface{} {
-	eventID := uuid.New().String()
-	timestamp := time.Now()
-
-	return map[string]interface{}{
-		"id":           eventID,
-		"invocationId": eventID,
-		"author":       fromAgent.String(),
-		"timestamp":    timestamp.Unix(),
-		"object":       "inter_agent",
-		"done":         true,
-		"partial":      false,
-		"content": map[string]interface{}{
-			"role": "assistant",
-			"parts": []map[string]interface{}{
-				{
-					"text": message,
-				},
-			},
-		},
-		"actions": map[string]interface{}{},
-		"interAgent": map[string]interface{}{
-			"fromAgent": fromAgent.String(),
-			"toAgent":   toAgent.String(),
-			"type":      "communication",
-		},
-	}
+// createInterAgentEvent creates a modern LLMEvent for inter-agent communication
+func (s *Server) createInterAgentEvent(fromAgent, toAgent uuid.UUID, message string) *schema.LLMEvent {
+	return schema.NewInterAgentEvent(
+		fromAgent.String(),
+		toAgent.String(),
+		message,
+		schema.InterAgentCommunication,
+	)
 }
 
 // createReceivedInterAgentEvent creates an event for the receiving agent
-func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent uuid.UUID, originalEvent map[string]interface{}) map[string]interface{} {
-	eventID := uuid.New().String()
-	timestamp := time.Now()
-
+func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent uuid.UUID, originalEvent *schema.LLMEvent) *schema.LLMEvent {
 	// Extract message from original event
 	var message string
-	if content, ok := originalEvent["content"].(map[string]interface{}); ok {
-		if parts, ok := content["parts"].([]map[string]interface{}); ok && len(parts) > 0 {
-			if text, ok := parts[0]["text"].(string); ok {
-				message = text
-			}
+	if len(originalEvent.Parts) > 0 {
+		if textPart, ok := originalEvent.Parts[0].(*schema.TextPart); ok {
+			message = textPart.Content
 		}
 	}
 
-	return map[string]interface{}{
-		"id":           eventID,
-		"invocationId": eventID,
-		"author":       fromAgent.String(),
-		"timestamp":    timestamp.Unix(),
-		"type":         "inter_agent",
-		"done":         true,
-		"partial":      false,
-		"content": map[string]interface{}{
-			"role": "user",
-			"parts": []map[string]interface{}{
-				{
-					"text": fmt.Sprintf("Received from %s: %s", fromAgent, message),
-				},
-			},
-		},
-		"actions": map[string]interface{}{},
-		"interAgent": map[string]interface{}{
-			"fromAgent": fromAgent.String(),
-			"toAgent":   toAgent.String(),
-			"type":      "received",
-		},
-	}
+	receivedMessage := fmt.Sprintf("Received from %s: %s", fromAgent, message)
+	return schema.NewInterAgentEvent(
+		fromAgent.String(),
+		toAgent.String(),
+		receivedMessage,
+		schema.InterAgentReceived,
+	)
 }
 
 // broadcastInterAgentEvent broadcasts an inter-agent event to both sender and receiver agents
-func (s *Server) broadcastInterAgentEvent(event map[string]interface{}) {
-	interAgentData, ok := event["interAgent"].(map[string]interface{})
-	if !ok {
-		s.logger.Error("Invalid inter-agent event format: missing interAgent data")
+func (s *Server) broadcastInterAgentEvent(event *schema.LLMEvent) {
+	if event.InterAgent == nil {
+		s.logger.Error("Invalid inter-agent event: missing InterAgent data")
 		return
 	}
 
-	fromAgentStr, ok := interAgentData["fromAgent"].(string)
-	if !ok {
-		s.logger.Error("Invalid inter-agent event format: missing fromAgent")
-		return
-	}
-	fromAgent, err := uuid.Parse(fromAgentStr)
+	fromAgent, err := uuid.Parse(event.InterAgent.FromAgent)
 	if err != nil {
-		s.logger.Error("Invalid fromAgent UUID", zap.String("uuid", fromAgentStr))
+		s.logger.Error("Invalid fromAgent UUID", zap.String("uuid", event.InterAgent.FromAgent))
 		return
 	}
 
-	toAgentStr, ok := interAgentData["toAgent"].(string)
-	if !ok {
-		s.logger.Error("Invalid inter-agent event format: missing toAgent")
-		return
-	}
-	toAgent, err := uuid.Parse(toAgentStr)
+	toAgent, err := uuid.Parse(event.InterAgent.ToAgent)
 	if err != nil {
-		s.logger.Error("Invalid toAgent UUID", zap.String("uuid", toAgentStr))
+		s.logger.Error("Invalid toAgent UUID", zap.String("uuid", event.InterAgent.ToAgent))
 		return
 	}
 

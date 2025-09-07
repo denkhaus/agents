@@ -13,6 +13,8 @@
 package schema
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -38,6 +40,13 @@ type FunctionResponsePart struct {
 	Response interface{} `json:"response,omitempty"`
 }
 
+type InterAgentPart struct {
+	FromAgentID string `json:"from_agent_id,omitempty"`
+	ToAgentID   string `json:"to_agent_id,omitempty"`
+	Message     string `json:"message,omitempty"`
+	Direction   string `json:"direction,omitempty"`
+}
+
 type UsageMetaData struct {
 	PromptTokenCount     int `json:"prompt_token_count,omitempty"`
 	CandidatesTokenCount int `json:"candidates_token_count,omitempty"`
@@ -56,6 +65,29 @@ type InterAgentData struct {
 	ToAgent   string              `json:"to_agent"`
 	Type      InterAgentEventType `json:"type"`
 }
+
+// NewInterAgentEvent creates a new LLMEvent for inter-agent communication
+func NewInterAgentEvent(fromAgentID, toAgentID, message string, eventType InterAgentEventType) *LLMEvent {
+	return &LLMEvent{
+		ID:           uuid.New().String(),
+		InvocationID: uuid.New().String(),
+		Author:       fromAgentID,
+		Timestamp:    time.Now().Unix(),
+		Type:         EventTypeInterAgent,
+		Done:         true,
+		Partial:      false,
+		Role:         model.RoleAssistant,
+		Parts: []Part{
+			&TextPart{Content: message},
+		},
+		InterAgent: &InterAgentData{
+			FromAgent: fromAgentID,
+			ToAgent:   toAgentID,
+			Type:      eventType,
+		},
+	}
+}
+
 
 type LLMEvent struct {
 	base         *event.Event     `json:"-"`

@@ -12,7 +12,8 @@ export type EventType =
   | "assistant"
   | "tool.call" 
   | "tool.response"
-  | "reasoning";
+  | "reasoning"
+  | "inter_agent";
 
 // Part types matching server schema
 export interface TextPart {
@@ -32,7 +33,14 @@ export interface FunctionResponsePart {
   response: unknown;
 }
 
-export type Part = TextPart | FunctionCallPart | FunctionResponsePart;
+export interface InterAgentPart {
+  from_agent_id: string;
+  to_agent_id: string;
+  message: string;
+  direction: "sent" | "received";
+}
+
+export type Part = TextPart | FunctionCallPart | FunctionResponsePart | InterAgentPart;
 
 // Usage metadata matching server schema
 export interface UsageMetaData {
@@ -85,24 +93,19 @@ export interface ADKSession {
   events: LLMEvent[];
 }
 
-// Inter-agent communication types
-export type InterAgentEventType = "communication" | "received";
-
+// Inter-agent communication data
 export interface InterAgentData {
-  fromAgent: string;
-  toAgent: string;
-  type: InterAgentEventType;
+  from_agent: string;
+  to_agent: string;
+  type: "communication" | "received";
 }
-
-// Extended event types including inter-agent
-export type ExtendedEventType = EventType | "inter_agent";
 
 // Main event structure matching server LLMEvent
 export interface LLMEvent {
   usage?: UsageMetaData;
   done?: boolean;
   partial?: boolean;
-  type?: ExtendedEventType;
+  type?: EventType;
   created?: number;
   model?: string;
   role?: string;
@@ -111,8 +114,7 @@ export interface LLMEvent {
   id?: string;
   invocationId?: string;
   author?: string;
-  // Inter-agent specific fields
-  interAgent?: InterAgentData;
+  inter_agent?: InterAgentData;
 }
 
 

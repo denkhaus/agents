@@ -17,14 +17,13 @@ const (
 	EventTypeToolCall     EventType = "tool.call"
 	EventTypeToolResponse EventType = "tool.response"
 	EventTypeReasoning    EventType = "reasoning"
-	//EventTypeError        EventType = "error"
-	//EventTypeSystem       EventType = "system"
+	EventTypeInterAgent   EventType = "inter_agent"
 )
 
 // validate checks if the event type is valid
 func (et EventType) Validate() bool {
 	switch et {
-	case EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning:
+	case EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning, EventTypeInterAgent:
 		return true
 	default:
 		// Any other specific type is also valid as long as it's not empty

@@ -5,6 +5,7 @@ import {
 } from "@/lib/types/streaming";
 import { UserResponseProcessor } from "./processors/user-response-processor";
 import {
+  InterAgentProcessor,
   ToolCallProcessor,
   AgentMessageProcessor,
   SystemMessageProcessor,
@@ -17,6 +18,7 @@ export class MessageEventRouter {
   constructor() {
     // Order matters: more specific processors first
     this.processors = [
+      new InterAgentProcessor(),
       new ToolCallProcessor(),
       new AgentMessageProcessor(), // Handle regular agent messages
       new UserResponseProcessor(),

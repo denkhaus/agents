@@ -13,6 +13,10 @@ export interface Message {
     eventType?: string;
     model?: string;
     created?: number;
+    // Inter-agent specific metadata
+    fromAgent?: string;
+    toAgent?: string;
+    interAgentType?: string;
     // Streaming-specific metadata
     streamingKey?: string;
     chunkIndex?: number;
