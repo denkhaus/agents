@@ -1,12 +1,10 @@
-import { AgentEvent, Message } from "@/lib/types";
+import { LLMEvent, Message } from "@/lib/types";
 import {
   MessageProcessor,
   MessageProcessingContext,
 } from "@/lib/types/streaming";
 import { UserResponseProcessor } from "./processors/user-response-processor";
 import {
-  AgentListProcessor,
-  InterAgentProcessor,
   ToolCallProcessor,
   AgentMessageProcessor,
   SystemMessageProcessor,
@@ -19,8 +17,6 @@ export class MessageEventRouter {
   constructor() {
     // Order matters: more specific processors first
     this.processors = [
-      new AgentListProcessor(),
-      new InterAgentProcessor(),
       new ToolCallProcessor(),
       new AgentMessageProcessor(), // Handle regular agent messages
       new UserResponseProcessor(),
@@ -29,7 +25,7 @@ export class MessageEventRouter {
   }
 
   processEvent(
-    event: AgentEvent,
+    event: LLMEvent,
     context: MessageProcessingContext
   ): Message | null {
     // Find the first processor that can handle this event
@@ -76,9 +72,7 @@ export class MessageEventRouter {
       "MessageRouter: No processor found for event",
       JSON.stringify({
         type: event.type,
-        object: event.object,
-        fromAgent: event.fromAgent,
-        toAgent: event.toAgent,
+        role: event.role,
         agentId: context.agentId,
       })
     );

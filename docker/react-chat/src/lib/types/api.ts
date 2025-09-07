@@ -7,87 +7,116 @@ export interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-export interface AgentRunRequest {
-  appName: string;
-  agentID: AgentId;
-  sessionID: string;
-  streaming: boolean;
-  newMessage: {
-    role: string;
-    parts: Array<{
-      text: string;
-    }>;
+// Event types matching server schema
+export type EventType = 
+  | "assistant"
+  | "tool.call" 
+  | "tool.response"
+  | "reasoning";
+
+// Part types matching server schema
+export interface TextPart {
+  content: string;
+}
+
+export interface FunctionCallPart {
+  name: string;
+  args: unknown;
+  id?: string;
+}
+
+export interface FunctionResponsePart {
+  name: string;
+  args?: unknown;
+  id?: string;
+  response: unknown;
+}
+
+export type Part = TextPart | FunctionCallPart | FunctionResponsePart;
+
+// Usage metadata matching server schema
+export interface UsageMetaData {
+  prompt_token_count?: number;
+  candidates_token_count?: number;
+  total_token_count?: number;
+}
+
+// Incoming request structures
+export interface PartIncoming {
+  text?: string;
+  inlineData?: {
+    data: string;
+    mimeType: string;
+    displayName?: string;
+  };
+  functionCall?: {
+    name: string;
+    args?: Record<string, unknown>;
+  };
+  functionResponse?: {
+    name: string;
+    response: unknown;
+    id?: string;
   };
 }
 
+export interface Content {
+  role: string;
+  parts: PartIncoming[];
+}
+
+export interface AgentRunRequest {
+  appName: string;
+  fromAgentId: string;
+  toAgentId: string;
+  sessionId: string;
+  content: Content;
+  streaming: boolean;
+}
+
+// Session structure matching server schema
 export interface ADKSession {
   appName: string;
-  userID: string;
+  agentId: string;
   id: string;
   createTime: number;
   lastUpdateTime: number;
-  state: Record<string, unknown>;
-  events: unknown[];
+  state: Record<string, Uint8Array>;
+  events: LLMEvent[];
 }
 
-/**
- * Represents all types of events in the agent system.
- * This includes:
- * - Regular agent responses to user messages (object: 'message', 'tool_call', etc.)
- * - Inter-agent communication (type: 'inter_agent', 'communication')
- * - System events (type: 'heartbeat', 'agent_list', 'system')
- *
- * Despite the legacy name, this type handles ALL agent events, not just inter-agent ones.
- */
-export interface AgentEvent {
-  id?: string;
-  // Backend uses "object" field for event classification, "type" only for specific events
-  object?: "message" | "tool_code" | "inter_agent" | string;
-  type?: "heartbeat" | "agent_list" | "system" | string; // Only for system events
-  fromAgent?: AgentId;
-  toAgent?: AgentId;
-  content?:
-    | string
-    | {
-        role?: string;
-        parts?: Array<{
-          text?: string;
-          functionCall?: {
-            name: string;
-            args: unknown;
-            id?: string;
-          };
-          functionResponse?: {
-            name: string;
-            response: unknown;
-            id?: string;
-          };
-        }>;
-      };
-  message?: string;
-  timestamp: number;
-  agents?: AgentInfo[];
-  interAgent?: {
-    fromAgent: AgentId;
-    toAgent: AgentId;
-    type: string;
-  };
-  invocationId?: string;
-  author?: string;
+// Inter-agent communication types
+export type InterAgentEventType = "communication" | "received";
+
+export interface InterAgentData {
+  fromAgent: string;
+  toAgent: string;
+  type: InterAgentEventType;
+}
+
+// Extended event types including inter-agent
+export type ExtendedEventType = EventType | "inter_agent";
+
+// Main event structure matching server LLMEvent
+export interface LLMEvent {
+  usage?: UsageMetaData;
   done?: boolean;
   partial?: boolean;
-  usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    totalTokenCount?: number;
-  };
-  // Additional backend fields
-  model?: string;
+  type?: ExtendedEventType;
   created?: number;
-  actions?: Record<string, unknown>;
+  model?: string;
+  role?: string;
+  parts?: Part[];
+  timestamp?: number;
+  id?: string;
+  invocationId?: string;
+  author?: string;
+  // Inter-agent specific fields
+  interAgent?: InterAgentData;
 }
+
 
 export interface SSEEventData {
   type: string;
-  data: AgentEvent;
+  data: LLMEvent;
 }

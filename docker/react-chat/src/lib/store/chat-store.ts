@@ -18,7 +18,7 @@ interface ChatStore {
   sessions: Record<AgentId, ChatSession>;
   activeAgentId: AgentId | null;
   isConnected: boolean;
-  interAgentEvents: AgentEvent[];
+  interAgentEvents: LLMEvent[];
   availableSessions: Record<AgentId, ADKSession[]>; // agentId -> sessions
   currentSessionId: string | null;
   applicationName: string | null;
@@ -34,7 +34,7 @@ interface ChatStore {
   ) => void;
   setActiveAgent: (agentId: AgentId | null) => void;
   setConnected: (connected: boolean) => void;
-  addInterAgentEvent: (event: AgentEvent) => void;
+  addInterAgentEvent: (event: LLMEvent) => void;
   clearInterAgentEvents: () => void;
   createSession: (agentId: AgentId) => Promise<void>;
   getSession: (agentId: AgentId) => ChatSession | undefined;
@@ -275,7 +275,7 @@ export const useChatStore = create<ChatStore>()(
 
       setConnected: (connected: boolean) => set({ isConnected: connected }),
 
-      addInterAgentEvent: (event: AgentEvent) => {
+      addInterAgentEvent: (event: LLMEvent) => {
         const currentEvents = get().interAgentEvents;
         set({
           interAgentEvents: [...currentEvents, event],

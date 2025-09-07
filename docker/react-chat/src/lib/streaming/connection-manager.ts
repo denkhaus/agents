@@ -1,4 +1,4 @@
-import { AgentEvent, AgentRunRequest } from "@/lib/types";
+import { LLMEvent, AgentRunRequest } from "@/lib/types";
 import {
   StreamingConnection,
   ConnectionStatus,

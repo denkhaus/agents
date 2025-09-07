@@ -2,12 +2,37 @@ package schema
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
-func NewLLMEvent(base *event.Event, isStreaming bool) *LLMEvent {
+type EventType string
+
+const (
+	EventTypeAssistant    EventType = "assistant"
+	EventTypeToolCall     EventType = "tool.call"
+	EventTypeToolResponse EventType = "tool.response"
+	EventTypeReasoning    EventType = "reasoning"
+	//EventTypeError        EventType = "error"
+	//EventTypeSystem       EventType = "system"
+)
+
+// validate checks if the event type is valid
+func (et EventType) Validate() bool {
+	switch et {
+	case EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning:
+		return true
+	default:
+		// Any other specific type is also valid as long as it's not empty
+		return et != ""
+	}
+}
+
+func NewLLMEvent(base *event.Event, isStreaming bool) (*LLMEvent, error) {
 	ev := &LLMEvent{
 		base: base,
 	}
@@ -15,7 +40,7 @@ func NewLLMEvent(base *event.Event, isStreaming bool) *LLMEvent {
 	return ev.extract(isStreaming)
 }
 
-func (p *LLMEvent) extract(isStreaming bool) *LLMEvent {
+func (p *LLMEvent) extract(isStreaming bool) (*LLMEvent, error) {
 	p.ID = p.eventID()
 	p.InvocationID = p.base.InvocationID
 	p.Timestamp = p.base.Timestamp.Unix()
@@ -28,14 +53,43 @@ func (p *LLMEvent) extract(isStreaming bool) *LLMEvent {
 	parts, isToolEvent := p.filterEventParts(parts, isStreaming)
 	// Skip event if no meaningful parts, unless it's a tool-related event
 	if len(parts) == 0 && !isToolEvent {
-		return nil
+		return nil, errors.New("empty event")
 	}
 
 	p.Parts = parts
 
+	// Detect reasoning in the content
+	for _, part := range parts {
+		if textPart, ok := part.(*TextPart); ok {
+			if p.detectReasoning(textPart.Content) {
+				p.Type = EventTypeReasoning
+				break
+			}
+		}
+	}
+
 	p.addUsageMetadata()
 	p.addResponseMetadata()
-	return p
+
+	// Assign default type if none was set
+	if p.Type == "" {
+		// If it's a tool event but wasn't categorized, set appropriate type
+		if p.isToolResponse() {
+			p.Type = EventTypeToolResponse
+		} else if p.hasToolCalls() {
+			p.Type = EventTypeToolCall
+		} else {
+			// Default to assistant for regular messages
+			p.Type = EventTypeAssistant
+		}
+	}
+
+	// Validate the LLMEvent
+	if err := p.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate LLMEven: %w", err)
+	}
+
+	return p, nil
 }
 
 // determineEventRole determines the role for the event content.
@@ -64,6 +118,26 @@ func (p *LLMEvent) addUsageMetadata() {
 	}
 }
 
+func (p *LLMEvent) detectReasoning(content string) bool {
+	// Check for React planner tags that indicate reasoning/planning content
+	if strings.Contains(content, "/PLANNING/") ||
+		strings.Contains(content, "/REASONING/") ||
+		strings.Contains(content, "/REPLANNING/") ||
+		strings.Contains(content, "/*PLANNING*/") ||
+		strings.Contains(content, "/*REASONING*/") ||
+		strings.Contains(content, "/*REPLANNING*/") {
+		return true
+	}
+
+	// Check for other reasoning indicators
+	if strings.Contains(content, "/ACTION/") ||
+		strings.Contains(content, "/*ACTION*/") {
+		return true
+	}
+
+	return false
+}
+
 func (p *LLMEvent) addResponseMetadata() {
 	if p.base.Response == nil {
 		return
@@ -82,7 +156,7 @@ func (p *LLMEvent) addResponseMetadata() {
 	}
 
 	if p.base.Response.Object != "" {
-		p.Object = p.base.Response.Object
+		p.Type = EventType(p.base.Response.Object)
 	}
 	if p.base.Response.Created != 0 {
 		p.Created = p.base.Response.Created
@@ -205,11 +279,13 @@ func (p *LLMEvent) filterEventParts(parts []Part, isStreaming bool) ([]Part, boo
 	toolResp := p.isToolResponse()
 	hasToolCall := p.hasToolCalls()
 
-	// Set object type for tool calls and responses
-	if hasToolCall {
-		p.Object = "tool_call"
-	} else if toolResp {
-		p.Object = "tool_response"
+	// Set object type for tool calls and responses only if not already set
+	if p.Type == "" {
+		if hasToolCall {
+			p.Type = EventTypeToolCall
+		} else if toolResp {
+			p.Type = EventTypeToolResponse
+		}
 	}
 
 	if toolResp || hasToolCall {
@@ -228,4 +304,19 @@ func (p *LLMEvent) filterEventParts(parts []Part, isStreaming bool) ([]Part, boo
 	}
 
 	return parts, false
+}
+
+// validate checks if the LLMEvent is valid
+func (p *LLMEvent) Validate() error {
+	// Event must have a non-empty type
+	if p.Type == "" {
+		return fmt.Errorf("event must have a non-empty type")
+	}
+
+	// Validate the event type
+	if !p.Type.Validate() {
+		return fmt.Errorf("invalid event type: %s", p.Type)
+	}
+
+	return nil
 }

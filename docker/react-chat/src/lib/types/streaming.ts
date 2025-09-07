@@ -1,5 +1,5 @@
 import { AgentId } from "../constants/agents";
-import { AgentEvent, Message } from "./";
+import { LLMEvent, Message } from "./";
 
 export interface ConnectionStatus {
   connectionId: string;
@@ -14,7 +14,7 @@ export interface MessageCallback {
 }
 
 export interface InterAgentCallback {
-  (event: AgentEvent): void;
+  (event: LLMEvent): void;
 }
 
 export interface ConnectionCallback {
@@ -36,7 +36,7 @@ export interface StreamingConnection {
 }
 
 export interface StreamingHandlers {
-  onMessage?: (event: AgentEvent) => void;
+  onMessage?: (event: LLMEvent) => void;
   onInterAgentEvent?: InterAgentCallback;
   onConnectionChange?: ConnectionCallback;
   onError?: ErrorCallback;
@@ -50,8 +50,8 @@ export interface MessageProcessingContext {
 }
 
 export interface MessageProcessor {
-  canProcess(event: AgentEvent, context: MessageProcessingContext): boolean;
-  process(event: AgentEvent, context: MessageProcessingContext): Message | null;
+  canProcess(event: LLMEvent, context: MessageProcessingContext): boolean;
+  process(event: LLMEvent, context: MessageProcessingContext): Message | null;
 }
 
 export interface StreamingMessageManagerConfig {
@@ -62,6 +62,6 @@ export interface StreamingMessageManagerConfig {
 }
 
 export interface SendMessageOptions {
-  onProgress?: (event: AgentEvent) => void;
+  onProgress?: (event: LLMEvent) => void;
   onError?: (error: Error) => void;
 }

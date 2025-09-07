@@ -1,11 +1,11 @@
-import { AgentEvent, AgentRunRequest } from '@/lib/types'
+import { LLMEvent, AgentRunRequest } from '@/lib/types'
 import { apiClient } from './client'
 
 export type SSEEventHandler = {
   /** Handles all types of agent events: regular responses, tool calls, system messages */
-  onMessage?: (event: AgentEvent) => void
+  onMessage?: (event: LLMEvent) => void
   /** Specifically handles inter-agent communication events */
-  onInterAgentEvent?: (event: AgentEvent) => void
+  onInterAgentEvent?: (event: LLMEvent) => void
   /** Handles agent status changes */
   onAgentStatusChange?: (agentId: string, status: string) => void
   /** Handles connection status changes */
@@ -209,7 +209,7 @@ class SSEService {
   }
 
 
-  private handleEvent(event: AgentEvent, connectionType: 'mainChat' | 'agentRun') {
+  private handleEvent(event: LLMEvent, connectionType: 'mainChat' | 'agentRun') {
     const handlers = connectionType === 'mainChat' ? this.mainChatHandlers : this.agentRunHandlers;
 
     // Handle stream termination event

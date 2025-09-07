@@ -1,4 +1,4 @@
-import { AgentEvent, Message } from "@/lib/types";
+import { LLMEvent, Message } from "@/lib/types";
 import {
   StreamingConnection,
   ConnectionStatus,
@@ -231,7 +231,7 @@ export class StreamingMessageManager {
     }
   }
 
-  private notifyInterAgentEvent(event: AgentEvent): void {
+  private notifyInterAgentEvent(event: LLMEvent): void {
     for (const callback of this.interAgentCallbacks) {
       try {
         callback(event);

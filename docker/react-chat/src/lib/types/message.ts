@@ -7,29 +7,25 @@ export interface Message {
   sender: AgentId;
   type: "user" | "agent" | "inter_agent" | "system" | "reasoning";
   metadata?: {
-    fromAgent?: AgentId;
-    toAgent?: AgentId;
-    eventType?: string;
     partial?: boolean;
     done?: boolean;
     invocationId?: string;
-    addedToUI?: boolean; // Track if message has been added to UI
+    eventType?: string;
+    model?: string;
+    created?: number;
     // Streaming-specific metadata
-    streamingKey?: string; // Key for tracking streaming message accumulation
-    chunkIndex?: number; // Index of the chunk in streaming sequence
-    isChunk?: boolean; // Whether this is a streaming chunk
-    isCompletion?: boolean; // Whether this is a completion event
-    model?: string; // AI model used
-    created?: number; // Creation timestamp
-    finalizedAt?: string; // When the message was finalized
-    hasStructuredThoughts?: boolean; // Whether the message contains structured thoughts
-    object?: string; // Add this line
+    streamingKey?: string;
+    chunkIndex?: number;
+    isChunk?: boolean;
+    isCompletion?: boolean;
+    finalizedAt?: string;
+    hasStructuredThoughts?: boolean;
   };
   parts?: MessagePart[];
   usageMetadata?: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    totalTokenCount?: number;
+    prompt_token_count?: number;
+    candidates_token_count?: number;
+    total_token_count?: number;
   };
 }
 

@@ -1,4 +1,4 @@
-import { AgentEvent, Message } from '@/lib/types'
+import { LLMEvent, Message } from '@/lib/types'
 import { MessageProcessingContext } from '@/lib/types/streaming'
 import { BaseMessageProcessor } from './base-processor'
 import { debug } from '@/lib/utils/debug'
@@ -8,7 +8,7 @@ export class UserResponseProcessor extends BaseMessageProcessor {
     super('UserResponseProcessor')
   }
 
-  canProcess(event: AgentEvent, context: MessageProcessingContext): boolean {
+  canProcess(event: LLMEvent, context: MessageProcessingContext): boolean {
     // Handle regular agent responses to user messages
     // Support both legacy 'message' format and OpenAI completion formats
     // Also handle events without explicit object type but with content
@@ -53,7 +53,7 @@ export class UserResponseProcessor extends BaseMessageProcessor {
     return result
   }
 
-  process(event: AgentEvent, context: MessageProcessingContext): Message | null {
+  process(event: LLMEvent, context: MessageProcessingContext): Message | null {
     debug.streaming(
       `UserResponseProcessor: Processing event`,
       JSON.stringify({
@@ -136,7 +136,7 @@ export class UserResponseProcessor extends BaseMessageProcessor {
     return message
   }
 
-  private generateUniqueMessageId(event: AgentEvent): string {
+  private generateUniqueMessageId(event: LLMEvent): string {
     // For streaming messages, we need a stable ID that represents the entire message stream
     // Use invocationId as the base for accumulation, but add chunk info for uniqueness during processing
     if (event.invocationId) {
@@ -147,13 +147,13 @@ export class UserResponseProcessor extends BaseMessageProcessor {
     return event.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private generateChunkIndex(event: AgentEvent): number {
+  private generateChunkIndex(event: LLMEvent): number {
     // Generate a chunk index based on timestamp or sequence
     // This helps with ordering chunks if needed
     return event.timestamp ? Math.floor(event.timestamp * 1000) : Date.now()
   }
 
-  private isInterAgentMessage(event: AgentEvent): boolean {
+  private isInterAgentMessage(event: LLMEvent): boolean {
     return !!(
       event.type === 'inter_agent' ||
       event.type === 'communication' ||
@@ -163,7 +163,7 @@ export class UserResponseProcessor extends BaseMessageProcessor {
     )
   }
 
-  private isSystemMessage(event: AgentEvent): boolean {
+  private isSystemMessage(event: LLMEvent): boolean {
     return !!(
       event.object === 'tool_call' ||
       event.object === 'tool_response'

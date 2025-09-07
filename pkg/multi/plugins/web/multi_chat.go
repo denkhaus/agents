@@ -188,7 +188,7 @@ func (s *Server) createReceivedInterAgentEvent(fromAgent, toAgent uuid.UUID, ori
 		"invocationId": eventID,
 		"author":       fromAgent.String(),
 		"timestamp":    timestamp.Unix(),
-		"object":       "inter_agent",
+		"type":         "inter_agent",
 		"done":         true,
 		"partial":      false,
 		"content": map[string]interface{}{

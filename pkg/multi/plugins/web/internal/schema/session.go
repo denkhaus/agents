@@ -11,7 +11,11 @@ import (
 func NewADKSession(s *session.Session) (*ADKSession, error) {
 	adkEvents := make([]*LLMEvent, 0, len(s.Events))
 	for _, e := range s.Events {
-		if ev := NewLLMEvent(&e, false); ev != nil {
+		ev, err := NewLLMEvent(&e, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create LLMEvent: %w", err)
+		}
+		if ev != nil {
 			adkEvents = append(adkEvents, ev)
 		}
 	}

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentEvent } from '@/lib/types'
+import type { LLMEvent } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { AGENT_IDS, getAgentDisplayName } from '@/lib/constants/agents'
 
 interface InterAgentEventProps {
-  event: AgentEvent
+  event: LLMEvent
 }
 
 export function InterAgentEvent({ event }: InterAgentEventProps) {

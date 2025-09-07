@@ -44,20 +44,34 @@ type UsageMetaData struct {
 	TotalTokenCount      int `json:"total_token_count,omitempty"`
 }
 
+type InterAgentEventType string
+
+const (
+	InterAgentCommunication InterAgentEventType = "communication"
+	InterAgentReceived      InterAgentEventType = "received"
+)
+
+type InterAgentData struct {
+	FromAgent string              `json:"from_agent"`
+	ToAgent   string              `json:"to_agent"`
+	Type      InterAgentEventType `json:"type"`
+}
+
 type LLMEvent struct {
-	base         *event.Event   `json:"-"`
-	Usage        *UsageMetaData `json:"usage,omitempty"`
-	Done         bool           `json:"done,omitempty"`
-	Partial      bool           `json:"partial,omitempty"`
-	Object       string         `json:"object,omitempty"`
-	Created      int64          `json:"created,omitempty"`
-	Model        string         `json:"model,omitempty"`
-	Role         model.Role     `json:"role,omitempty"`
-	Parts        []Part         `json:"parts,omitempty"`
-	Timestamp    int64          `json:"timestamp,omitempty"`
-	ID           string         `json:"id,omitempty"`
-	InvocationID string         `json:"invocation_id,omitempty"`
-	Author       string         `json:"author,omitempty"`
+	base         *event.Event     `json:"-"`
+	Usage        *UsageMetaData   `json:"usage,omitempty"`
+	Done         bool             `json:"done,omitempty"`
+	Partial      bool             `json:"partial,omitempty"`
+	Type         EventType        `json:"type,omitempty"`
+	Created      int64            `json:"created,omitempty"`
+	Model        string           `json:"model,omitempty"`
+	Role         model.Role       `json:"role,omitempty"`
+	Parts        []Part           `json:"parts,omitempty"`
+	Timestamp    int64            `json:"timestamp,omitempty"`
+	ID           string           `json:"id,omitempty"`
+	InvocationID string           `json:"invocation_id,omitempty"`
+	Author       string           `json:"author,omitempty"`
+	InterAgent   *InterAgentData  `json:"inter_agent,omitempty"`
 }
 
 // ADKSession mirrors the structure expected by ADK Web UI for a session.

@@ -1,4 +1,4 @@
-import { AgentEvent, Message } from '@/lib/types'
+import { LLMEvent, Message, TextPart, FunctionCallPart, FunctionResponsePart } from '@/lib/types'
 import { MessageProcessor, MessageProcessingContext } from '@/lib/types/streaming'
 import { debug } from '@/lib/utils/debug'
 
@@ -9,12 +9,12 @@ export abstract class BaseMessageProcessor implements MessageProcessor {
     this.processorType = processorType
   }
 
-  abstract canProcess(event: AgentEvent, context: MessageProcessingContext): boolean
+  abstract canProcess(event: LLMEvent, context: MessageProcessingContext): boolean
   
-  abstract process(event: AgentEvent, context: MessageProcessingContext): Message | null
+  abstract process(event: LLMEvent, context: MessageProcessingContext): Message | null
 
   protected createBaseMessage(
-    event: AgentEvent, 
+    event: LLMEvent, 
     context: MessageProcessingContext, 
     messageType: Message['type']
   ): Partial<Message> {
@@ -29,56 +29,43 @@ export abstract class BaseMessageProcessor implements MessageProcessor {
         invocationId: event.invocationId,
         partial: event.partial || false,
         done: event.done || false,
-        fromAgent: event.fromAgent,
-        toAgent: event.toAgent,
         eventType: event.type,
+        model: event.model,
+        created: event.created,
       }
     }
   }
 
-  protected extractContent(event: AgentEvent): { content: string; parts?: unknown[] } {
+  protected extractContent(event: LLMEvent): { content: string; parts?: unknown[] } {
     let content = ""
     let parts = undefined
 
-    // Handle different content formats
-    if (typeof event.content === 'object' && event.content !== null && 'parts' in event.content) {
-      const eventContent = event.content as { parts?: Array<{ text?: string }> }
-      if (Array.isArray(eventContent.parts)) {
-        const textParts = eventContent.parts.filter(part => part.text)
-        if (textParts.length > 0) {
-          content = textParts.map(part => part.text).join('')
+    // Extract content from LLMEvent parts
+    if (event.parts && Array.isArray(event.parts)) {
+      const textParts: string[] = []
+      
+      for (const part of event.parts) {
+        if ('content' in part && typeof part.content === 'string') {
+          // TextPart
+          textParts.push(part.content)
         }
-        parts = eventContent.parts
       }
-    } else if (typeof event.content === 'string') {
-      content = event.content
-    } else if (event.content && typeof event.content === 'object') {
-      // Handle cases where content is an object with text property
-      const contentObj = event.content as { text?: string };
-      if (contentObj.text) {
-        content = contentObj.text;
-      } else {
-        // Fallback: stringify the content object
-        content = JSON.stringify(contentObj)
+      
+      if (textParts.length > 0) {
+        content = textParts.join('')
       }
-    }
-
-    // If no content extracted yet, try other event properties
-    if (!content && event.message) {
-      content = typeof event.message === 'string' ? event.message : JSON.stringify(event.message)
+      parts = event.parts
     }
 
     return { content, parts }
   }
 
-  protected logProcessing(event: AgentEvent, context: MessageProcessingContext, result: Message | null) {
+  protected logProcessing(event: LLMEvent, context: MessageProcessingContext, result: Message | null) {
     debug.streaming(
       `${this.processorType}: Processing event`,
       JSON.stringify({
         type: event.type,
-        object: event.object,
-        fromAgent: event.fromAgent,
-        toAgent: event.toAgent,
+        role: event.role,
         agentId: context.agentId,
         processed: !!result
       })

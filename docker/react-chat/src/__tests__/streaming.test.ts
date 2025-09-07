@@ -1,6 +1,6 @@
 import { StreamingMessageManager } from '@/lib/streaming'
 import { MessageEventRouter } from '@/lib/streaming/message-router'
-import { AgentEvent } from '@/lib/types'
+import { LLMEvent } from '@/lib/types'
 
 // Mock the API client
 jest.mock('@/lib/api', () => ({

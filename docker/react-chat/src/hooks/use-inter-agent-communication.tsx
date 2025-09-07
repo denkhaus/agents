@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react'
 import { useChatStore } from '@/lib/store'
 import { useStreamingManager } from './use-streaming-manager'
-import { AgentEvent } from '@/lib/types'
+import { LLMEvent } from '@/lib/types'
 import { ConnectionStatus } from '@/lib/types/streaming'
 import { debug } from '@/lib/utils/debug'
 
@@ -40,7 +40,7 @@ export function useInterAgentCommunication({
   }, [addInterAgentEvent])
 
   // Memoize event handlers to prevent re-creation on every render
-  const handleInterAgentEvent = useCallback((event: AgentEvent) => {
+  const handleInterAgentEvent = useCallback((event: LLMEvent) => {
     debug.streaming('Inter-agent event received:', event)
     stableDepsRef.current.addInterAgentEvent(event)
   }, [])
