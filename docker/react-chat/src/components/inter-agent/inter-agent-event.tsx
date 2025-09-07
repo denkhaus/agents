@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ArrowRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { AGENT_IDS, getAgentDisplayName } from '@/lib/constants/agents'
 
 interface InterAgentEventProps {
   event: AgentEvent
@@ -89,10 +90,14 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {(event.fromAgent || event.interAgent?.fromAgent || 'Unknown').slice(0, 2).toUpperCase()}
+                  {getAgentDisplayName(event.fromAgent || event.interAgent?.fromAgent || 'Unknown').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">{event.fromAgent || event.interAgent?.fromAgent || 'Unknown'}</span>
+              <span className="text-sm font-medium">
+                {event.fromAgent === AGENT_IDS.HUMAN || event.interAgent?.fromAgent === AGENT_IDS.HUMAN 
+                  ? "You" 
+                  : getAgentDisplayName(event.fromAgent || event.interAgent?.fromAgent || 'Unknown')}
+              </span>
             </div>
             
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -100,10 +105,14 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {(event.toAgent || event.interAgent?.toAgent || 'Unknown').slice(0, 2).toUpperCase()}
+                  {getAgentDisplayName(event.toAgent || event.interAgent?.toAgent || 'Unknown').slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">{event.toAgent || event.interAgent?.toAgent || 'Unknown'}</span>
+              <span className="text-sm font-medium">
+                {event.toAgent === AGENT_IDS.HUMAN || event.interAgent?.toAgent === AGENT_IDS.HUMAN 
+                  ? "You" 
+                  : getAgentDisplayName(event.toAgent || event.interAgent?.toAgent || 'Unknown')}
+              </span>
             </div>
           </div>
         )}

@@ -14,6 +14,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+import { normalizeToAgentId, AgentId } from "@/lib/constants/agents";
+
 interface AgentListProps {
   agentId?: string;
   onSessionSelect?: (sessionId: string) => void;
@@ -60,7 +62,7 @@ export function AgentList({ agentId, onSessionSelect }: AgentListProps) {
             <AccordionContent className="pb-0">
               <div className="px-4">
                 <SessionSelector
-                  agentId={agentId}
+                  agentId={normalizeToAgentId(agentId) || agentId as AgentId}
                   onSessionSelect={onSessionSelect}
                 />
               </div>

@@ -2,6 +2,7 @@ import { AgentEvent, Message } from '@/lib/types'
 import { MessageProcessingContext } from '@/lib/types/streaming'
 import { BaseMessageProcessor } from './base-processor'
 import { debug } from '@/lib/utils/debug'
+import { normalizeToAgentId, normalizeToAgentName } from '@/lib/constants/agents'
 
 export class AgentListProcessor extends BaseMessageProcessor {
   constructor() {
@@ -58,22 +59,27 @@ export class InterAgentProcessor extends BaseMessageProcessor {
     }
 
     // Determine the correct agent for this message based on event type
-    const fromAgent = event.fromAgent || event.interAgent?.fromAgent || event.author
-    const toAgent = event.toAgent || event.interAgent?.toAgent
+    const rawFromAgent = event.fromAgent || event.interAgent?.fromAgent || event.author
+    const rawToAgent = event.toAgent || event.interAgent?.toAgent
     const eventType = event.interAgent?.type || event.type || 'inter_agent'
     
+    // Normalize agent identifiers to IDs
+    const fromAgent = rawFromAgent ? (normalizeToAgentId(rawFromAgent) || rawFromAgent) : undefined
+    const toAgent = rawToAgent ? (normalizeToAgentId(rawToAgent) || rawToAgent) : undefined
+    const contextAgentId = normalizeToAgentId(context.agentId) || context.agentId
+    
     // For "received" events, only show in the target agent's window
-    if (eventType === 'received' && toAgent && context.agentId !== toAgent) {
+    if (eventType === 'received' && toAgent && contextAgentId !== toAgent) {
       return null
     }
     
     // For "communication" events, only show in the sender's window
-    if (eventType === 'communication' && fromAgent && context.agentId !== fromAgent) {
+    if (eventType === 'communication' && fromAgent && contextAgentId !== fromAgent) {
       return null
     }
     
     // For other inter-agent events, check if this agent is involved
-    if (fromAgent && toAgent && context.agentId !== fromAgent && context.agentId !== toAgent) {
+    if (fromAgent && toAgent && contextAgentId !== fromAgent && contextAgentId !== toAgent) {
       return null
     }
 
@@ -149,6 +155,55 @@ export class ToolCallProcessor extends BaseMessageProcessor {
       metadata: {
         ...baseMessage.metadata,
         toolCallType: event.object || event.type,
+      }
+    } as Message
+
+    this.logProcessing(event, context, message)
+    return message
+  }
+}
+
+export class AgentMessageProcessor extends BaseMessageProcessor {
+  constructor() {
+    super('AgentMessageProcessor')
+  }
+
+  canProcess(event: AgentEvent, context: MessageProcessingContext): boolean {
+    // Handle regular agent messages
+    return !!(
+      event.object === 'message' ||
+      (event.type === 'agent' && !event.fromAgent && !event.toAgent)
+    )
+  }
+
+  process(event: AgentEvent, context: MessageProcessingContext): Message | null {
+    const { content, parts } = this.extractContent(event)
+    
+    // Skip events without meaningful content
+    if (!content && (!parts || parts.length === 0)) {
+      return null
+    }
+
+    // Normalize agent identifiers to IDs
+    const eventAgentId = (event as any).agentId || event.author
+    const normalizedAgentId = normalizeToAgentId(eventAgentId) || eventAgentId
+    
+    // Only process if this message is for the current agent context
+    const contextAgentId = normalizeToAgentId(context.agentId) || context.agentId
+    if (normalizedAgentId !== contextAgentId) {
+      return null
+    }
+
+    const baseMessage = this.createBaseMessage(event, context, 'agent')
+    
+    const message: Message = {
+      ...baseMessage,
+      content,
+      parts,
+      sender: normalizedAgentId,
+      metadata: {
+        ...baseMessage.metadata,
+        fromAgent: normalizedAgentId,
       }
     } as Message
 

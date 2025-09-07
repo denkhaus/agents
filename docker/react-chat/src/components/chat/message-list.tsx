@@ -4,9 +4,10 @@ import { useChatStore } from "@/lib/store";
 import { MessageItem } from "./message-item";
 import { useEffect, useRef, useMemo } from "react";
 import { Message } from "@/lib/types";
+import { AgentId } from "@/lib/constants/agents";
 
 interface MessageListProps {
-  agentId: string;
+  agentId: AgentId;
 }
 
 export function MessageList({ agentId }: MessageListProps) {
@@ -19,7 +20,7 @@ export function MessageList({ agentId }: MessageListProps) {
 
   // Memoize the messages content hash to prevent unnecessary re-renders
   const messagesContentHash = useMemo(() => {
-    if (!session?.messages || session.messages.length === 0) return '';
+    if (!session?.messages || session.messages.length === 0) return "";
     return session.messages.map((m: Message) => m.content).join("");
   }, [session?.messages]);
 

@@ -1,10 +1,10 @@
-import { AgentId } from '../constants/agents';
+import { AgentId } from "../constants/agents";
 
 export interface Message {
   id: string;
   content: string;
   timestamp: Date;
-  sender: AgentId; // Always use agent IDs - including HUMAN agent ID
+  sender: AgentId;
   type: "user" | "agent" | "inter_agent" | "system" | "reasoning";
   metadata?: {
     fromAgent?: AgentId;
@@ -23,6 +23,7 @@ export interface Message {
     created?: number; // Creation timestamp
     finalizedAt?: string; // When the message was finalized
     hasStructuredThoughts?: boolean; // Whether the message contains structured thoughts
+    object?: string; // Add this line
   };
   parts?: MessagePart[];
   usageMetadata?: {

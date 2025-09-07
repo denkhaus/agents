@@ -2,7 +2,6 @@ package multi
 
 import (
 	"github.com/denkhaus/agents/pkg/shared"
-	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 )
@@ -36,7 +35,6 @@ type OnToolCall func(info *shared.AgentInfo, functionDef model.FunctionDefinitio
 
 // Options contains configuration settings for the ChatProcessor.
 type Options struct {
-	sessionID          uuid.UUID
 	availableAgents    []shared.TheAgent
 	applicationName    string
 	sessionService     session.Service
@@ -49,13 +47,6 @@ type Options struct {
 
 // ChatProcessorOption is a function type for configuring ChatProcessor options.
 type ChatProcessorOption func(*Options)
-
-// WithSessionID sets the SessionID to use.
-func WithSessionID(sessionID uuid.UUID) ChatProcessorOption {
-	return func(opts *Options) {
-		opts.sessionID = sessionID
-	}
-}
 
 // WithApplicationName sets the application name for the ChatProcessor.
 func WithApplicationName(applicationName string) ChatProcessorOption {

@@ -73,7 +73,7 @@ src/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 
 ### Installation
@@ -135,9 +135,6 @@ POST /run_sse
 Content-Type: application/json
 Accept: text/event-stream
 
-// Multi-agent communication
-POST /multi-chat/send
-GET /multi-chat/start_sse
 ```
 
 ## Configuration
@@ -168,7 +165,7 @@ Two main workspaces are available:
 ### State Management
 
 - **Chat Store**: Manages agents, sessions, and messages
-- **Workspace Store**: Handles workspace and sidebar state  
+- **Workspace Store**: Handles workspace and sidebar state
 - **Theme Store**: Persists theme preferences
 - **Agents Store**: Manages agent-specific state
 

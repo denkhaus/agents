@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 )
 
@@ -14,9 +15,8 @@ import (
 type SSEConnection struct {
 	Writer    http.ResponseWriter
 	Flusher   http.Flusher
-	AgentName string
-	SessionID string
-	UserID    string
+	AgentID   uuid.UUID
+	SessionID uuid.UUID
 	Context   context.Context
 	Cancel    context.CancelFunc
 }
@@ -35,12 +35,17 @@ func NewSSEConnectionPool() *SSEConnectionPool {
 }
 
 // generateConnectionID creates a unique connection ID for SSE connections
-func (pool *SSEConnectionPool) generateConnectionID(sessionID, agentName string) string {
-	return fmt.Sprintf("%s:%s", sessionID, agentName)
+func (pool *SSEConnectionPool) generateConnectionID(sessionID, agentID uuid.UUID) string {
+	return fmt.Sprintf("%s:%s", sessionID, agentID)
 }
 
 // RegisterConnection registers a new SSE connection in the pool
-func (pool *SSEConnectionPool) RegisterConnection(sessionID, agentName, userID string, w http.ResponseWriter, ctx context.Context) *SSEConnection {
+func (pool *SSEConnectionPool) RegisterConnection(
+	ctx context.Context,
+	sessionID uuid.UUID,
+	agentID uuid.UUID,
+	w http.ResponseWriter,
+) *SSEConnection {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		return nil
@@ -50,27 +55,26 @@ func (pool *SSEConnectionPool) RegisterConnection(sessionID, agentName, userID s
 	conn := &SSEConnection{
 		Writer:    w,
 		Flusher:   flusher,
-		AgentName: agentName,
+		AgentID:   agentID,
 		SessionID: sessionID,
-		UserID:    userID,
 		Context:   connCtx,
 		Cancel:    cancel,
 	}
 
-	connectionID := pool.generateConnectionID(sessionID, agentName)
-	
+	connectionID := pool.generateConnectionID(sessionID, agentID)
+
 	pool.mu.Lock()
 	pool.connections[connectionID] = conn
 	pool.mu.Unlock()
 
-	log.Infof("Registered SSE connection: %s (agent: %s, session: %s)", connectionID, agentName, sessionID)
+	log.Infof("Registered SSE connection: %s (agent: %s, session: %s)", connectionID, agentID, sessionID)
 	return conn
 }
 
 // UnregisterConnection removes an SSE connection from the pool
-func (pool *SSEConnectionPool) UnregisterConnection(sessionID, agentName string) {
-	connectionID := pool.generateConnectionID(sessionID, agentName)
-	
+func (pool *SSEConnectionPool) UnregisterConnection(sessionID, agentID uuid.UUID) {
+	connectionID := pool.generateConnectionID(sessionID, agentID)
+
 	pool.mu.Lock()
 	if conn, exists := pool.connections[connectionID]; exists {
 		conn.Cancel()
@@ -92,31 +96,31 @@ func (pool *SSEConnectionPool) SendEventToConnection(conn *SSEConnection, event 
 			log.Errorf("Error marshalling inter-agent event: %v", err)
 			return
 		}
-		
+
 		_, err = fmt.Fprintf(conn.Writer, "data: %s\n\n", data)
 		if err != nil {
 			log.Errorf("Error writing to SSE connection: %v", err)
 			return
 		}
-		
+
 		conn.Flusher.Flush()
-		log.Debugf("Sent inter-agent event to connection %s:%s", conn.SessionID, conn.AgentName)
+		log.Debugf("Sent inter-agent event to connection %s:%s", conn.SessionID, conn.AgentID)
 	}
 }
 
 // BroadcastToAgent sends an event to all connections of a specific agent
-func (pool *SSEConnectionPool) BroadcastToAgent(agentName string, event map[string]interface{}) int {
+func (pool *SSEConnectionPool) BroadcastToAgent(agentID uuid.UUID, event map[string]interface{}) int {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
-	
+
 	sentCount := 0
 	for connectionID, conn := range pool.connections {
-		if conn.AgentName == agentName {
+		if conn.AgentID == agentID {
 			go pool.SendEventToConnection(conn, event)
 			sentCount++
 			log.Debugf("Sent inter-agent event to connection: %s", connectionID)
 		}
 	}
-	
+
 	return sentCount
 }

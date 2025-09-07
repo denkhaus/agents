@@ -58,3 +58,52 @@ export function getAgentName(id: string): string {
   }
   return id; // fallback to ID itself
 }
+
+/**
+ * Get agent ID from name (reverse lookup)
+ */
+export function getAgentIdFromName(name: string): AgentId | null {
+  const entry = Object.entries(AGENT_NAMES).find(([_, agentName]) => agentName === name);
+  return entry ? entry[0] as AgentId : null;
+}
+
+/**
+ * Check if a name is a valid agent name
+ */
+export function isValidAgentName(name: string): boolean {
+  return Object.values(AGENT_NAMES).includes(name as any);
+}
+
+/**
+ * Convert agent identifier (name or ID) to ID
+ */
+export function normalizeToAgentId(identifier: string): AgentId | null {
+  // If it's already a valid ID, return it
+  if (isValidAgentId(identifier)) {
+    return identifier;
+  }
+  
+  // If it's a valid name, convert to ID
+  if (isValidAgentName(identifier)) {
+    return getAgentIdFromName(identifier);
+  }
+  
+  return null;
+}
+
+/**
+ * Convert agent identifier (name or ID) to name
+ */
+export function normalizeToAgentName(identifier: string): string | null {
+  // If it's a valid ID, convert to name
+  if (isValidAgentId(identifier)) {
+    return AGENT_NAMES[identifier];
+  }
+  
+  // If it's already a valid name, return it
+  if (isValidAgentName(identifier)) {
+    return identifier;
+  }
+  
+  return null;
+}

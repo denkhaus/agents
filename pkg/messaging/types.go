@@ -14,6 +14,7 @@ type Message struct {
 	ID        string
 	From      uuid.UUID
 	To        uuid.UUID
+	Session   uuid.UUID
 	Content   string
 	Timestamp time.Time
 }

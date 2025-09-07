@@ -12,7 +12,6 @@ import (
 	"github.com/denkhaus/agents/pkg/multi/plugins/web"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
-	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -148,7 +147,6 @@ func (a *App) startDebugServer(
 
 	processor := multi.NewChatProcessor(
 		multi.WithSessionService(condenserService),
-		multi.WithSessionID(uuid.New()),
 		multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
 		multi.WithAgents(agents...),
 	)

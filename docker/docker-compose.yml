@@ -11,37 +11,6 @@ services:
       - "6888:5432" # Use different port to avoid conflicts
 
   ###########################################################################################
-  # Legacy Angular Web Client
-  # web:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.web
-  #   restart: unless-stopped
-  #   networks:
-  #     - agents-network
-  #   environment:
-  #     BACKEND_URL: ${ADK_BACKEND_URL:-http://localhost:6999}
-  #   ports:
-  #     - "4200:4200"
-  #   depends_on:
-  #     - postgres
-  #   # Add health check to ensure the service is ready
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD",
-  #         "wget",
-  #         "--quiet",
-  #         "--tries=1",
-  #         "--spider",
-  #         "http://localhost:4200",
-  #       ]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 60s
-
-  ###########################################################################################
   # New React Chat Client
   react-chat:
     build:

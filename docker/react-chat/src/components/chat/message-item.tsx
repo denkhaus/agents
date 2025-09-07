@@ -1,12 +1,13 @@
 "use client";
 
+import React from "react";
 import { Message } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, BrainCircuit, Cog, Play, Flag } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
-import { AGENT_IDS } from "@/lib/constants/agents";
+import { AGENT_IDS, getAgentDisplayName } from "@/lib/constants/agents";
 
 interface MessageItemProps {
   message: Message;
@@ -80,59 +81,43 @@ export function MessageItem({ message }: MessageItemProps) {
   const isSystem = message.type === "system";
   const isToolCall = message.parts?.some((part) => part.functionCall);
   const isToolResponse = message.parts?.some((part) => part.functionResponse);
-  const isToolCode = message.parts?.some((part) => part.tool_code);
+  const isToolCode = message.type === "system" && message.metadata?.object === "tool_code";
   const hasStructuredThoughts = message.metadata?.hasStructuredThoughts;
 
   const formatMessageContent = () => {
-    // Priority 1: Handle structured thoughts if they exist
-    if (hasStructuredThoughts && message.parts && message.parts.length > 0) {
-      return message.parts.map((part, index) => (
-        <div key={index}>
-          <StructuredPart part={part} />
-          {/* Also render tool calls/responses if they are mixed in */}
-          {part.functionCall && <ToolCallPart part={part.functionCall} />}
-          {part.functionResponse && <ToolResponsePart part={part.functionResponse} />}
-        </div>
-      ));
-    }
+    const renderedElements: JSX.Element[] = [];
 
-    // Priority 2: Use message.content if it's available and complete
-    if (message.content && (!message.metadata?.partial || message.metadata?.done)) {
-      return (
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          {message.sender === AGENT_IDS.HUMAN ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : (
-            <Markdown>{message.content}</Markdown>
-          )}
-        </div>
-      );
-    }
-
-    // Priority 3: Use parts if available (for regular, non-structured messages)
+    // Priority 1: Render tool calls/responses if they exist in message.parts
     if (message.parts && message.parts.length > 0) {
-      return message.parts.map((part, index) => (
-        <div key={index}>
-          {part.text && (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              {message.sender === AGENT_IDS.HUMAN ? (
-                <p className="whitespace-pre-wrap">{part.text}</p>
-              ) : (
-                <Markdown>{part.text}</Markdown>
-              )}
-            </div>
-          )}
-          {part.functionCall && <ToolCallPart part={part.functionCall} />}
-          {part.functionResponse && <ToolResponsePart part={part.functionResponse} />}
-          {part.tool_code && <ToolCodePart part={part.tool_code} />}
-        </div>
-      ));
+      message.parts.forEach((part, index) => {
+        if (part.functionCall) {
+          renderedElements.push(<ToolCallPart key={`tool-call-${index}`} part={part.functionCall} />);
+        }
+        if (part.functionResponse) {
+          renderedElements.push(<ToolResponsePart key={`tool-response-${index}`} part={part.functionResponse} />);
+        }
+      });
     }
 
-    // Priority 4: Fallback to content
-    if (message.content) {
-      return (
-        <div className="prose prose-sm max-w-none dark:prose-invert">
+    // Priority 2: Render structured thoughts if they exist
+    if (hasStructuredThoughts && message.parts && message.parts.length > 0) {
+      message.parts.forEach((part, index) => {
+        const partType = Object.keys(part)[0];
+        if (["planning", "reasoning", "action", "final_answer"].includes(partType)) {
+          renderedElements.push(<StructuredPart key={`structured-${index}`} part={part} />);
+        }
+      });
+    }
+
+    // Priority 3: Render tool code if it's a system message with tool_code object
+    if (isToolCode && message.content) {
+      renderedElements.push(<ToolCodePart key="tool-code-main" part={{ code: message.content }} />);
+    }
+
+    // Priority 4: Render main message content if no specific parts were rendered
+    if (renderedElements.length === 0 && message.content) {
+      renderedElements.push(
+        <div key="main-content" className="prose prose-sm max-w-none dark:prose-invert">
           {message.sender === AGENT_IDS.HUMAN ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
@@ -142,7 +127,7 @@ export function MessageItem({ message }: MessageItemProps) {
       );
     }
 
-    return null;
+    return renderedElements.length > 0 ? renderedElements : null;
   };
 
   const getCardStyle = () => {
@@ -158,14 +143,18 @@ export function MessageItem({ message }: MessageItemProps) {
   const getMessageTypeLabel = () => {
     if (isUser) return "You";
     if (isInterAgent && message.metadata?.fromAgent && message.metadata?.toAgent) {
-      return `${message.metadata.fromAgent} -> ${message.metadata.toAgent}`;
+      const fromName = message.metadata.fromAgent === AGENT_IDS.HUMAN ? "You" : getAgentDisplayName(message.metadata.fromAgent);
+      const toName = message.metadata.toAgent === AGENT_IDS.HUMAN ? "You" : getAgentDisplayName(message.metadata.toAgent);
+      return `${fromName} -> ${toName}`;
     }
-    if (hasStructuredThoughts) return `${message.sender} (Thinking)`;
-    if (isToolCall) return `${message.sender} (Tool Call)`;
-    if (isToolResponse) return `${message.sender} (Tool Response)`;
-    if (isToolCode) return `${message.sender} (Tool Code)`;
-    if (isSystem) return `${message.sender} (System)`;
-    return message.sender;
+    
+    const displayName = getAgentDisplayName(message.sender);
+    if (hasStructuredThoughts) return `${displayName} (Thinking)`;
+    if (isToolCall) return `${displayName} (Tool Call)`;
+    if (isToolResponse) return `${displayName} (Tool Response)`;
+    if (isToolCode) return `${displayName} (Tool Code)`;
+    if (isSystem) return `${displayName} (System)`;
+    return displayName;
   };
 
   return (

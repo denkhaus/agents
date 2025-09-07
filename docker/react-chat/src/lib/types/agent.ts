@@ -1,20 +1,26 @@
-import { AgentId } from '../constants/agents';
+import { AgentId } from "../constants/agents";
 
-export interface Agent {
-  id: AgentId
-  name: string
-  status: 'online' | 'offline' | 'busy'
-  capabilities: string[]
-  avatar?: string
-  lastActivity?: Date
+export type AgentStatus = "online" | "offline" | "busy";
+
+export interface AgentResponse {
+  id: AgentId;
+  name: string;
+  description: string;
+  role: string;
+  is_streaming: boolean;
+}
+
+export interface AppInfoResponse {
+  applicationName: string;
+  agents: AgentResponse[];
 }
 
 export interface AgentInfo {
-  name: string
-  role?: string
-  id?: AgentId
-  capabilities?: string[]
-  status?: Agent['status']
+  name: string;
+  role: string;
+  id: AgentId;
+  applicationName: string;
+  status: AgentStatus;
+  description: string;
+  lastActivity?: Date;
 }
-
-export type AgentStatus = 'online' | 'offline' | 'busy'

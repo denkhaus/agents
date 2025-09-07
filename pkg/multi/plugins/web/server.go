@@ -11,13 +11,9 @@
 package web
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -27,73 +23,20 @@ import (
 	"go.uber.org/zap"
 
 	"trpc.group/trpc-go/trpc-agent-go/agent"
-	"trpc.group/trpc-go/trpc-agent-go/event"
 
 	//itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
-	"github.com/denkhaus/agents/pkg/shared"
 	"trpc.group/trpc-go/trpc-agent-go/log"
-	"trpc.group/trpc-go/trpc-agent-go/model"
-	"trpc.group/trpc-go/trpc-agent-go/runner"
-	"trpc.group/trpc-go/trpc-agent-go/session"
-	sessioninmemory "trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 )
-
-// Server exposes HTTP endpoints compatible with the ADK Web UI. Internally it
-// reuses the trpc-agent-go components for sessions, runners and events.
-type Server struct {
-	agents map[string]agent.Agent
-	router *mux.Router
-
-	mu      sync.RWMutex
-	runners map[string]runner.Runner
-
-	sessionSvc session.Service
-	runnerOpts []runner.Option // Extra options applied when creating a runner.
-
-	traces         map[string]attribute.Set // key: event_id
-	memoryExporter *inMemoryExporter
-
-	// Multi-Agent Chat support
-	chatProcessor multi.ChatProcessor
-
-	// SSE Connection Pool for Inter-Agent Communication
-	ssePool *SSEConnectionPool
-	logger  *zap.Logger
-}
-
-// Option configures the Server instance.
-type Option func(*Server)
-
-// WithSessionService allows providing a custom session storage backend.
-// If omitted, an in-memory implementation is used.
-func WithSessionService(svc session.Service) Option {
-	return func(s *Server) { s.sessionSvc = svc }
-}
-
-// WithRunnerOptions appends additional runner.Option values applied when the
-// server lazily constructs a Runner for an agent.
-func WithRunnerOptions(opts ...runner.Option) Option {
-	return func(s *Server) { s.runnerOpts = append(s.runnerOpts, opts...) }
-}
-
-// WithLogger provides a zap.Logger to the server.
-// If omitted, a no-op logger is used.
-func WithLogger(logger *zap.Logger) Option {
-	return func(s *Server) { s.logger = logger }
-}
 
 // New creates a new CLI HTTP server with explicit agent registration. The
 // behaviour can be tweaked via functional options.
 func New(agents map[string]agent.Agent, opts ...Option) *Server {
 	s := &Server{
-		agents:         agents,
 		router:         mux.NewRouter(),
-		runners:        make(map[string]runner.Runner),
 		traces:         make(map[string]attribute.Set),
 		memoryExporter: newInMemoryExporter(),
-		sessionSvc:     sessioninmemory.NewSessionService(),
 		ssePool:        NewSSEConnectionPool(),
 	}
 
@@ -110,9 +53,9 @@ func New(agents map[string]agent.Agent, opts ...Option) *Server {
 		AllowedHeaders:   []string{"*"},
 		ExposedHeaders:   []string{"Content-Length", "Content-Type"},
 	})
+
 	s.router.Use(c.Handler)
 	s.registerRoutes()
-	s.registerMultiChatRoutes()
 
 	provider := sdktrace.NewTracerProvider()
 	provider.RegisterSpanProcessor(sdktrace.NewSimpleSpanProcessor(newApiServerSpanExporter(s.traces)))
@@ -121,107 +64,6 @@ func New(agents map[string]agent.Agent, opts ...Option) *Server {
 	//atrace.Tracer = otel.Tracer(itelemetry.InstrumentName)
 	//setTraceInfo()
 	return s
-}
-
-const (
-	keyEventID      = "gcp.vertex.agent.event_id"
-	keySessionID    = "gcp.vertex.agent.session_id"
-	keyInvocationID = "gcp.vertex.agent.invocation_id"
-	keyLLMRequest   = "gcp.vertex.agent.llm_request"
-	keyLLMResponse  = "gcp.vertex.agent.llm_response"
-)
-
-// func setTraceInfo() {
-// 	itelemetry.KeyEventID = keyEventID
-// 	itelemetry.KeySessionID = keySessionID
-// 	itelemetry.KeyLLMRequest = keyLLMRequest
-// 	itelemetry.KeyLLMResponse = keyLLMResponse
-// 	itelemetry.KeyInvocationID = keyInvocationID
-// }
-
-type apiServerSpanExporter struct {
-	traces map[string]attribute.Set
-}
-
-func newApiServerSpanExporter(ts map[string]attribute.Set) *apiServerSpanExporter {
-	return &apiServerSpanExporter{traces: ts}
-}
-
-func (e *apiServerSpanExporter) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
-	for _, span := range spans {
-		// if name := span.Name(); name != itelemetry.SpanNameCallLLM && !strings.HasPrefix(name, itelemetry.SpanNamePrefixExecuteTool) {
-		// 	continue
-		// }
-		baseAttrs := []attribute.KeyValue{
-			attribute.String("trace_id", span.SpanContext().TraceID().String()),
-			attribute.String("span_id", span.SpanContext().SpanID().String()),
-		}
-		allAttrs := append(baseAttrs, span.Attributes()...)
-		attributes := attribute.NewSet(allAttrs...)
-
-		if eventID, ok := attributes.Value(keyEventID); ok {
-			e.traces[eventID.AsString()] = attributes
-		}
-	}
-	return nil
-}
-
-func (e *apiServerSpanExporter) Shutdown(_ context.Context) error {
-	return nil
-}
-
-type inMemoryExporter struct {
-	sessionTraces map[string]map[string]struct{} // key: session_id, value: map[event_id]struct{}
-	spans         []sdktrace.ReadOnlySpan
-}
-
-func newInMemoryExporter() *inMemoryExporter {
-	return &inMemoryExporter{sessionTraces: make(map[string]map[string]struct{})}
-}
-func (e *inMemoryExporter) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
-	for _, span := range spans {
-		// if span.Name() != itelemetry.SpanNameCallLLM {
-		// 	continue
-		// }
-		for _, attr := range span.Attributes() {
-			if attr.Key != keySessionID {
-				continue
-			}
-			sessionID := attr.Value.AsString()
-			traceID := span.SpanContext().TraceID().String()
-			if _, ok := e.sessionTraces[sessionID]; !ok {
-				e.sessionTraces[sessionID] = map[string]struct{}{
-					traceID: {},
-				}
-			} else {
-				e.sessionTraces[sessionID][traceID] = struct{}{}
-			}
-			break
-		}
-	}
-	e.spans = append(e.spans, spans...)
-	return nil
-}
-
-func (e *inMemoryExporter) Shutdown(_ context.Context) error {
-	return nil
-}
-
-func (e *inMemoryExporter) getFinishedSpans(sessionID string) []sdktrace.ReadOnlySpan {
-	traceIDs := e.sessionTraces[sessionID]
-	var spans []sdktrace.ReadOnlySpan
-	for traceID := range traceIDs {
-		for _, s := range e.spans {
-			if s.SpanContext().TraceID().String() == traceID {
-				spans = append(spans, s)
-			}
-		}
-	}
-	return spans
-}
-
-func (e *inMemoryExporter) clear() {
-	e.spans = make([]sdktrace.ReadOnlySpan, 0)
 }
 
 // SetChatProcessor sets the multi-agent chat processor for the server.
@@ -235,7 +77,7 @@ func (s *Server) Handler() http.Handler { return s.router }
 
 // registerRoutes sets up all REST endpoints expected by ADK Web.
 func (s *Server) registerRoutes() {
-	s.router.HandleFunc("/list-apps", s.handleListApps).Methods(http.MethodGet)
+	s.router.HandleFunc("/app-info", s.handleAppInfo).Methods(http.MethodGet)
 
 	// Session APIs.
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions",
@@ -246,9 +88,6 @@ func (s *Server) registerRoutes() {
 		s.handleGetSession).Methods(http.MethodGet)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}",
 		s.handleDeleteSession).Methods(http.MethodDelete)
-	// s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events",
-	// 	s.handleAddSessionEvent).Methods(http.MethodPost)
-	s.router.HandleFunc("/agents", s.handleGetAgents).Methods(http.MethodGet)
 
 	// Debug APIs
 	s.router.HandleFunc("/debug/trace/{event_id}",
@@ -267,15 +106,13 @@ func (s *Server) registerRoutes() {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.WriteHeader(http.StatusOK)
 	}
-	s.router.HandleFunc("/list-apps", preflight).Methods(http.MethodOptions)
+	s.router.HandleFunc("/list-agents", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/run_sse", preflight).Methods(http.MethodOptions)
 
 	// Session API OPTIONS handlers
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions", preflight).Methods(http.MethodOptions)
 	s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}", preflight).Methods(http.MethodOptions)
-	// s.router.HandleFunc("/apps/{appName}/users/{userId}/sessions/{sessionId}/events", preflight).Methods(http.MethodOptions)
-	s.router.HandleFunc("/agents", preflight).Methods(http.MethodOptions)
 
 	// Debug API OPTIONS handlers
 	s.router.HandleFunc("/debug/trace/{event_id}", preflight).Methods(http.MethodOptions)
@@ -284,376 +121,21 @@ func (s *Server) registerRoutes() {
 
 // ---- Handlers -----------------------------------------------------------
 
-func (s *Server) handleEventTrace(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleEventTrace called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	eventID := vars["event_id"]
-	trace, ok := s.traces[eventID]
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte("Trace not found"))
-		return
-	}
-	s.writeJSON(w, buildTraceAttributes(trace))
-}
-
-func (s *Server) handleSessionTrace(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleSessionTrace called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	sessionID := vars["session_id"]
-	var spans []schema.Span
-	for _, span := range s.memoryExporter.getFinishedSpans(sessionID) {
-		result := buildTraceAttributes(attribute.NewSet(span.Attributes()...))
-		spans = append(spans, schema.Span{
-			Name:         span.Name(),
-			SpanID:       span.SpanContext().SpanID().String(),
-			TraceID:      span.SpanContext().TraceID().String(),
-			StartTime:    span.StartTime().UnixNano(),
-			EndTime:      span.EndTime().UnixNano(),
-			Attributes:   result,
-			ParentSpanID: span.Parent().SpanID().String(),
-		})
-	}
-	s.writeJSON(w, spans)
-}
-
-func buildTraceAttributes(attributes attribute.Set) map[string]any {
-	result := make(map[string]any)
-	for iter := attributes.Iter(); iter.Next(); {
-		attr := iter.Attribute()
-		if attr.Key == keyLLMRequest {
-			var req model.Request
-			if err := json.Unmarshal([]byte(attr.Value.AsString()), &req); err == nil {
-				var contents []schema.Content
-				for _, c := range req.Messages {
-					contents = append(contents, schema.Content{
-						Role: c.Role.String(),
-						Parts: []schema.Part{
-							{
-								Text: c.Content,
-							},
-						},
-					})
-				}
-				result[string(attr.Key)] = schema.TraceLLMRequest{
-					Contents: contents,
-				}
-			}
-		} else {
-			result[string(attr.Key)] = attr.Value.AsString()
-		}
-	}
-	return result
-}
-
-func (s *Server) handleListApps(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleListApps called: path=%s", r.URL.Path)
-	var apps []string
+func (s *Server) handleAppInfo(w http.ResponseWriter, r *http.Request) {
+	log.Infof("handleAppInfo called: path=%s", r.URL.Path)
 
 	// Prefer agents from chatProcessor if available (they have send_message tools)
-	if s.chatProcessor != nil {
-		for _, agentInfo := range s.chatProcessor.GetAllAgentInfos() {
-			apps = append(apps, agentInfo.Name)
-		}
-	} else {
-		// Fallback to server agents
-		for name := range s.agents {
-			apps = append(apps, name)
-		}
-	}
-
-	s.writeJSON(w, apps)
-}
-
-func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleListSessions called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	appName := vars["appName"]
-	userID := vars["userId"]
-
-	userKey := session.UserKey{AppName: appName, UserID: userID}
-	sessions, err := s.sessionSvc.ListSessions(r.Context(), userKey)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if s.chatProcessor == nil {
+		http.Error(w, "chat processor is undefined", http.StatusBadRequest)
 		return
 	}
 
-	// Convert internal sessions to ADK format.
-	adkSessions := make([]schema.ADKSession, 0, len(sessions))
-	for _, sess := range sessions {
-		// Filter out eval sessions, same as Python ADK.
-		if !strings.HasPrefix(sess.ID, "eval-") {
-			adkSessions = append(adkSessions, convertSessionToADKFormat(sess))
-		}
-	}
-	s.writeJSON(w, adkSessions)
-}
-
-func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleCreateSession called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	appName := vars["appName"]
-	userID := vars["userId"]
-
-	key := session.Key{AppName: appName, UserID: userID}
-	sess, err := s.sessionSvc.CreateSession(r.Context(), key, session.StateMap{})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	s.writeJSON(w, convertSessionToADKFormat(sess))
-}
-
-func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleGetSession called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	appName := vars["appName"]
-	userID := vars["userId"]
-	sessionID := vars["sessionId"]
-	sess, err := s.sessionSvc.GetSession(r.Context(), session.Key{
-		AppName:   appName,
-		UserID:    userID,
-		SessionID: sessionID,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if sess == nil {
-		http.Error(w, "Session not found", http.StatusNotFound)
-		return
-	}
-	s.writeJSON(w, convertSessionToADKFormat(sess))
-}
-
-func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleDeleteSession called: path=%s", r.URL.Path)
-	vars := mux.Vars(r)
-	appName := vars["appName"]
-	userID := vars["userId"]
-	sessionID := vars["sessionId"]
-
-	err := s.sessionSvc.DeleteSession(r.Context(), session.Key{
-		AppName:   appName,
-		UserID:    userID,
-		SessionID: sessionID,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	aux := map[string]interface{}{
+		"applicationName": s.chatProcessor.GetApplicationName(),
+		"agents":          s.GetMultiChatAgents(),
 	}
 
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// func (s *Server) handleAddSessionEvent(w http.ResponseWriter, r *http.Request) {
-// 	log.Infof("handleAddSessionEvent called: path=%s", r.URL.Path)
-// 	vars := mux.Vars(r)
-// 	appName := vars["appName"]
-// 	userID := vars["userId"]
-// 	sessionID := vars["sessionId"]
-// 
-// 	var eventData map[string]interface{}
-// 	if err := json.NewDecoder(r.Body).Decode(&eventData); err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-// 	defer r.Body.Close()
-// 
-// 	// Get the session
-// 	sess, err := s.sessionSvc.GetSession(r.Context(), session.Key{
-// 		AppName:   appName,
-// 		UserID:    userID,
-// 		SessionID: sessionID,
-// 	})
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 	if sess == nil {
-// 		http.Error(w, "Session not found", http.StatusNotFound)
-// 		return
-// 	}
-// 
-// 	// Create a new event from the provided data
-// 	newEvent := event.Event{
-// 		ID:           eventData["id"].(string),
-// 		InvocationID: eventData["invocationId"].(string),
-// 		Author:       eventData["author"].(string),
-// 		Timestamp:    time.Unix(int64(eventData["timestamp"].(float64)), 0),
-// 	}
-// 
-// 	// Add response data if provided
-// 	if content, ok := eventData["content"]; ok {
-// 		newEvent.Response = &model.Response{
-// 			ID:        eventData["id"].(string),
-// 			Object:    eventData["object"].(string),
-// 			Done:      eventData["done"].(bool),
-// 			IsPartial: eventData["partial"].(bool),
-// 		}
-// 
-// 		// Handle content structure
-// 		if contentMap, ok := content.(map[string]interface{}); ok {
-// 			if parts, ok := contentMap["parts"].([]interface{}); ok {
-// 				var choices []model.Choice
-// 				var messageContent strings.Builder
-// 
-// 				for _, part := range parts {
-// 					if partMap, ok := part.(map[string]interface{}); ok {
-// 						if text, ok := partMap["text"].(string); ok {
-// 							messageContent.WriteString(text)
-// 						}
-// 					}
-// 				}
-// 
-// 				choice := model.Choice{
-// 					Message: model.Message{
-// 						Role:    model.Role(contentMap["role"].(string)),
-// 						Content: messageContent.String(),
-// 					},
-// 				}
-// 				choices = append(choices, choice)
-// 				newEvent.Response.Choices = choices
-// 			}
-// 		}
-// 	}
-// 
-// 	// Add the event to the session
-// 	err = s.sessionSvc.AddEvent(r.Context(), session.Key{
-// 		AppName:   appName,
-// 		UserID:    userID,
-// 		SessionID: sessionID,
-// 	}, newEvent)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// 
-// 	w.WriteHeader(http.StatusCreated)
-// 	s.writeJSON(w, map[string]string{"status": "event added"})
-// }
-
-func (s *Server) handleGetAgents(w http.ResponseWriter, r *http.Request) {
-	log.Infof("handleGetAgents called: path=%s", r.URL.Path)
-
-	// Return all available agents with their canonical IDs and metadata
-	agents := []map[string]interface{}{
-		{
-			"id":           shared.AgentIDHuman.String(),
-			"name":         "human",
-			"displayName":  "Human",
-			"type":         "human",
-			"status":       "online",
-			"capabilities": []string{"input", "feedback", "decision_making"},
-		},
-		{
-			"id":           shared.AgentIDCoder.String(),
-			"name":         "coder",
-			"displayName":  "Coder",
-			"type":         "ai",
-			"status":       "online",
-			"capabilities": []string{"code_generation", "debugging", "refactoring"},
-		},
-		{
-			"id":           shared.AgentIDProjectManager.String(),
-			"name":         "project_manager",
-			"displayName":  "Project Manager",
-			"type":         "ai",
-			"status":       "online",
-			"capabilities": []string{"task_management", "planning", "coordination"},
-		},
-		{
-			"id":           shared.AgentIDResearcher.String(),
-			"name":         "researcher",
-			"displayName":  "Researcher",
-			"type":         "ai",
-			"status":       "online",
-			"capabilities": []string{"research", "analysis", "fact_checking"},
-		},
-		{
-			"id":           shared.AgentIDDebugger.String(),
-			"name":         "debugger",
-			"displayName":  "Debugger",
-			"type":         "ai",
-			"status":       "online",
-			"capabilities": []string{"debugging", "error_analysis", "testing"},
-		},
-		{
-			"id":           shared.AgentIDSupervisor.String(),
-			"name":         "supervisor",
-			"displayName":  "Supervisor",
-			"type":         "ai",
-			"status":       "online",
-			"capabilities": []string{"supervision", "coordination", "decision_making"},
-		},
-	}
-
-	s.writeJSON(w, map[string]interface{}{
-		"agents": agents,
-		"total":  len(agents),
-	})
-}
-
-// convertContentToMessage converts Google GenAI Content to trpc-agent model.Message
-func convertContentToMessage(content schema.Content) model.Message {
-	log.Debugf("convertContentToMessage: role=%s parts=%+v", content.Role, content.Parts)
-	var textParts []string
-	var toolCalls []model.ToolCall
-	for _, part := range content.Parts {
-		if part.Text != "" {
-			textParts = append(textParts, part.Text)
-		}
-
-		if part.FunctionCall != nil {
-			argsBytes, _ := json.Marshal(part.FunctionCall.Args)
-			toolCall := model.ToolCall{
-				Type: "function",
-				Function: model.FunctionDefinitionParam{
-					Name:      part.FunctionCall.Name,
-					Arguments: argsBytes,
-				},
-			}
-			toolCalls = append(toolCalls, toolCall)
-		}
-
-		if part.InlineData != nil {
-			dataType := "file"
-			if part.InlineData.MimeType != "" {
-				if strings.HasPrefix(part.InlineData.MimeType, "image") {
-					dataType = "image"
-				} else if strings.HasPrefix(part.InlineData.MimeType, "audio") {
-					dataType = "audio"
-				} else if strings.HasPrefix(part.InlineData.MimeType, "video") {
-					dataType = "video"
-				}
-			}
-			fileName := part.InlineData.DisplayName
-			if fileName == "" {
-				fileName = "attachment"
-			}
-			attachmentText := fmt.Sprintf("[%s: %s (%s)]", dataType, fileName, part.InlineData.MimeType)
-			textParts = append(textParts, attachmentText)
-		}
-
-		if part.FunctionResponse != nil {
-			responseJSON, _ := json.Marshal(part.FunctionResponse.Response)
-			responseText := fmt.Sprintf("[Function %s responded: %s]", part.FunctionResponse.Name, string(responseJSON))
-			textParts = append(textParts, responseText)
-		}
-	}
-	var combinedText string
-	if len(textParts) > 0 {
-		combinedText = strings.Join(textParts, "\n")
-	}
-	msg := model.Message{
-		Role:    model.Role(content.Role),
-		Content: combinedText,
-	}
-
-	if len(toolCalls) > 0 {
-		msg.ToolCalls = toolCalls
-	}
-	return msg
+	s.writeJSON(w, aux)
 }
 
 func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
@@ -674,14 +156,14 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rn, err := s.getRunner(req.AppName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	out, err := s.chatProcessor.SendMessage(
+		r.Context(),
+		req.FromAgentID,
+		req.ToAgentID,
+		req.SessionID,
+		req.Content.ToMessage(),
+	)
 
-	out, err := rn.Run(r.Context(), req.UserID, req.SessionID,
-		convertContentToMessage(req.NewMessage))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -689,15 +171,16 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	// For non-streaming, we might want to collect all events or just return the final one.
 	// ADK web might expect a list of events. Let's send all of them.
-	var events []map[string]interface{}
+	var events []*schema.LLMEvent
 	for e := range out {
 		if e.Response != nil && e.Response.IsPartial {
 			continue // skip streaming chunks in non-streaming endpoint
 		}
-		if ev := convertEventToADKFormat(e, false); ev != nil {
+		if ev := schema.NewLLMEvent(e, false); ev != nil {
 			events = append(events, ev)
 		}
 	}
+
 	s.writeJSON(w, events)
 }
 
@@ -728,13 +211,14 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	cleanup := s.RegisterSSEConnectionForRequest(req, w, r)
 	defer cleanup()
 
-	rn, err := s.getRunner(req.AppName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	out, err := rn.Run(r.Context(), req.UserID, req.SessionID,
-		convertContentToMessage(req.NewMessage))
+	out, err := s.chatProcessor.SendMessage(
+		r.Context(),
+		req.FromAgentID,
+		req.ToAgentID,
+		req.SessionID,
+		req.Content.ToMessage(),
+	)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -742,7 +226,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 
 	if req.Streaming {
 		for e := range out {
-			sseEvent := convertEventToADKFormat(e, req.Streaming)
+			sseEvent := schema.NewLLMEvent(e, req.Streaming)
 			if sseEvent == nil {
 				continue
 			}
@@ -757,7 +241,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Non-streaming mode: wait for the first complete event and send only that.
 		for e := range out {
-			sseEvent := convertEventToADKFormat(e, req.Streaming)
+			sseEvent := schema.NewLLMEvent(e, req.Streaming)
 			if sseEvent == nil {
 				continue
 			}
@@ -775,334 +259,10 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "data: {\"done\": true}\n\n")
 	flusher.Flush()
 
-	s.logger.Info("handleRunSSE finished", zap.String("sessionID", req.SessionID))
-}
-
-// convertSessionToADKFormat converts an internal session object to the
-// flattened structure the ADK Web UI expects.
-func convertSessionToADKFormat(s *session.Session) schema.ADKSession {
-	adkEvents := make([]map[string]interface{}, 0, len(s.Events))
-	for _, e := range s.Events {
-		if ev := convertEventToADKFormat(&e, false); ev != nil {
-			adkEvents = append(adkEvents, ev)
-		}
-	}
-	return schema.ADKSession{
-		AppName:        s.AppName,
-		UserID:         s.UserID,
-		ID:             s.ID,
-		CreateTime:     s.CreatedAt.Unix(),
-		LastUpdateTime: s.UpdatedAt.Unix(),
-		State:          map[string][]byte(s.State),
-		Events:         adkEvents,
-	}
-}
-
-// buildADKEventEnvelope creates the basic ADK event envelope.
-func buildADKEventEnvelope(e *event.Event) map[string]interface{} {
-	id := eventID(e)
-	return map[string]interface{}{
-		"invocationId": e.InvocationID,
-		"author":       e.Author,
-		"actions": map[string]interface{}{
-			"stateDelta":           map[string]interface{}{},
-			"artifactDelta":        map[string]interface{}{},
-			"requestedAuthConfigs": map[string]interface{}{},
-		},
-		"id":        id,
-		"timestamp": e.Timestamp.Unix(),
-	}
-}
-
-// determineEventRole determines the role for the event content.
-func determineEventRole(e *event.Event) string {
-	role := e.Author // fallback
-	if e.Response != nil {
-		if e.Response.Object == model.ObjectTypeToolResponse {
-			role = string(model.RoleTool)
-		} else if len(e.Response.Choices) > 0 {
-			role = string(e.Response.Choices[0].Message.Role)
-		}
-	}
-	return role
-}
-
-// buildEventParts constructs the parts array for the event content.
-func buildEventParts(e *event.Event) []map[string]interface{} {
-	var parts []map[string]interface{}
-
-	if e.Response == nil {
-		return parts
-	}
-
-	// Handle normal / streaming assistant or model messages.
-	for _, choice := range e.Response.Choices {
-		// Regular text (full message).
-		if choice.Message.Content != "" {
-			// For tool response events, we do NOT include the raw JSON string as a
-			// separate text part, otherwise the ADK Web UI will render duplicated
-			// information (both as plain text and as function_response). Keeping
-			// only the structured function_response part provides a cleaner view.
-			if e.Response.Object != model.ObjectTypeToolResponse {
-				parts = append(parts, map[string]interface{}{keyText: choice.Message.Content})
-			}
-		}
-
-		// Tool calls in full message.
-		for _, tc := range choice.Message.ToolCalls {
-			parts = append(parts, buildFunctionCallPart(tc))
-		}
-
-		// Streaming delta text.
-		if choice.Delta.Content != "" {
-			parts = append(parts, map[string]interface{}{keyText: choice.Delta.Content})
-		}
-		// Tool calls in streaming delta.
-		for _, tc := range choice.Delta.ToolCalls {
-			parts = append(parts, buildFunctionCallPart(tc))
-		}
-	}
-
-	// Tool response events.
-	if e.Response.Object == model.ObjectTypeToolResponse {
-		for _, choice := range e.Response.Choices {
-			var respObj interface{}
-			if choice.Message.Content != "" {
-				if err := json.Unmarshal([]byte(choice.Message.Content), &respObj); err != nil {
-					respObj = choice.Message.Content // raw string fallback
-				}
-			}
-			parts = append(parts, buildFunctionResponsePart(respObj, choice.Message.ToolID, choice.Message.ToolName))
-		}
-	}
-
-	return parts
-}
-
-// filterEventParts filters parts based on streaming mode and event type.
-func filterEventParts(e *event.Event, parts []map[string]interface{}, isStreaming bool) []map[string]interface{} {
-	if e.Response == nil {
-		return parts
-	}
-
-	// Always include tool calls and tool responses regardless of streaming mode
-	toolResp := isToolResponse(e)
-	hasToolCall := false
-	if len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
-		hasToolCall = true
-	}
-
-	if toolResp || hasToolCall {
-		return parts
-	}
-
-	if isStreaming {
-		// In streaming mode, include all partial events and the final done event
-		// Don't drop the final event as it may contain important completion info
-		return parts
-	} else {
-		// Non-streaming endpoint should include final assistant messages
-		if !e.Response.Done {
-			return nil
-		}
-	}
-
-	return parts
-}
-
-// addResponseMetadata adds response-level metadata to the ADK event.
-func addResponseMetadata(adkEvent map[string]interface{}, e *event.Event) {
-	if e.Response == nil {
-		return
-	}
-
-	adkEvent["done"] = e.Response.Done
-	adkEvent["partial"] = e.Response.IsPartial
-
-	// Ensure partial flag is correctly set for streaming
-	if e.Response.IsPartial {
-		adkEvent["partial"] = true
-		adkEvent["done"] = false
-	} else if e.Response.Done {
-		adkEvent["partial"] = false
-		adkEvent["done"] = true
-	}
-
-	if e.Response.Object != "" {
-		adkEvent["object"] = e.Response.Object
-	}
-	if e.Response.Created != 0 {
-		adkEvent["created"] = e.Response.Created
-	}
-	if e.Response.Model != "" {
-		adkEvent["model"] = e.Response.Model
-	}
-}
-
-// addUsageMetadata adds usage metadata to the ADK event.
-func addUsageMetadata(adkEvent map[string]interface{}, e *event.Event) {
-	if e.Usage == nil {
-		return
-	}
-
-	adkEvent["usageMetadata"] = map[string]interface{}{
-		"promptTokenCount":     e.Usage.PromptTokens,
-		"candidatesTokenCount": e.Usage.CompletionTokens,
-		"totalTokenCount":      e.Usage.TotalTokens,
-	}
-}
-
-// convertEventToADKFormat converts trpc-agent Event to ADK Web UI expected
-// format. The isStreaming flag indicates whether the UI is currently
-// displaying token-level streaming (true) or expecting a single complete
-// response (false).
-func convertEventToADKFormat(e *event.Event, isStreaming bool) map[string]interface{} {
-	// Build basic envelope.
-	adkEvent := buildADKEventEnvelope(e)
-
-	// Determine role and build content.
-	role := determineEventRole(e)
-	content := map[string]interface{}{
-		"role": role,
-	}
-
-	// Build parts.
-	parts := buildEventParts(e)
-
-	// Filter parts based on streaming mode.
-	parts = filterEventParts(e, parts, isStreaming)
-
-	// For tool calls and tool responses, always include even if no text parts
-	toolResp := isToolResponse(e)
-	hasToolCall := false
-	if e.Response != nil && len(e.Response.Choices) > 0 && len(e.Response.Choices[0].Message.ToolCalls) > 0 {
-		hasToolCall = true
-	}
-
-	// Skip event if no meaningful parts, unless it's a tool-related event
-	if len(parts) == 0 && !toolResp && !hasToolCall {
-		return nil
-	}
-
-	// Set object type for tool calls and responses
-	if hasToolCall {
-		adkEvent["object"] = "tool_call"
-	} else if toolResp {
-		adkEvent["object"] = "tool_response"
-	}
-
-	content["parts"] = parts
-	adkEvent["content"] = content
-
-	// Add metadata.
-	addResponseMetadata(adkEvent, e)
-	addUsageMetadata(adkEvent, e)
-
-	return adkEvent
-}
-
-// ---- helpers ------------------------------------------------------------
-
-func (s *Server) getRunner(appName string) (runner.Runner, error) {
-	s.mu.RLock()
-	if r, ok := s.runners[appName]; ok {
-		s.mu.RUnlock()
-		return r, nil
-	}
-	s.mu.RUnlock()
-
-	var ag agent.Agent
-
-	// Always prefer agents from chatProcessor if available (they have send_message tools)
-	if s.chatProcessor != nil {
-		if agentInfo := s.chatProcessor.GetAgentInfoByAuthor(appName); agentInfo != nil {
-			// Get the actual agent from chatProcessor
-			if processorAgent := s.chatProcessor.GetAgentByName(appName); processorAgent != nil {
-				ag = processorAgent
-			}
-		}
-	}
-
-	// Only fallback to server agents if chatProcessor is not available or agent not found
-	if ag == nil {
-		var ok bool
-		ag, ok = s.agents[appName]
-		if !ok {
-			return nil, fmt.Errorf("agent not found")
-		}
-	}
-
-	// Compose runner options: user-supplied first, then mandatory sessionSvc.
-	allOpts := append([]runner.Option{}, s.runnerOpts...)
-	allOpts = append(allOpts, runner.WithSessionService(s.sessionSvc))
-
-	r := runner.NewRunner(appName, ag, allOpts...)
-	s.mu.Lock()
-	s.runners[appName] = r
-	s.mu.Unlock()
-	return r, nil
+	s.logger.Info("handleRunSSE finished", zap.Any("sessionID", req.SessionID))
 }
 
 func (s *Server) writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(v)
-}
-
-// ---------------------------------------------------------------------
-// Internal helpers for event conversion --------------------------------
-// ---------------------------------------------------------------------
-
-// ADK Web payload JSON keys. Keeping them as constants helps avoid
-// typographical errors and makes refactoring easier.
-const (
-	keyText             = "text"             // Plain textual content part.
-	keyFunctionCall     = "functionCall"     // Function call part key.
-	keyFunctionResponse = "functionResponse" // Function response part key.
-)
-
-// eventID returns the canonical identifier for an event.
-// If the underlying model.Response already contains a non-empty ID we
-// prefer it; otherwise we fall back to the envelope‐level event ID.
-func eventID(e *event.Event) string {
-	if e.Response != nil && e.Response.ID != "" {
-		return e.Response.ID
-	}
-	return e.ID
-}
-
-// isToolResponse reports whether the supplied event represents a tool
-// response produced by the LLM flow.
-func isToolResponse(e *event.Event) bool {
-	return e.Response != nil && e.Response.Object == model.ObjectTypeToolResponse
-}
-
-// buildFunctionCallPart converts a model.ToolCall into the ADK Web part map.
-// The returned map follows the schema expected by the Web UI.
-func buildFunctionCallPart(tc model.ToolCall) map[string]interface{} {
-	var args interface{}
-	if err := json.Unmarshal(tc.Function.Arguments, &args); err != nil {
-		// Preserve raw string if not valid JSON.
-		args = map[string]interface{}{"raw": string(tc.Function.Arguments)}
-	}
-	return map[string]interface{}{
-		keyFunctionCall: map[string]interface{}{
-			"name": tc.Function.Name,
-			"args": args,
-			"id":   tc.ID,
-		},
-	}
-}
-
-// buildFunctionResponsePart builds a single functionResponse part.
-// respObj can be either a structured object (decoded JSON) or the original
-// raw string when JSON decoding fails. The name field is currently unknown
-// from the upstream payload, so we intentionally leave it blank.
-func buildFunctionResponsePart(respObj interface{}, id string, name string) map[string]interface{} {
-	return map[string]interface{}{
-		keyFunctionResponse: map[string]interface{}{
-			"name":     name,
-			"response": respObj,
-			"id":       id,
-		},
-	}
 }

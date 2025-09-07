@@ -5,16 +5,31 @@ import { Message } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
 import { useStreamingManager } from "@/hooks/use-streaming-manager";
 import { useChatStore } from "@/lib/store";
-import { parseStructuredThoughts } from "@/lib/parsing";
+import { AGENT_IDS, AgentId } from "@/lib/constants/agents";
 
 interface MessageStreamingProps {
-  agentId: string;
+  agentId: AgentId;
   sessionId: string;
   onMessageUpdate?: (message: Message) => void;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
 
-import { parseStructuredThoughts } from "@/lib/parsing";
+const tagRegex = /(\/\*(\w+)\*\/)\n?([\s\S]*?)(?=\/\*|$)/g;
+
+const parseStructuredThoughts = (text: string) => {
+  const parts: any[] = [];
+  let match;
+  tagRegex.lastIndex = 0; // Reset regex state
+
+  while ((match = tagRegex.exec(text)) !== null) {
+    const tagName = match[2].toLowerCase();
+    const content = match[3].trim();
+    if (content) {
+      parts.push({ [tagName]: { content } });
+    }
+  }
+  return parts;
+};
 
 export function MessageStreaming({
   agentId,
@@ -62,6 +77,7 @@ export function MessageStreaming({
 
   const handleIncomingMessage = useCallback(
     (message: Message) => {
+      console.log("handleIncomingMessage received message:", message); // Add this line
       const streamingKey =
         message.metadata?.streamingKey || message.metadata?.invocationId;
       const {
@@ -131,10 +147,12 @@ export function MessageStreaming({
               chunkIndex: message.metadata?.chunkIndex,
               hasStructuredThoughts:
                 hasStructuredThoughts ||
-                existingMessage.metadata?.hasStructuredThoughts,
+                (existingMessage.metadata
+                  ? existingMessage.metadata.hasStructuredThoughts
+                  : false),
             },
             parts: hasStructuredThoughts
-              ? structuredParts
+              ? [...structuredParts, ...(message.parts || [])]
               : message.parts || existingMessage.parts,
           };
 
@@ -190,7 +208,7 @@ export function MessageStreaming({
         }
 
         // If message is already finalized, don't process it again
-        if (existingMessage && existingMessage.metadata?.done === true) {
+        if (existingMessage?.metadata?.done === true) {
           return;
         }
 
@@ -209,15 +227,21 @@ export function MessageStreaming({
               done: true,
               hasStructuredThoughts:
                 hasStructuredThoughts ||
-                existingMessage.metadata?.hasStructuredThoughts,
+                (existingMessage.metadata
+                  ? existingMessage.metadata.hasStructuredThoughts
+                  : false),
             },
-            hasStructuredThoughts ? structuredParts : message.parts
+            hasStructuredThoughts
+              ? [...structuredParts, ...(message.parts || [])]
+              : message.parts || existingMessage.parts
           );
         } else {
           const newMessage = {
             ...message,
             content: finalContent,
-            parts: hasStructuredThoughts ? structuredParts : message.parts,
+            parts: hasStructuredThoughts
+              ? [...structuredParts, ...(message.parts || [])]
+              : message.parts || existingMessage.parts,
             metadata: { ...message.metadata, hasStructuredThoughts },
           };
           addStreamingMessage(agentId, streamingKey, finalContent, newMessage);
@@ -231,6 +255,8 @@ export function MessageStreaming({
           message.id ||
           `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const finalMessage = { ...message, id: messageId };
+
+        console.log("handleIncomingMessage processing final message:", finalMessage); // Add this line
 
         addStreamingMessage(
           agentId,
@@ -263,7 +289,10 @@ export function MessageStreaming({
 
       const unsubscribeMessage = streamingManager.onMessage(
         (message: Message) => {
-          if (message.sender === agentId || message.sender === "user") {
+          if (
+            message.sender === agentId ||
+            message.sender === AGENT_IDS.HUMAN
+          ) {
             handleIncomingMessage(message);
           }
         }

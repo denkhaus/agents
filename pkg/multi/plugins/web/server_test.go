@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/agent/llmagent"
@@ -67,39 +68,6 @@ func (m *mockAgent) Run(ctx context.Context, inv *agent.Invocation) (<-chan *eve
 	return events, nil
 }
 
-func TestNew(t *testing.T) {
-	agents := map[string]agent.Agent{
-		"test-agent": &mockAgent{name: "test-agent", description: "test description"},
-	}
-
-	server := New(agents)
-	if server == nil {
-		t.Fatal("New() returned nil")
-	}
-
-	if len(server.agents) != 1 {
-		t.Errorf("expected 1 agent, got %d", len(server.agents))
-	}
-
-	if server.agents["test-agent"] == nil {
-		t.Error("agent not found in server")
-	}
-}
-
-func TestNew_WithOptions(t *testing.T) {
-	agents := map[string]agent.Agent{
-		"test-agent": &mockAgent{name: "test-agent", description: "test description"},
-	}
-
-	// Test with custom session service.
-	customSessionSvc := &mockSessionService{}
-	server := New(agents, WithSessionService(customSessionSvc))
-
-	if server.sessionSvc != customSessionSvc {
-		t.Error("custom session service not set")
-	}
-}
-
 func TestServer_Handler(t *testing.T) {
 	agents := map[string]agent.Agent{
 		"test-agent": &mockAgent{name: "test-agent", description: "test description"},
@@ -113,17 +81,17 @@ func TestServer_Handler(t *testing.T) {
 	}
 }
 
-func TestServer_handleListApps(t *testing.T) {
+func TestServer_handleListAgents(t *testing.T) {
 	agents := map[string]agent.Agent{
 		"agent1": &mockAgent{name: "agent1", description: "first agent"},
 		"agent2": &mockAgent{name: "agent2", description: "second agent"},
 	}
 
 	server := New(agents)
-	req := httptest.NewRequest(http.MethodGet, "/list-apps", nil)
+	req := httptest.NewRequest(http.MethodGet, "/list-agents", nil)
 	w := httptest.NewRecorder()
 
-	server.handleListApps(w, req)
+	server.handleAppInfo(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status 200, got %d", w.Code)
@@ -158,10 +126,11 @@ func TestServer_handleCreateSession(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/apps/test-agent/users/test-user/sessions", nil)
 	w := httptest.NewRecorder()
 
+	agentID := uuid.New()
 	// Set up the route variables that gorilla/mux would normally set.
 	req = mux.SetURLVars(req, map[string]string{
 		"appName": "test-agent",
-		"userId":  "test-user",
+		"userId":  agentID.String(),
 	})
 
 	server.handleCreateSession(w, req)
@@ -179,11 +148,11 @@ func TestServer_handleCreateSession(t *testing.T) {
 		t.Errorf("expected appName 'test-agent', got '%s'", session.AppName)
 	}
 
-	if session.UserID != "test-user" {
-		t.Errorf("expected userId 'test-user', got '%s'", session.UserID)
+	if session.AgentID != agentID {
+		t.Errorf("expected agentId %s, got '%s'", agentID, session.AgentID)
 	}
 
-	if session.ID == "" {
+	if session.ID == uuid.Nil {
 		t.Error("expected non-empty session ID")
 	}
 }
@@ -203,14 +172,19 @@ func TestServer_handleRun(t *testing.T) {
 
 	server := New(agents)
 
+	fromAgentID := uuid.New()
+	toAgentID := uuid.New()
+	sessionID := uuid.New()
+
 	// Create a test request.
 	requestBody := schema.AgentRunRequest{
-		AppName:   "test-agent",
-		UserID:    "test-user",
-		SessionID: "test-session",
-		NewMessage: schema.Content{
+		AppName:     "test-agent",
+		FromAgentID: fromAgentID,
+		ToAgentID:   toAgentID,
+		SessionID:   sessionID,
+		Content: schema.Content{
 			Role: "user",
-			Parts: []schema.Part{
+			Parts: []schema.PartIncoming{
 				{Text: "Hello, world!"},
 			},
 		},
@@ -243,12 +217,12 @@ func TestServer_handleRun(t *testing.T) {
 func TestConvertContentToMessage(t *testing.T) {
 	content := schema.Content{
 		Role: "user",
-		Parts: []schema.Part{
+		Parts: []schema.PartIncoming{
 			{Text: "Hello, world!"},
 		},
 	}
 
-	message := convertContentToMessage(content)
+	message := content.ToMessage()
 
 	if message.Role != model.RoleUser {
 		t.Errorf("expected role 'user', got '%s'", message.Role)
@@ -262,7 +236,7 @@ func TestConvertContentToMessage(t *testing.T) {
 func TestConvertContentToMessage_Func(t *testing.T) {
 	content := schema.Content{
 		Role: "assistant",
-		Parts: []schema.Part{
+		Parts: []schema.PartIncoming{
 			{
 				FunctionCall: &schema.FunctionCall{
 					Name: "test_function",
@@ -275,7 +249,7 @@ func TestConvertContentToMessage_Func(t *testing.T) {
 		},
 	}
 
-	message := convertContentToMessage(content)
+	message := content.ToMessage()
 
 	if message.Role != model.RoleAssistant {
 		t.Errorf("expected role 'assistant', got '%s'", message.Role)
@@ -297,18 +271,25 @@ func TestConvertContentToMessage_Func(t *testing.T) {
 
 func TestConvertSessionToADKFormat(t *testing.T) {
 	now := time.Now()
+
+	userID := uuid.New()
+	sessionID := uuid.New()
+
 	sess := &session.Session{
-		ID:        "test-session-id",
+		ID:        sessionID.String(),
 		AppName:   "test-app",
-		UserID:    "test-user",
+		UserID:    userID.String(),
 		CreatedAt: now,
 		UpdatedAt: now,
 		State:     map[string][]byte{"key1": []byte("value1")},
 	}
 
-	adkSession := convertSessionToADKFormat(sess)
+	adkSession, err := schema.NewADKSession(sess)
+	if err != nil {
+		t.Errorf("convertSessionToADKFormat: %v", err)
+	}
 
-	if adkSession.ID != "test-session-id" {
+	if adkSession.ID != sessionID {
 		t.Errorf("expected ID 'test-session-id', got '%s'", adkSession.ID)
 	}
 
@@ -316,8 +297,8 @@ func TestConvertSessionToADKFormat(t *testing.T) {
 		t.Errorf("expected AppName 'test-app', got '%s'", adkSession.AppName)
 	}
 
-	if adkSession.UserID != "test-user" {
-		t.Errorf("expected UserID 'test-user', got '%s'", adkSession.UserID)
+	if adkSession.AgentID != userID {
+		t.Errorf("expected AgentID %s, got '%s'", userID, adkSession.AgentID)
 	}
 
 	if adkSession.CreateTime == 0 {

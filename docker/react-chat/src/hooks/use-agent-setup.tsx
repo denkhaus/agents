@@ -6,13 +6,8 @@ import { agentApi } from "@/lib/api";
 import { useChatStore } from "@/lib/store";
 
 export function useAgentSetup() {
-  const {
-    setAgents,
-    setConnected,
-    agents,
-    activeAgentId,
-    setActiveAgent,
-  } = useChatStore();
+  const { setAgents, setConnected, agents, activeAgentId, setActiveAgent } =
+    useChatStore();
 
   // Fetch agents with better error handling
   const {

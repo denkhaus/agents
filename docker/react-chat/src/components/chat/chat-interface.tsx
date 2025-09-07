@@ -9,9 +9,10 @@ import { AgentNavigationBar } from "../navigation";
 import { debug } from "@/lib/utils/debug";
 import { Message } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
+import { AgentId } from "@/lib/constants/agents";
 
 interface ChatInterfaceProps {
-  agentId: string;
+  agentId: AgentId;
 }
 
 export function ChatInterface({ agentId }: ChatInterfaceProps) {
@@ -30,16 +31,16 @@ export function ChatInterface({ agentId }: ChatInterfaceProps) {
   // Memoize agents list to prevent unnecessary re-renders
   // Use deep comparison based on agent IDs to prevent constant re-creation
   const agentIds = useMemo(() => {
-    return agents.map(agent => agent.id).sort();
-  }, [JSON.stringify(agents.map(agent => agent.id).sort())]); // Use deep comparison
+    return agents.map((agent) => agent.id).sort();
+  }, [JSON.stringify(agents.map((agent) => agent.id).sort())]); // Use deep comparison
 
   // Memoize callback functions to prevent infinite re-renders
   const handleMessageUpdate = useCallback((message: Message) => {
-    debug.streaming('Chat Interface: Message updated', message);
+    debug.streaming("Chat Interface: Message updated", message);
   }, []);
 
   const handleStatusChange = useCallback((status: ConnectionStatus) => {
-    debug.connection('Chat Interface: Connection status changed', status);
+    debug.connection("Chat Interface: Connection status changed", status);
   }, []);
 
   if (!currentSessionId) {

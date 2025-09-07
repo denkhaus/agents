@@ -13,6 +13,7 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
+	"trpc.group/trpc-go/trpc-agent-go/session"
 	"trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 )
 
@@ -71,6 +72,10 @@ func NewChatProcessor(opts ...ChatProcessorOption) ChatProcessor {
 	return processor
 }
 
+func (p *chatProcessorImpl) GetApplicationName() string {
+	return p.applicationName
+}
+
 // initAgents initializes all agents in the processor by creating AgentRunner instances
 // and setting up message processing for each agent.
 func (p *chatProcessorImpl) initAgents() {
@@ -101,6 +106,22 @@ func (p *chatProcessorImpl) initAgents() {
 	}
 }
 
+func (p *chatProcessorImpl) DeleteSession(ctx context.Context, key session.Key, options ...session.Option) error {
+	return p.sessionService.DeleteSession(ctx, key, options...)
+}
+
+func (p *chatProcessorImpl) ListSessions(ctx context.Context, userKey session.UserKey, options ...session.Option) ([]*session.Session, error) {
+	return p.sessionService.ListSessions(ctx, userKey, options...)
+}
+
+func (p *chatProcessorImpl) GetSession(ctx context.Context, key session.Key, options ...session.Option) (*session.Session, error) {
+	return p.sessionService.GetSession(ctx, key, options...)
+}
+
+func (p *chatProcessorImpl) CreateSession(ctx context.Context, key session.Key, state session.StateMap, options ...session.Option) (*session.Session, error) {
+	return p.sessionService.CreateSession(ctx, key, state, options...)
+}
+
 // SetOnMessageCallback sets the message callback function for the ChatProcessor.
 func (p *chatProcessorImpl) SetOnMessageCallback(onMessage OnMessage) {
 	p.onMessage = onMessage
@@ -118,10 +139,10 @@ func (p *chatProcessorImpl) SetMessageInterceptor(interceptor messaging.Intercep
 }
 
 // GetAllAgentInfos returns a slice containing information about all registered agents.
-func (p *chatProcessorImpl) GetAllAgentInfos() []shared.AgentInfo {
-	var infos []shared.AgentInfo
+func (p *chatProcessorImpl) GetAllAgentInfos() []*shared.AgentInfo {
+	var infos []*shared.AgentInfo
 	for _, agent := range p.agents {
-		infos = append(infos, *agent.Info())
+		infos = append(infos, agent.Info())
 	}
 
 	return infos
@@ -203,7 +224,7 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 			messageContent := fmt.Sprintf("Message from %s: %s", p.GetAgentNameByID(msg.From), msg.Content)
 
 			// Send to the agent's runner
-			events, err := agent.Run(ctx, msg.From, model.NewUserMessage(messageContent))
+			events, err := agent.Run(ctx, msg.From, msg.Session, model.NewUserMessage(messageContent))
 			if err != nil {
 				logger.Log.Error("failed to process message for agent", zap.String("agent", agent.Name()), zap.Error(err))
 				continue
@@ -221,28 +242,36 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 
 // SendMessage sends a message from one agent to another and returns a channel of events.
 // The caller is responsible for processing the events from the returned channel.
-func (p *chatProcessorImpl) SendMessage(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) (<-chan *event.Event, error) {
+func (p *chatProcessorImpl) SendMessage(
+	ctx context.Context,
+	fromAgentID, toAgentID uuid.UUID,
+	sessionID uuid.UUID,
+	message model.Message,
+) (<-chan *event.Event, error) {
 	agent, exists := p.agents[toAgentID]
 	if !exists {
 		return nil, fmt.Errorf("agent %q not found", toAgentID)
 	}
 
-	userMessage := model.NewUserMessage(message)
-	return agent.Run(ctx, fromAgentID, userMessage)
+	return agent.Run(ctx, fromAgentID, sessionID, message)
 }
 
 // SendMessageWithProcessing sends a message to an agent and automatically processes all resulting events.
 // This method handles event processing internally and provides progress updates through callbacks.
-func (p *chatProcessorImpl) SendMessageWithProcessing(ctx context.Context, fromAgentID, toAgentID uuid.UUID, message string) error {
+func (p *chatProcessorImpl) SendMessageWithProcessing(
+	ctx context.Context,
+	fromAgentID, toAgentID uuid.UUID,
+	sessionID uuid.UUID,
+	message model.Message,
+) error {
 	agent, exists := p.agents[toAgentID]
 	if !exists {
 		return fmt.Errorf("agent %q not found", toAgentID)
 	}
 
-	userMessage := model.NewUserMessage(message)
 	p.onProgress(SystemMessageSending, "sending message to %s...", agent)
 
-	events, err := agent.Run(ctx, fromAgentID, userMessage)
+	events, err := agent.Run(ctx, fromAgentID, sessionID, message)
 	if err != nil {
 		return fmt.Errorf("failed to send message from %s to %s: %w", fromAgentID, toAgentID, err)
 	}

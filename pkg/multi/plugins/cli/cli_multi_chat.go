@@ -54,6 +54,7 @@ type cliMultiAgentChatImpl struct {
 func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
 	chat := &cliMultiAgentChatImpl{
 		Options: plugins.Options{
+			SessionID:    uuid.New(),
 			DisplayWidth: 120, // Default width
 		},
 	}
@@ -452,7 +453,15 @@ func (p *cliMultiAgentChatImpl) sendMessageToAgent(ctx context.Context, input st
 		}()
 
 		// Use SendMessageWithProcessing but with cancellable context
-		err := p.Processor.SendMessageWithProcessing(agentCtx, shared.AgentIDHuman, p.currentAgent.ID(), input)
+		userMessage := model.NewUserMessage(input)
+		err := p.Processor.SendMessageWithProcessing(
+			agentCtx,
+			shared.AgentIDHuman,
+			p.currentAgent.ID(),
+			p.SessionID,
+			userMessage,
+		)
+
 		if err != nil {
 			if agentCtx.Err() == context.Canceled {
 				p.printSystemMessage("[CANCELLED] Agent operation was cancelled")

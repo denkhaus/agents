@@ -179,7 +179,7 @@ describe('MessageEventRouter', () => {
       
       expect(result).toBeDefined()
       expect(result?.type).toBe('system')
-      expect(result?.metadata?.toolCallType).toBe('tool_call')
+      expect(result?.metadata?.object).toBe('tool_call')
     })
 
     test('should handle events without content', () => {

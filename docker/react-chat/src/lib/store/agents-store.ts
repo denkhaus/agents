@@ -1,20 +1,21 @@
 import { create } from "zustand";
-import { Agent } from "@/lib/types";
+import { AgentInfo } from "@/lib/types";
+import { AgentId } from "@/lib/constants/agents";
 
 interface AgentsStore {
   // State
-  agents: Agent[];
-  selectedAgentId: string | null;
+  agents: AgentInfo[];
+  selectedAgentId: AgentId | null;
   loading: boolean;
   error: string | null;
 
   // Actions
-  setAgents: (agents: Agent[]) => void;
+  setAgents: (agents: AgentInfo[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  updateAgent: (agent: Agent) => void;
-  removeAgent: (agentId: string) => void;
-  setSelectedAgentId: (agentId: string | null) => void;
+  updateAgent: (agent: AgentInfo) => void;
+  removeAgent: (agentId: AgentId) => void;
+  setSelectedAgentId: (agentId: AgentId | null) => void;
 }
 
 export const useAgentsStore = create<AgentsStore>((set, get) => ({
@@ -22,7 +23,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
   agents: [],
   selectedAgentId:
     typeof window !== "undefined"
-      ? localStorage.getItem("selectedAgentId")
+      ? (localStorage.getItem("selectedAgentId") as AgentId)
       : null,
   loading: false,
   error: null,
@@ -57,7 +58,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     set({ agents: updatedAgents });
   },
 
-  removeAgent: (agentId) => {
+  removeAgent: (agentId: AgentId) => {
     const agents = get().agents;
     const filteredAgents = agents.filter((agent) => agent.id !== agentId);
     set({ agents: filteredAgents });
@@ -69,7 +70,7 @@ export const useAgentsStore = create<AgentsStore>((set, get) => ({
     }
   },
 
-  setSelectedAgentId: (agentId) => {
+  setSelectedAgentId: (agentId: AgentId | null) => {
     set({ selectedAgentId: agentId });
     if (typeof window !== "undefined") {
       if (agentId) {

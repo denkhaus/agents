@@ -12,17 +12,22 @@ package schema
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestADKSession_MarshalJSON(t *testing.T) {
+
+	agentID := uuid.New()
+	sessionID := uuid.New()
+
 	session := ADKSession{
 		AppName:        "test-app",
-		UserID:         "test-user",
-		ID:             "test-session-id",
+		AgentID:        agentID,
+		ID:             sessionID,
 		CreateTime:     1234567890,
 		LastUpdateTime: 1234567891,
 		State:          map[string][]byte{"key1": []byte("value1")},
-		Events:         []map[string]interface{}{},
 	}
 
 	data, err := json.Marshal(session)
@@ -39,12 +44,12 @@ func TestADKSession_MarshalJSON(t *testing.T) {
 		t.Errorf("expected AppName 'test-app', got '%s'", unmarshaled.AppName)
 	}
 
-	if unmarshaled.UserID != "test-user" {
-		t.Errorf("expected UserID 'test-user', got '%s'", unmarshaled.UserID)
+	if unmarshaled.AgentID != agentID {
+		t.Errorf("expected UserID %s, got '%s'", agentID, unmarshaled.AgentID)
 	}
 
-	if unmarshaled.ID != "test-session-id" {
-		t.Errorf("expected ID 'test-session-id', got '%s'", unmarshaled.ID)
+	if unmarshaled.ID != sessionID {
+		t.Errorf("expected ID %s, got '%s'", sessionID, unmarshaled.ID)
 	}
 
 	if unmarshaled.CreateTime != 1234567890 {
@@ -59,7 +64,7 @@ func TestADKSession_MarshalJSON(t *testing.T) {
 func TestContent_MarshalJSON(t *testing.T) {
 	content := Content{
 		Role: "user",
-		Parts: []Part{
+		Parts: []PartIncoming{
 			{Text: "Hello, world!"},
 			{
 				FunctionCall: &FunctionCall{
@@ -105,13 +110,18 @@ func TestContent_MarshalJSON(t *testing.T) {
 }
 
 func TestAgentRunRequest_MarshalJSON(t *testing.T) {
+	fromAgentID := uuid.New()
+	toAgentID := uuid.New()
+	sessionID := uuid.New()
+
 	request := AgentRunRequest{
-		AppName:   "test-app",
-		UserID:    "test-user",
-		SessionID: "test-session",
-		NewMessage: Content{
+		AppName:     "test-app",
+		FromAgentID: fromAgentID,
+		ToAgentID:   toAgentID,
+		SessionID:   sessionID,
+		Content: Content{
 			Role: "user",
-			Parts: []Part{
+			Parts: []PartIncoming{
 				{Text: "Hello, world!"},
 			},
 		},
@@ -132,20 +142,24 @@ func TestAgentRunRequest_MarshalJSON(t *testing.T) {
 		t.Errorf("expected AppName 'test-app', got '%s'", unmarshaled.AppName)
 	}
 
-	if unmarshaled.UserID != "test-user" {
-		t.Errorf("expected UserID 'test-user', got '%s'", unmarshaled.UserID)
+	if unmarshaled.FromAgentID != fromAgentID {
+		t.Errorf("expected FromAgentID %s, got '%s'", fromAgentID, unmarshaled.FromAgentID)
 	}
 
-	if unmarshaled.SessionID != "test-session" {
-		t.Errorf("expected SessionID 'test-session', got '%s'", unmarshaled.SessionID)
+	if unmarshaled.ToAgentID != toAgentID {
+		t.Errorf("expected ToAgentID %s, got '%s'", toAgentID, unmarshaled.ToAgentID)
+	}
+
+	if unmarshaled.SessionID != sessionID {
+		t.Errorf("expected SessionID %s, got '%s'", sessionID, unmarshaled.SessionID)
 	}
 
 	if !unmarshaled.Streaming {
 		t.Error("expected Streaming to be true")
 	}
 
-	if unmarshaled.NewMessage.Role != "user" {
-		t.Errorf("expected message role 'user', got '%s'", unmarshaled.NewMessage.Role)
+	if unmarshaled.Content.Role != "user" {
+		t.Errorf("expected message role 'user', got '%s'", unmarshaled.Content.Role)
 	}
 }
 

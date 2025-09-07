@@ -4,22 +4,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
-import { useChatStore } from "@/lib/store";
+import { useAgentsStore, useChatStore } from "@/lib/store";
 import { useStreamingManager } from "@/hooks/use-streaming-manager";
 import { toast } from "sonner";
 import { Message, SendMessageOptions } from "@/lib/types";
-import { AGENT_IDS } from "@/lib/constants/agents";
+import { AGENT_IDS, AgentId, normalizeToAgentId } from "@/lib/constants/agents";
+import { debug } from "@/lib/utils/debug";
 
 interface MessageInputProps {
-  agentId: string;
+  agentId: AgentId;
 }
 
 export function MessageInput({ agentId }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { addMessage, currentSessionId } = useChatStore();
+  const { addMessage, currentSessionId, applicationName } = useChatStore();
+
   const streamingManager = useStreamingManager();
 
+  const agentName = normalizeToAgentId(agentId);
   const handleSend = async () => {
     if (!message.trim() || !currentSessionId) return;
 
@@ -39,33 +42,48 @@ export function MessageInput({ agentId }: MessageInputProps) {
 
     try {
       // Send message using StreamingMessageManager
-      console.log(`[MESSAGE INPUT] Sending message to agent ${agentId}:`, {
-        content: messageContent.substring(0, 50) + '...',
-        sessionId: currentSessionId,
-        messageLength: messageContent.length
-      })
-      
-      const options: SendMessageOptions = {
-        sessionId: currentSessionId,
-        userId: AGENT_IDS.HUMAN,
-        onError: (error: Error) => {
-          console.error(`[MESSAGE INPUT] Error in message sending callback for agent ${agentId}:`, error)
-          toast.error(`Failed to send message to ${agentId}: ${error.message}`)
+      debug.log(
+        `[MESSAGE INPUT] Sending message to agent ${agentName}-[${agentId}]:`,
+        {
+          content: messageContent.substring(0, 50) + "...",
+          sessionId: currentSessionId,
+          messageLength: messageContent.length,
         }
-      }
-      
-      console.log(`[MESSAGE INPUT] Calling streamingManager.sendUserMessage`);
-      await streamingManager.sendUserMessage(agentId, messageContent, options);
-      console.log(`[MESSAGE INPUT] Completed streamingManager.sendUserMessage`);
+      );
 
-      console.log(`[MESSAGE INPUT] Message sent to agent ${agentId} successfully`);
+      const options: SendMessageOptions = {
+        onError: (error: Error) => {
+          debug.error(
+            `[MESSAGE INPUT] Error in message sending callback for agent ${agentId}:`,
+            error
+          );
+          toast.error(
+            `Failed to send message to ${agentName}-[${agentId}]: ${error.message}`
+          );
+        },
+      };
+
+      console.log(`[MESSAGE INPUT] Calling streamingManager.sendUserMessage`);
+      await streamingManager.sendUserMessage(
+        applicationName!,
+        agentId,
+        currentSessionId,
+        messageContent,
+        options
+      );
+
+      debug.log(`[MESSAGE INPUT] Completed streamingManager.sendUserMessage`);
+
+      debug.log(
+        `[MESSAGE INPUT] Message sent to agent ${agentName}-[${agentId}] successfully`
+      );
     } catch (error) {
-      console.error("[MESSAGE INPUT] Error sending message:", {
+      debug.error("[MESSAGE INPUT] Error sending message:", {
         agentId,
         error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      toast.error(`Failed to send message to ${agentId}`);
+      toast.error(`Failed to send message to ${agentName}`);
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +114,7 @@ export function MessageInput({ agentId }: MessageInputProps) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={`Type a message to ${agentId}...`}
+          placeholder={`Type a message to ${agentName}...`}
           className="min-h-[60px] resize-none"
           disabled={isLoading}
         />

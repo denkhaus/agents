@@ -7,7 +7,7 @@ import (
 )
 
 // GetWelcomeMessage returns a properly formatted welcome message as markdown
-func GetWelcomeMessage(agents []shared.AgentInfo, displayWidth int) string {
+func GetWelcomeMessage(agents []*shared.AgentInfo, displayWidth int) string {
 	// Build agent list dynamically
 	agentList := ""
 	if len(agents) > 0 {

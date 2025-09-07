@@ -14,6 +14,7 @@ import (
 	"github.com/denkhaus/agents/pkg/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
+	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
 // bubbleTeaChatPluginImpl implements a modern TUI chat interface with real LLM calls
@@ -25,8 +26,9 @@ type bubbleTeaChatPluginImpl struct {
 // enhancedChatModel represents the Bubble Tea model
 type enhancedChatModel struct {
 	processor     multi.ChatProcessor
-	agents        []shared.AgentInfo
+	agents        []*shared.AgentInfo
 	currentAgent  *shared.AgentInfo
+	sessionID     uuid.UUID
 	messages      []chatMessage
 	input         string
 	inputHistory  []string // Store previous user inputs
@@ -77,7 +79,11 @@ var (
 
 // NewBubbleTeaChatPlugin creates a new enhanced Bubble Tea chat plugin
 func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
-	chat := &bubbleTeaChatPluginImpl{}
+	chat := &bubbleTeaChatPluginImpl{
+		Options: plugins.Options{
+			SessionID: uuid.New(),
+		},
+	}
 
 	// Apply options
 	for _, opt := range opts {
@@ -99,6 +105,7 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 	mainSpinner.Suffix = " Initializing Multi-Agent Chat..."
 
 	model := enhancedChatModel{
+		sessionID:     p.SessionID,
 		processor:     p.processor,
 		agents:        p.processor.GetAllAgentInfos(),
 		messages:      []chatMessage{},
@@ -717,7 +724,8 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 			m.ctx,
 			shared.AgentIDHuman, // From human
 			m.currentAgent.ID(), // To selected agent
-			message,
+			m.sessionID,
+			model.NewUserMessage(message),
 		)
 
 		if err != nil {
@@ -807,7 +815,7 @@ func (m *enhancedChatModel) handleCommand(command string) {
 		// Try to select agent
 		for _, agent := range m.agents {
 			if agent.Name == command {
-				m.currentAgent = &agent
+				m.currentAgent = agent
 				m.addMessage("SYSTEM", fmt.Sprintf("Selected agent: %s", agent.Name), plugins.MessageTypeSystem)
 				return
 			}

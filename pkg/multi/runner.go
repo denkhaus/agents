@@ -14,9 +14,8 @@ import (
 
 // AgentRunner represents an AI agent with messaging capabilities
 type AgentRunner struct {
-	sessionID uuid.UUID
-	runner    runner.Runner
-	wrapper   shared.TheAgent
+	runner  runner.Runner
+	wrapper shared.TheAgent
 }
 
 // ID returns the unique identifier of the agent.
@@ -27,11 +26,6 @@ func (p *AgentRunner) ID() uuid.UUID {
 // Name returns the name of the agent.
 func (p *AgentRunner) Name() string {
 	return p.wrapper.Info().Name
-}
-
-// SessionID returns the session ID as a string.
-func (p *AgentRunner) SessionID() string {
-	return p.sessionID.String()
 }
 
 // Info returns the agent's information structure.
@@ -50,9 +44,16 @@ func (p *AgentRunner) String() string {
 func (p *AgentRunner) Run(
 	ctx context.Context,
 	fromAgentID uuid.UUID,
+	sessionID uuid.UUID,
 	userMessage model.Message,
 	runOpts ...agent.RunOption,
 ) (<-chan *event.Event, error) {
 
-	return p.runner.Run(ctx, fromAgentID.String(), p.SessionID(), userMessage, runOpts...)
+	return p.runner.Run(
+		ctx,
+		fromAgentID.String(),
+		sessionID.String(),
+		userMessage,
+		runOpts...,
+	)
 }

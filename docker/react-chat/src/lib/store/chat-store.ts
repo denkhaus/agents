@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
-  Agent,
+  AgentInfo,
   Message,
   ChatSession,
   AgentEvent,
@@ -9,66 +9,82 @@ import {
 } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
 import { apiClient } from "@/lib/api";
-import { AGENT_IDS, AgentId } from "@/lib/constants/agents";
+import { AGENT_IDS, AgentId, normalizeToAgentId } from "@/lib/constants/agents";
 import { parseStructuredThoughts } from "@/lib/parsing";
 
 interface ChatStore {
   // State
-  agents: Agent[];
-  sessions: Record<string, ChatSession>;
-  activeAgentId: string | null;
+  agents: AgentInfo[];
+  sessions: Record<AgentId, ChatSession>;
+  activeAgentId: AgentId | null;
   isConnected: boolean;
   interAgentEvents: AgentEvent[];
-  availableSessions: Record<string, ADKSession[]>; // agentId -> sessions
+  availableSessions: Record<AgentId, ADKSession[]>; // agentId -> sessions
   currentSessionId: string | null;
+  applicationName: string | null;
   isLoadingMessages: boolean;
 
   // Actions
-  setAgents: (agents: Agent[]) => void;
-  addMessage: (agentId: string, message: Message) => void;
+  setAgents: (agents: AgentInfo[]) => void;
+  addMessage: (agentId: AgentId, message: Message) => void;
   updateMessage: (
-    agentId: string,
+    agentId: AgentId,
     messageId: string,
     updatedMessage: Partial<Message>
   ) => void;
-  setActiveAgent: (agentId: string | null) => void;
+  setActiveAgent: (agentId: AgentId | null) => void;
   setConnected: (connected: boolean) => void;
   addInterAgentEvent: (event: AgentEvent) => void;
   clearInterAgentEvents: () => void;
-  createSession: (agentId: string) => Promise<void>;
-  getSession: (agentId: string) => ChatSession | undefined;
-  updateAgentStatus: (agentId: string, status: Agent["status"]) => void;
-  loadSessions: (agentId: string) => Promise<void>;
-  loadSessionMessages: (agentId: string, sessionId: string) => Promise<void>;
+  createSession: (agentId: AgentId) => Promise<void>;
+  getSession: (agentId: AgentId) => ChatSession | undefined;
+  updateAgentStatus: (agentId: AgentId, status: AgentInfo["status"]) => void;
+  loadSessions: (agentId: AgentId) => Promise<void>;
+  loadSessionMessages: (agentId: AgentId, sessionId: string) => Promise<void>;
   setCurrentSession: (sessionId: string | null) => void;
-  deleteSession: (agentId: string, sessionId: string) => Promise<void>;
+  deleteSession: (agentId: AgentId, sessionId: string) => Promise<void>;
 
   // New Simplified Operations for Streaming
-  addStreamingMessage: (agentId: string, messageId: string, initialContent: string, metadata?: Partial<Message>) => void;
-  updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>, parts?: Message['parts']) => void;
+  addStreamingMessage: (
+    agentId: AgentId,
+    messageId: string,
+    initialContent: string,
+    metadata?: Partial<Message>
+  ) => void;
+  updateStreamingMessage: (
+    messageId: string,
+    content: string,
+    metadata?: Partial<Message["metadata"]>,
+    parts?: Message["parts"]
+  ) => void;
   finalizeMessage: (messageId: string) => void;
   setConnectionStatus: (agentId: string, status: ConnectionStatus) => void;
-  
 }
 
 // Helper function to convert ADK events to messages
-const convertADKEventToMessage = (event: { 
-  id?: string; 
-  invocationId?: string; 
-  author?: string; 
-  timestamp?: number; 
-  content?: { 
-    parts?: Array<{ text?: string }> 
-  }; 
-  done?: boolean; 
-  partial?: boolean; 
-  object?: string 
-}, agentId: string): Message => {
+const convertADKEventToMessage = (
+  event: AgentEvent,
+  // event: {
+  //   id?: string;
+  //   invocationId?: string;
+  //   author?: string;
+  //   timestamp?: number;
+  //   content?: {
+  //     parts?: Array<{ text?: string }>;
+  //   };
+  //   done?: boolean;
+  //   partial?: boolean;
+  //   object?: string;
+  // },
+  agentId: string
+): Message => {
   let content = "";
   let parts = undefined;
 
   if (event.content?.parts && Array.isArray(event.content.parts)) {
-    const textParts = event.content.parts.filter((part: { text?: string }) => part.text);
+    const textParts = event.content.parts.filter(
+      (part: { text?: string }) => part.text
+    );
     if (textParts.length > 0) {
       content = textParts.map((part: { text?: string }) => part.text).join("");
     }
@@ -78,20 +94,33 @@ const convertADKEventToMessage = (event: {
   let messageType: "user" | "agent" | "inter_agent" | "system" = "agent";
   if (event.object === "tool_call" || event.object === "tool_response") {
     messageType = "system";
-  } else if (event.author === AGENT_IDS.HUMAN) {
+  } else if (
+    event.author === AGENT_IDS.HUMAN ||
+    (event.author && normalizeToAgentId(event.author) === AGENT_IDS.HUMAN)
+  ) {
     messageType = "user";
   }
+
+  // Normalize sender to agent ID
+  const rawSender = event.author || agentId;
+  const normalizedSender = normalizeToAgentId(rawSender) || rawSender;
 
   return {
     id: event.id || event.invocationId || Date.now().toString(),
     content,
     timestamp: new Date((event.timestamp || Date.now() / 1000) * 1000),
-    sender: event.author || agentId,
+    sender: normalizedSender as AgentId,
     type: messageType,
     metadata: {
       invocationId: event.invocationId,
       partial: event.partial,
       done: event.done,
+      fromAgent: event.fromAgent
+        ? normalizeToAgentId(event.fromAgent) || event.fromAgent
+        : undefined,
+      toAgent: event.toAgent
+        ? normalizeToAgentId(event.toAgent) || event.toAgent
+        : undefined,
     },
     parts,
   };
@@ -102,23 +131,29 @@ export const useChatStore = create<ChatStore>()(
     (set, get) => ({
       // Initial state
       agents: [],
-      sessions: {},
+      sessions: {} as Record<AgentId, ChatSession>,
       activeAgentId: null,
       isConnected: false,
       interAgentEvents: [],
-      availableSessions: {},
+      availableSessions: {} as Record<AgentId, ADKSession[]>,
       currentSessionId: null,
       isLoadingMessages: false,
+      applicationName: null,
 
       // Actions
-      setAgents: (agents: Agent[]) => {
+      setAgents: (agents: AgentInfo[]) => {
         const sortedAgents = [...agents].sort((a, b) =>
           a.name.localeCompare(b.name)
         );
         set({ agents: sortedAgents });
+
+        if (sortedAgents.length) {
+          // since all agents have the same ApplicationName we pick the first
+          set({ applicationName: sortedAgents[0].applicationName });
+        }
       },
 
-      addMessage: (agentId: string, message: Message) => {
+      addMessage: (agentId: AgentId, message: Message) => {
         const sessions = get().sessions;
         const session = sessions[agentId];
 
@@ -139,7 +174,7 @@ export const useChatStore = create<ChatStore>()(
       },
 
       updateMessage: (
-        agentId: string,
+        agentId: AgentId,
         messageId: string,
         updatedMessage: Partial<Message>
       ) => {
@@ -166,7 +201,7 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      setActiveAgent: async (agentId: string | null) => {
+      setActiveAgent: async (agentId: AgentId | null) => {
         set({ activeAgentId: agentId });
 
         if (agentId) {
@@ -180,7 +215,9 @@ export const useChatStore = create<ChatStore>()(
 
             if (
               currentSessionId &&
-              availableSessions.some((s: ADKSession) => s.id === currentSessionId)
+              availableSessions.some(
+                (s: ADKSession) => s.id === currentSessionId
+              )
             ) {
               try {
                 await get().loadSessionMessages(agentId, currentSessionId);
@@ -213,22 +250,24 @@ export const useChatStore = create<ChatStore>()(
               // If no sessions are available, create a new one
               await get().createSession(agentId);
             }
-            
+
             // Final check to ensure we have a current session
             const finalSessionId = get().currentSessionId;
-            
+
             // If we still don't have a session, force create one
             if (!finalSessionId) {
-              console.warn('No session ID set after agent activation, force creating session');
+              console.warn(
+                "No session ID set after agent activation, force creating session"
+              );
               await get().createSession(agentId);
             }
           } catch (error) {
-            console.error('Error in setActiveAgent:', error);
+            console.error("Error in setActiveAgent:", error);
             // Fallback: try to create a session anyway
             try {
               await get().createSession(agentId);
             } catch (createError) {
-              console.error('Failed to create fallback session:', createError);
+              console.error("Failed to create fallback session:", createError);
             }
           }
         }
@@ -245,12 +284,13 @@ export const useChatStore = create<ChatStore>()(
 
       clearInterAgentEvents: () => set({ interAgentEvents: [] }),
 
-      createSession: async (agentId: string) => {
+      createSession: async (agentId: AgentId) => {
         try {
-          const newSession = await apiClient.createSession(agentId, AGENT_IDS.HUMAN);
+          const appName = get().applicationName;
+          const newSession = await apiClient.createSession(appName!, agentId);
 
           const chatSession: ChatSession = {
-            agentId,
+            agentId: agentId,
             messages: [],
             isActive: true,
             lastActivity: new Date(),
@@ -289,19 +329,21 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      getSession: (agentId: string) => get().sessions[agentId],
+      getSession: (agentId: AgentId) => get().sessions[agentId],
 
-      updateAgentStatus: (agentId: string, status: Agent["status"]) => {
+      updateAgentStatus: (agentId: AgentId, status: AgentInfo["status"]) => {
         const agents = get().agents;
-        const updatedAgents = agents.map((agent: Agent) =>
+        const updatedAgents = agents.map((agent: AgentInfo) =>
           agent.id === agentId ? { ...agent, status } : agent
         );
         set({ agents: updatedAgents });
       },
 
-      loadSessions: async (agentId: string) => {
+      loadSessions: async (agentId: AgentId) => {
         try {
-          const sessions = await apiClient.getSessions(agentId, AGENT_IDS.HUMAN);
+          const appName = get().applicationName;
+          const sessions = await apiClient.getSessions(appName!, agentId);
+
           set({
             availableSessions: {
               ...get().availableSessions,
@@ -313,32 +355,40 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
-      loadSessionMessages: async (agentId: string, sessionId: string) => {
+      loadSessionMessages: async (agentId: AgentId, sessionId: string) => {
         set({ isLoadingMessages: true });
         try {
+          const appName = get().applicationName;
           const session = await apiClient.getSession(
+            appName!,
             agentId,
-            AGENT_IDS.HUMAN,
             sessionId
           );
 
           if (session && session.events) {
-            const backendMessages = session.events.map((event: unknown) =>
-              convertADKEventToMessage(event as Parameters<typeof convertADKEventToMessage>[0], agentId)
-            ).map(message => {
-              const structuredParts = parseStructuredThoughts(message.content);
-              if (structuredParts.length > 0) {
-                return {
-                  ...message,
-                  parts: structuredParts,
-                  metadata: {
-                    ...message.metadata,
-                    hasStructuredThoughts: true,
-                  }
-                };
-              }
-              return message;
-            });
+            const backendMessages = session.events
+              .map((event: unknown) =>
+                convertADKEventToMessage(
+                  event as Parameters<typeof convertADKEventToMessage>[0],
+                  agentId
+                )
+              )
+              .map((message) => {
+                const structuredParts = parseStructuredThoughts(
+                  message.content
+                );
+                if (structuredParts.length > 0) {
+                  return {
+                    ...message,
+                    parts: structuredParts,
+                    metadata: {
+                      ...message.metadata,
+                      hasStructuredThoughts: true,
+                    },
+                  };
+                }
+                return message;
+              });
 
             // Get existing session to preserve local messages (like reasoning messages)
             const existingSession = get().sessions[agentId];
@@ -346,22 +396,27 @@ export const useChatStore = create<ChatStore>()(
 
             if (existingSession && existingSession.sessionId === sessionId) {
               // Preserve local messages that don't exist in backend
-              const localMessages = existingSession.messages.filter(localMsg => {
-                // Keep messages that are:
-                // 1. Reasoning messages (hasStructuredThoughts)
-                // 2. User messages that might not be synced yet
-                // 3. Messages with partial/streaming state
-                return (
-                  localMsg.metadata?.hasStructuredThoughts ||
-                  localMsg.sender === AGENT_IDS.HUMAN ||
-                  localMsg.metadata?.partial ||
-                  !backendMessages.some(backendMsg => backendMsg.id === localMsg.id)
-                );
-              });
+              const localMessages = existingSession.messages.filter(
+                (localMsg) => {
+                  // Keep messages that are:
+                  // 1. Reasoning messages (hasStructuredThoughts)
+                  // 2. User messages that might not be synced yet
+                  // 3. Messages with partial/streaming state
+                  return (
+                    localMsg.metadata?.hasStructuredThoughts ||
+                    localMsg.sender === AGENT_IDS.HUMAN ||
+                    localMsg.metadata?.partial ||
+                    !backendMessages.some(
+                      (backendMsg) => backendMsg.id === localMsg.id
+                    )
+                  );
+                }
+              );
 
               // Merge local and backend messages, sort by timestamp
-              finalMessages = [...localMessages, ...backendMessages]
-                .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+              finalMessages = [...localMessages, ...backendMessages].sort(
+                (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+              );
             }
 
             const chatSession: ChatSession = {
@@ -391,28 +446,37 @@ export const useChatStore = create<ChatStore>()(
         set({ currentSessionId: sessionId });
       },
 
-      deleteSession: async (agentId: string, sessionId: string) => {
-        console.log('ChatStore: Starting deleteSession for', { agentId, sessionId });
-        
+      deleteSession: async (agentId: AgentId, sessionId: string) => {
+        console.log("ChatStore: Starting deleteSession for", {
+          agentId,
+          sessionId,
+        });
+
         try {
           // Try to delete from backend first
           try {
-            console.log('ChatStore: Calling apiClient.deleteSession...');
-            await apiClient.deleteSession(agentId, AGENT_IDS.HUMAN, sessionId);
+            console.log("ChatStore: Calling apiClient.deleteSession...");
+            const appName = get().applicationName;
+            await apiClient.deleteSession(appName!, agentId, sessionId);
             console.log("ChatStore: Session deleted from backend successfully");
           } catch (backendError) {
             console.warn(
               "ChatStore: Backend delete failed, proceeding with local deletion:",
               backendError
             );
-            
+
             // Check if it's a CORS error and provide specific handling
-            if (backendError instanceof Error && backendError.message.includes('CORS')) {
-              console.log('ChatStore: CORS error detected - session will be removed locally only');
+            if (
+              backendError instanceof Error &&
+              backendError.message.includes("CORS")
+            ) {
+              console.log(
+                "ChatStore: CORS error detected - session will be removed locally only"
+              );
               // For CORS errors, we'll just proceed with local deletion
               // The session might still exist on the server, but we can't delete it from the browser
             }
-            
+
             // Continue with local deletion even if backend fails
           }
 
@@ -460,9 +524,14 @@ export const useChatStore = create<ChatStore>()(
       },
 
       // New Simplified Operations for Streaming
-      addStreamingMessage: (agentId: string, messageId: string, initialContent: string, metadata?: Partial<Message>) => {
+      addStreamingMessage: (
+        agentId: AgentId,
+        messageId: string,
+        initialContent: string,
+        metadata?: Partial<Message>
+      ) => {
         // console.log(`[CHAT STORE] addStreamingMessage called`, { agentId, messageId, contentLength: initialContent.length });
-        
+
         const sessions = get().sessions;
         const session = sessions[agentId];
 
@@ -472,7 +541,9 @@ export const useChatStore = create<ChatStore>()(
         }
 
         // Check if message already exists (prevent duplicates)
-        const existingMessageIndex = session.messages.findIndex(msg => msg.id === messageId);
+        const existingMessageIndex = session.messages.findIndex(
+          (msg) => msg.id === messageId
+        );
         if (existingMessageIndex !== -1) {
           // Message exists - this is expected for streaming, just return silently
           // console.log(`[CHAT STORE] Message already exists, skipping add`, { messageId });
@@ -484,14 +555,14 @@ export const useChatStore = create<ChatStore>()(
           content: initialContent,
           timestamp: new Date(),
           sender: metadata?.sender || agentId,
-          type: metadata?.type || 'agent',
+          type: metadata?.type || "agent",
           metadata: {
             partial: true,
             done: false,
             streamingKey: messageId,
-            ...metadata?.metadata
+            ...metadata?.metadata,
           },
-          ...metadata
+          ...metadata,
         };
 
         // console.log(`[CHAT STORE] Adding new streaming message`, {
@@ -515,21 +586,28 @@ export const useChatStore = create<ChatStore>()(
         });
       },
 
-      updateStreamingMessage: (messageId: string, content: string, metadata?: Partial<Message['metadata']>, parts?: Message['parts']) => {
+      updateStreamingMessage: (
+        messageId: string,
+        content: string,
+        metadata?: Partial<Message["metadata"]>,
+        parts?: Message["parts"]
+      ) => {
         // console.log(`[CHAT STORE] updateStreamingMessage called`, { messageId, contentLength: content.length });
-        
+
         const sessions = get().sessions;
         let messageFound = false;
-        
+
         // Find the session containing the message
         for (const [agentId, session] of Object.entries(sessions)) {
-          const messageIndex = session.messages.findIndex(msg => msg.id === messageId);
-          
+          const messageIndex = session.messages.findIndex(
+            (msg) => msg.id === messageId
+          );
+
           if (messageIndex !== -1) {
             messageFound = true;
             const updatedMessages = [...session.messages];
             const currentMessage = updatedMessages[messageIndex];
-            
+
             // Update the message with accumulated content
             updatedMessages[messageIndex] = {
               ...currentMessage,
@@ -539,8 +617,8 @@ export const useChatStore = create<ChatStore>()(
               metadata: {
                 ...currentMessage.metadata,
                 ...metadata,
-                streamingKey: messageId // Ensure streamingKey is preserved
-              }
+                streamingKey: messageId, // Ensure streamingKey is preserved
+              },
             };
 
             // console.log(`[CHAT STORE] Updating existing message`, {
@@ -566,7 +644,7 @@ export const useChatStore = create<ChatStore>()(
             break;
           }
         }
-        
+
         if (!messageFound) {
           // console.warn(`UpdateStreamingMessage: Message with ID ${messageId} not found`);
         }
@@ -574,27 +652,29 @@ export const useChatStore = create<ChatStore>()(
 
       finalizeMessage: (messageId: string) => {
         // console.log(`[CHAT STORE] finalizeMessage called`, { messageId });
-        
+
         const sessions = get().sessions;
         let messageFound = false;
-        
+
         // Find and finalize the message
         for (const [agentId, session] of Object.entries(sessions)) {
-          const messageIndex = session.messages.findIndex(msg => msg.id === messageId);
-          
+          const messageIndex = session.messages.findIndex(
+            (msg) => msg.id === messageId
+          );
+
           if (messageIndex !== -1) {
             messageFound = true;
             const updatedMessages = [...session.messages];
             const currentMessage = updatedMessages[messageIndex];
-            
+
             updatedMessages[messageIndex] = {
               ...currentMessage,
               metadata: {
                 ...currentMessage.metadata,
                 partial: false,
                 done: true,
-                finalizedAt: new Date().toISOString()
-              }
+                finalizedAt: new Date().toISOString(),
+              },
             };
 
             // console.log(`[CHAT STORE] Finalizing message`, {
@@ -618,7 +698,7 @@ export const useChatStore = create<ChatStore>()(
             break;
           }
         }
-        
+
         if (!messageFound) {
           // console.warn(`FinalizeMessage: Message with ID ${messageId} not found`);
         }
@@ -629,8 +709,6 @@ export const useChatStore = create<ChatStore>()(
         // This could be expanded to track per-agent connection states
         console.log(`Connection status for ${agentId}:`, status);
       },
-
-      
     }),
     {
       name: "chat-session-storage",

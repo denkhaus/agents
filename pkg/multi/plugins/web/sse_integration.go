@@ -10,16 +10,16 @@ import (
 // RegisterSSEConnectionForRequest registers an SSE connection for the current request
 func (s *Server) RegisterSSEConnectionForRequest(req schema.AgentRunRequest, w http.ResponseWriter, r *http.Request) func() {
 	// Register SSE connection for inter-agent communication
-	sseConn := s.ssePool.RegisterConnection(req.SessionID, req.AppName, req.UserID, w, r.Context())
-	
+	sseConn := s.ssePool.RegisterConnection(r.Context(), req.SessionID, req.ToAgentID, w)
+
 	if sseConn != nil {
 		log.Infof("SSE connection registered for agent %s, session %s", req.AppName, req.SessionID)
 		// Return cleanup function
 		return func() {
-			s.ssePool.UnregisterConnection(req.SessionID, req.AppName)
+			s.ssePool.UnregisterConnection(req.SessionID, req.ToAgentID)
 		}
 	}
-	
+
 	// Return no-op cleanup function if registration failed
 	return func() {}
 }

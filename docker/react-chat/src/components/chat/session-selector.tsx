@@ -8,9 +8,10 @@ import { useChatStore } from "@/lib/store";
 import { formatDistanceToNow } from "date-fns";
 import { Plus, MessageCircle, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { AgentId } from "@/lib/constants/agents";
 
 interface SessionSelectorProps {
-  agentId: string;
+  agentId: AgentId;
   onSessionSelect?: (sessionId: string) => void;
 }
 
@@ -63,23 +64,25 @@ export function SessionSelector({
 
     setDeletingSessionId(sessionId);
     try {
-      console.log('Attempting to delete session:', { agentId, sessionId });
+      console.log("Attempting to delete session:", { agentId, sessionId });
       await deleteSession(agentId, sessionId);
-      console.log('Session deletion completed successfully');
-      toast.success('Session deleted successfully');
+      console.log("Session deletion completed successfully");
+      toast.success("Session deleted successfully");
     } catch (error) {
       console.error("Failed to delete session:", error);
       // Show user-friendly error message
       if (error instanceof Error) {
-        if (error.message.includes('Network error')) {
-          toast.warning('Unable to connect to server. Session removed locally.');
-        } else if (error.message.includes('CORS')) {
-          toast.warning('Session removed locally (server CORS restriction).');
+        if (error.message.includes("Network error")) {
+          toast.warning(
+            "Unable to connect to server. Session removed locally."
+          );
+        } else if (error.message.includes("CORS")) {
+          toast.warning("Session removed locally (server CORS restriction).");
         } else {
           toast.error(`Failed to delete session: ${error.message}`);
         }
       } else {
-        toast.error('An unexpected error occurred while deleting the session.');
+        toast.error("An unexpected error occurred while deleting the session.");
       }
     } finally {
       setDeletingSessionId(null);
