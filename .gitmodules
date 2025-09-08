@@ -1,3 +1,6 @@
 [submodule "config"]
 	path = config
 	url = git@denkhaus.github.com:denkhaus/agent-config.git
+[submodule "pkg/multi/plugins/webchat"]
+	path = pkg/multi/plugins/webchat
+	url = https://github.com/templui/templui-quickstart.git
