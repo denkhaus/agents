@@ -107,7 +107,7 @@ export const sessionApi = {
 
     // Determine message type
     let messageType: "user" | "agent" | "inter_agent" | "system" = "agent";
-    if (event.object === "tool_call" || event.object === "tool_response") {
+    if (event.type === EventType.TOOL_CALL || event.type === EventType.TOOL_RESPONSE) {
       messageType = "system";
     } else if (event.author === "user") {
       messageType = "user";

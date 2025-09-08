@@ -7,13 +7,16 @@ export interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-// Event types matching server schema
-export type EventType = 
-  | "assistant"
-  | "tool.call" 
-  | "tool.response"
-  | "reasoning"
-  | "inter_agent";
+// Event type constants matching server schema
+export const EventType = {
+  ASSISTANT: "assistant",
+  TOOL_CALL: "tool.call",
+  TOOL_RESPONSE: "tool.response",
+  REASONING: "reasoning",
+  INTER_AGENT: "inter_agent",
+} as const;
+
+export type EventType = (typeof EventType)[keyof typeof EventType];
 
 // Part types matching server schema
 export interface TextPart {
@@ -40,7 +43,11 @@ export interface InterAgentPart {
   direction: "sent" | "received";
 }
 
-export type Part = TextPart | FunctionCallPart | FunctionResponsePart | InterAgentPart;
+export type Part =
+  | TextPart
+  | FunctionCallPart
+  | FunctionResponsePart
+  | InterAgentPart;
 
 // Usage metadata matching server schema
 export interface UsageMetaData {
@@ -109,14 +116,13 @@ export interface LLMEvent {
   created?: number;
   model?: string;
   role?: string;
-  parts?: Part[];
+  parts: Part[];
   timestamp?: number;
   id?: string;
   invocationId?: string;
   author?: string;
   inter_agent?: InterAgentData;
 }
-
 
 export interface SSEEventData {
   type: string;

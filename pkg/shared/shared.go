@@ -103,8 +103,16 @@ func (p *AgentInfo) ID() uuid.UUID {
 	return p.id
 }
 
+func (p *AgentInfo) SetID(agentID uuid.UUID) {
+	p.id = agentID
+}
+
 func (p *AgentInfo) Role() AgentRole {
 	return p.role
+}
+
+func (p *AgentInfo) SetRole(role AgentRole) {
+	p.role = role
 }
 
 func (p *AgentInfo) Equal(info *AgentInfo) bool {

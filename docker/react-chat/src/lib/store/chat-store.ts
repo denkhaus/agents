@@ -4,8 +4,9 @@ import {
   AgentInfo,
   Message,
   ChatSession,
-  AgentEvent,
+  LLMEvent,
   ADKSession,
+  EventType,
 } from "@/lib/types";
 import { ConnectionStatus } from "@/lib/types/streaming";
 import { apiClient } from "@/lib/api";
@@ -63,7 +64,7 @@ interface ChatStore {
 
 // Helper function to convert ADK events to messages
 const convertADKEventToMessage = (
-  event: AgentEvent,
+  event: LLMEvent,
   // event: {
   //   id?: string;
   //   invocationId?: string;
@@ -92,7 +93,7 @@ const convertADKEventToMessage = (
   }
 
   let messageType: "user" | "agent" | "inter_agent" | "system" = "agent";
-  if (event.object === "tool_call" || event.object === "tool_response") {
+  if (event.type === EventType.TOOL_CALL || event.type === EventType.TOOL_RESPONSE) {
     messageType = "system";
   } else if (
     event.author === AGENT_IDS.HUMAN ||

@@ -63,7 +63,7 @@ export function getAgentName(id: string): string {
  * Get agent ID from name (reverse lookup)
  */
 export function getAgentIdFromName(name: string): AgentId | null {
-  const entry = Object.entries(AGENT_NAMES).find(([_, agentName]) => agentName === name);
+  const entry = Object.entries(AGENT_NAMES).find(([, agentName]) => agentName === name);
   return entry ? entry[0] as AgentId : null;
 }
 
@@ -71,7 +71,7 @@ export function getAgentIdFromName(name: string): AgentId | null {
  * Check if a name is a valid agent name
  */
 export function isValidAgentName(name: string): boolean {
-  return Object.values(AGENT_NAMES).includes(name as any);
+  return Object.values(AGENT_NAMES).includes(name as typeof AGENT_NAMES[keyof typeof AGENT_NAMES]);
 }
 
 /**

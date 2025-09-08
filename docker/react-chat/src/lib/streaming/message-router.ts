@@ -41,7 +41,6 @@ export class MessageEventRouter {
               JSON.stringify({
                 processor: processor.constructor.name,
                 eventType: event.type,
-                eventObject: event.object,
                 messageId: result.id,
                 messageType: result.type,
               })
@@ -57,16 +56,6 @@ export class MessageEventRouter {
           // Continue to next processor on error
         }
       }
-      // Only log when processors can't process for debugging
-      // debug.streaming(
-      //   'MessageRouter: Processor cannot process event',
-      //   JSON.stringify({
-      //     processor: processor.constructor.name,
-      //     eventType: event.type,
-      //     eventObject: event.object,
-      //     agentId: context.agentId
-      //   })
-      // )
     }
 
     // No processor could handle this event

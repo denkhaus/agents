@@ -1,4 +1,4 @@
-import { LLMEvent, Message } from '@/lib/types'
+import { LLMEvent, Message, EventType } from '@/lib/types'
 import { MessageProcessingContext } from '@/lib/types/streaming'
 import { BaseMessageProcessor } from './base-processor'
 import { debug } from '@/lib/utils/debug'
@@ -11,7 +11,7 @@ export class InterAgentProcessor extends BaseMessageProcessor {
   }
 
   canProcess(event: LLMEvent, context: MessageProcessingContext): boolean {
-    return event.type === "inter_agent" || !!event.inter_agent
+    return event.type === EventType.INTER_AGENT || !!event.inter_agent
   }
 
   process(event: LLMEvent, context: MessageProcessingContext): Message | null {
@@ -45,7 +45,7 @@ export class ToolCallProcessor extends BaseMessageProcessor {
 
   canProcess(event: LLMEvent, context: MessageProcessingContext): boolean {
     // Handle tool calls and responses using new schema
-    return event.type === "tool.call" || event.type === "tool.response"
+    return event.type === EventType.TOOL_CALL || event.type === EventType.TOOL_RESPONSE
   }
 
   process(event: LLMEvent, context: MessageProcessingContext): Message | null {
@@ -69,7 +69,7 @@ export class AgentMessageProcessor extends BaseMessageProcessor {
 
   canProcess(event: LLMEvent, context: MessageProcessingContext): boolean {
     // Handle regular agent messages using new schema
-    return event.type === "assistant" || event.type === "reasoning"
+    return event.type === EventType.ASSISTANT || event.type === EventType.REASONING
   }
 
   process(event: LLMEvent, context: MessageProcessingContext): Message | null {
@@ -80,7 +80,7 @@ export class AgentMessageProcessor extends BaseMessageProcessor {
       return null
     }
 
-    const messageType = event.type === "reasoning" ? 'reasoning' : 'agent'
+    const messageType = event.type === EventType.REASONING ? 'reasoning' : 'agent'
     const baseMessage = this.createBaseMessage(event, context, messageType)
     
     const message: Message = {

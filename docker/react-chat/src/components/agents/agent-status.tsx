@@ -1,49 +1,49 @@
-'use client'
+"use client";
 
-import { Agent } from '@/lib/types'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from "@/components/ui/badge";
+import { AgentInfo } from "@/lib/types";
 
 interface AgentStatusProps {
-  status: Agent['status']
-  size?: 'sm' | 'md' | 'lg'
+  status: AgentInfo["status"];
+  size?: "sm" | "md" | "lg";
 }
 
-export function AgentStatus({ status, size = 'md' }: AgentStatusProps) {
-  const getStatusConfig = (status: Agent['status']) => {
+export function AgentStatus({ status, size = "md" }: AgentStatusProps) {
+  const getStatusConfig = (status: AgentInfo["status"]) => {
     switch (status) {
-      case 'online':
+      case "online":
         return {
-          color: 'bg-green-500',
-          variant: 'default' as const,
-          text: 'Online'
-        }
-      case 'busy':
+          color: "bg-green-500",
+          variant: "default" as const,
+          text: "Online",
+        };
+      case "busy":
         return {
-          color: 'bg-yellow-500',
-          variant: 'secondary' as const,
-          text: 'Busy'
-        }
-      case 'offline':
+          color: "bg-yellow-500",
+          variant: "secondary" as const,
+          text: "Busy",
+        };
+      case "offline":
         return {
-          color: 'bg-gray-500',
-          variant: 'outline' as const,
-          text: 'Offline'
-        }
+          color: "bg-gray-500",
+          variant: "outline" as const,
+          text: "Offline",
+        };
       default:
         return {
-          color: 'bg-gray-500',
-          variant: 'outline' as const,
-          text: 'Unknown'
-        }
+          color: "bg-gray-500",
+          variant: "outline" as const,
+          text: "Unknown",
+        };
     }
-  }
+  };
 
-  const config = getStatusConfig(status)
+  const config = getStatusConfig(status);
   const sizeClasses = {
-    sm: 'h-1.5 w-1.5',
-    md: 'h-2 w-2',
-    lg: 'h-3 w-3'
-  }
+    sm: "h-1.5 w-1.5",
+    md: "h-2 w-2",
+    lg: "h-3 w-3",
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -52,5 +52,5 @@ export function AgentStatus({ status, size = 'md' }: AgentStatusProps) {
         {config.text}
       </Badge>
     </div>
-  )
+  );
 }

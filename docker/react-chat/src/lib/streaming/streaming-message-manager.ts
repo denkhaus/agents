@@ -60,14 +60,13 @@ export class StreamingMessageManager {
       agentId,
       sessionId,
       {
-        onMessage: (event: AgentEvent) => {
+        onMessage: (event: LLMEvent) => {
           debug.streaming(
             `Received event in StreamingMessageManager for agent ${agentId}:`,
             {
               type: event.type,
-              object: event.object,
-              content: event.content
-                ? this.formatContentPreview(event.content)
+              content: event.parts
+                ? this.formatContentPreview(event.parts)
                 : "null",
             }
           );
@@ -159,7 +158,7 @@ export class StreamingMessageManager {
 
   // Event Handlers
   private handleMessage(
-    event: AgentEvent,
+    event: LLMEvent,
     agentId: AgentId,
     sessionId: string,
     connectionType: StreamingConnection["type"]
@@ -168,8 +167,7 @@ export class StreamingMessageManager {
       `StreamingMessageManager: Processing event for agent ${agentId}`,
       {
         eventType: event.type,
-        eventObject: event.object,
-        hasContent: !!event.content,
+        hasContent: event.parts.length > 0,
         invocationId: event.invocationId,
       }
     );
@@ -194,7 +192,6 @@ export class StreamingMessageManager {
     } else {
       debug.warn(`StreamingMessageManager: No message generated from event`, {
         eventType: event.type,
-        eventObject: event.object,
       });
     }
   }

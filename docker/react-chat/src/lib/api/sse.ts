@@ -1,4 +1,4 @@
-import { LLMEvent, AgentRunRequest } from '@/lib/types'
+import { LLMEvent, AgentRunRequest, EventType } from '@/lib/types'
 import { apiClient } from './client'
 
 export type SSEEventHandler = {
@@ -213,7 +213,7 @@ class SSEService {
     const handlers = connectionType === 'mainChat' ? this.mainChatHandlers : this.agentRunHandlers;
 
     // Handle stream termination event
-    if (event.done === true && !event.type && !event.object && !event.content) {
+    if (event.done === true && !event.type && !event.parts) {
       if (connectionType === 'agentRun') {
         this.isAgentRunConnected = false;
         handlers.onConnectionStatusChange?.(false);
@@ -238,7 +238,7 @@ class SSEService {
       
       default:
         // Handle tool calls and responses as regular messages
-        if (event.object === 'tool_call' || event.object === 'tool_response' || event.content) {
+        if (event.type === EventType.TOOL_CALL || event.type === EventType.TOOL_RESPONSE || event.parts) {
           handlers.onMessage?.(event);
         } else {
           console.log('Unhandled SSE event type:', event.type, event);

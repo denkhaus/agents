@@ -2,7 +2,7 @@
 
 import { useChatStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
-import { Agent } from "@/lib/types";
+import { AgentInfo } from '@/lib/types'
 
 interface ChatHeaderProps {
   agentId: string;

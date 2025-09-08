@@ -17,6 +17,7 @@ services:
       context: .
       dockerfile: Dockerfile.react-chat
     restart: unless-stopped
+    user: "1000"
     networks:
       - agents-network
     env_file: ../.env

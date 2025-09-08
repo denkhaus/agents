@@ -13,26 +13,24 @@ interface InterAgentEventProps {
 }
 
 export function InterAgentEvent({ event }: InterAgentEventProps) {
-  const isInterAgentCommunication = event.object === 'inter_agent' || event.type === 'communication'
+  const isInterAgentCommunication = event.type === 'inter_agent'
   
   const getEventContent = () => {
-    if (typeof event.content === 'string') {
-      return event.content
-    }
-    
-    if (event.content && typeof event.content === 'object' && event.content.parts) {
-      return event.content.parts
-        .map(part => part.text)
+    if (event.parts && event.parts.length > 0) {
+      return event.parts
+        .map(part => {
+          if ('content' in part) return part.content
+          return ''
+        })
         .filter(Boolean)
         .join(' ')
     }
     
-    return event.message || 'No content'
+    return 'No content'
   }
 
   const getEventType = () => {
-    // Backend uses "object" for main classification, "type" for system events
-    return event.object || event.type || 'unknown'
+    return event.type || 'unknown'
   }
 
   const getEventTypeVariant = () => {
@@ -85,18 +83,18 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
           </span>
         </div>
 
-        {isInterAgentCommunication && (event.fromAgent || event.interAgent?.fromAgent) && (event.toAgent || event.interAgent?.toAgent) && (
+        {isInterAgentCommunication && event.inter_agent && (
           <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {getAgentDisplayName(event.fromAgent || event.interAgent?.fromAgent || 'Unknown').slice(0, 2).toUpperCase()}
+                  {getAgentDisplayName(event.inter_agent.from_agent).slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium">
-                {event.fromAgent === AGENT_IDS.HUMAN || event.interAgent?.fromAgent === AGENT_IDS.HUMAN 
+                {event.inter_agent.from_agent === AGENT_IDS.HUMAN 
                   ? "You" 
-                  : getAgentDisplayName(event.fromAgent || event.interAgent?.fromAgent || 'Unknown')}
+                  : getAgentDisplayName(event.inter_agent.from_agent)}
               </span>
             </div>
             
@@ -105,13 +103,13 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
             <div className="flex items-center gap-1">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">
-                  {getAgentDisplayName(event.toAgent || event.interAgent?.toAgent || 'Unknown').slice(0, 2).toUpperCase()}
+                  {getAgentDisplayName(event.inter_agent.to_agent).slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium">
-                {event.toAgent === AGENT_IDS.HUMAN || event.interAgent?.toAgent === AGENT_IDS.HUMAN 
+                {event.inter_agent.to_agent === AGENT_IDS.HUMAN 
                   ? "You" 
-                  : getAgentDisplayName(event.toAgent || event.interAgent?.toAgent || 'Unknown')}
+                  : getAgentDisplayName(event.inter_agent.to_agent)}
               </span>
             </div>
           </div>
@@ -121,30 +119,18 @@ export function InterAgentEvent({ event }: InterAgentEventProps) {
           {getEventContent()}
         </div>
 
-        {event.type === 'agent_list' && event.agents && (
-          <div className="mt-2 pt-2 border-t">
-            <div className="text-xs text-muted-foreground mb-1">Available Agents:</div>
-            <div className="flex flex-wrap gap-1">
-              {event.agents.map((agent, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {agent.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {event.usageMetadata && (
+        {event.usage && (
           <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
             <div className="flex gap-4">
-              {event.usageMetadata.promptTokenCount && (
-                <span>Prompt: {event.usageMetadata.promptTokenCount} tokens</span>
+              {event.usage.prompt_token_count && (
+                <span>Prompt: {event.usage.prompt_token_count} tokens</span>
               )}
-              {event.usageMetadata.candidatesTokenCount && (
-                <span>Response: {event.usageMetadata.candidatesTokenCount} tokens</span>
+              {event.usage.candidates_token_count && (
+                <span>Response: {event.usage.candidates_token_count} tokens</span>
               )}
-              {event.usageMetadata.totalTokenCount && (
-                <span>Total: {event.usageMetadata.totalTokenCount} tokens</span>
+              {event.usage.total_token_count && (
+                <span>Total: {event.usage.total_token_count} tokens</span>
               )}
             </div>
           </div>

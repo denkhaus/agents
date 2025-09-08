@@ -13,7 +13,9 @@ interface MessageItemProps {
   message: Message;
 }
 
-const StructuredPart = ({ part }: { part: any }) => {
+import { MessagePart } from "@/lib/types";
+
+const StructuredPart = ({ part }: { part: MessagePart }) => {
   const partType = Object.keys(part)[0];
   const content = part[partType]?.content;
   if (!content) return null;
@@ -22,13 +24,15 @@ const StructuredPart = ({ part }: { part: any }) => {
     planning: {
       Icon: Cog,
       title: "Planning",
-      style: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
+      style:
+        "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800",
       titleStyle: "text-yellow-800 dark:text-yellow-200",
     },
     reasoning: {
       Icon: BrainCircuit,
       title: "Reasoning",
-      style: "bg-purple-50 border-purple-200 dark:bg-purple-950 dark:border-purple-800",
+      style:
+        "bg-purple-50 border-purple-200 dark:bg-purple-950 dark:border-purple-800",
       titleStyle: "text-purple-800 dark:text-purple-200",
     },
     action: {
@@ -40,7 +44,8 @@ const StructuredPart = ({ part }: { part: any }) => {
     final_answer: {
       Icon: Flag,
       title: "Final Answer",
-      style: "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800",
+      style:
+        "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800",
       titleStyle: "text-green-800 dark:text-green-200",
     },
   }[partType];
@@ -61,7 +66,7 @@ const StructuredPart = ({ part }: { part: any }) => {
     </div>
   );
 
-  if (partType === 'reasoning') {
+  if (partType === "reasoning") {
     return (
       <details className="mt-2">
         <summary className="cursor-pointer text-sm text-purple-600 hover:text-purple-800">
@@ -81,7 +86,8 @@ export function MessageItem({ message }: MessageItemProps) {
   const isSystem = message.type === "system";
   const isToolCall = message.parts?.some((part) => part.functionCall);
   const isToolResponse = message.parts?.some((part) => part.functionResponse);
-  const isToolCode = message.type === "system" && message.metadata?.object === "tool_code";
+  const isToolCode =
+    message.type === "system" && message.metadata?.object === "tool_code";
   const hasStructuredThoughts = message.metadata?.hasStructuredThoughts;
 
   const formatMessageContent = () => {
@@ -91,10 +97,17 @@ export function MessageItem({ message }: MessageItemProps) {
     if (message.parts && message.parts.length > 0) {
       message.parts.forEach((part, index) => {
         if (part.functionCall) {
-          renderedElements.push(<ToolCallPart key={`tool-call-${index}`} part={part.functionCall} />);
+          renderedElements.push(
+            <ToolCallPart key={`tool-call-${index}`} part={part.functionCall} />
+          );
         }
         if (part.functionResponse) {
-          renderedElements.push(<ToolResponsePart key={`tool-response-${index}`} part={part.functionResponse} />);
+          renderedElements.push(
+            <ToolResponsePart
+              key={`tool-response-${index}`}
+              part={part.functionResponse}
+            />
+          );
         }
       });
     }
@@ -103,21 +116,30 @@ export function MessageItem({ message }: MessageItemProps) {
     if (hasStructuredThoughts && message.parts && message.parts.length > 0) {
       message.parts.forEach((part, index) => {
         const partType = Object.keys(part)[0];
-        if (["planning", "reasoning", "action", "final_answer"].includes(partType)) {
-          renderedElements.push(<StructuredPart key={`structured-${index}`} part={part} />);
+        if (
+          ["planning", "reasoning", "action", "final_answer"].includes(partType)
+        ) {
+          renderedElements.push(
+            <StructuredPart key={`structured-${index}`} part={part} />
+          );
         }
       });
     }
 
     // Priority 3: Render tool code if it's a system message with tool_code object
     if (isToolCode && message.content) {
-      renderedElements.push(<ToolCodePart key="tool-code-main" part={{ code: message.content }} />);
+      renderedElements.push(
+        <ToolCodePart key="tool-code-main" part={{ code: message.content }} />
+      );
     }
 
     // Priority 4: Render main message content if no specific parts were rendered
     if (renderedElements.length === 0 && message.content) {
       renderedElements.push(
-        <div key="main-content" className="prose prose-sm max-w-none dark:prose-invert">
+        <div
+          key="main-content"
+          className="prose prose-sm max-w-none dark:prose-invert"
+        >
           {message.sender === AGENT_IDS.HUMAN ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
@@ -132,7 +154,8 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const getCardStyle = () => {
     if (isUser) return "bg-primary text-primary-foreground";
-    if (isInterAgent) return "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950";
+    if (isInterAgent)
+      return "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950";
     if (isToolCall) return "border-blue-200 dark:border-blue-800";
     if (isToolResponse) return "border-green-200 dark:border-green-800";
     if (isToolCode) return "border-slate-200 dark:border-slate-800";
@@ -142,12 +165,22 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const getMessageTypeLabel = () => {
     if (isUser) return "You";
-    if (isInterAgent && message.metadata?.fromAgent && message.metadata?.toAgent) {
-      const fromName = message.metadata.fromAgent === AGENT_IDS.HUMAN ? "You" : getAgentDisplayName(message.metadata.fromAgent);
-      const toName = message.metadata.toAgent === AGENT_IDS.HUMAN ? "You" : getAgentDisplayName(message.metadata.toAgent);
+    if (
+      isInterAgent &&
+      message.metadata?.fromAgent &&
+      message.metadata?.toAgent
+    ) {
+      const fromName =
+        message.metadata.fromAgent === AGENT_IDS.HUMAN
+          ? "You"
+          : getAgentDisplayName(message.metadata.fromAgent);
+      const toName =
+        message.metadata.toAgent === AGENT_IDS.HUMAN
+          ? "You"
+          : getAgentDisplayName(message.metadata.toAgent);
       return `${fromName} -> ${toName}`;
     }
-    
+
     const displayName = getAgentDisplayName(message.sender);
     if (hasStructuredThoughts) return `${displayName} (Thinking)`;
     if (isToolCall) return `${displayName} (Tool Call)`;
@@ -158,7 +191,7 @@ export function MessageItem({ message }: MessageItemProps) {
   };
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <Card className={`max-w-[90%] ${getCardStyle()}`}>
         <CardContent className="p-3">
           <div className="flex items-center gap-2 mb-2">
@@ -240,7 +273,11 @@ export function MessageItem({ message }: MessageItemProps) {
 
 // Helper components for different tool parts to keep the main component clean
 
-const ToolCallPart = ({ part }: { part: any }) => (
+const ToolCallPart = ({
+  part,
+}: {
+  part: { name: string; args: unknown; id?: string };
+}) => (
   <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
     <div className="flex items-center gap-2 mb-2">
       <strong className="text-blue-800 dark:text-blue-200">
@@ -263,7 +300,11 @@ const ToolCallPart = ({ part }: { part: any }) => (
   </div>
 );
 
-const ToolResponsePart = ({ part }: { part: any }) => (
+const ToolResponsePart = ({
+  part,
+}: {
+  part: { name: string; response: unknown; id?: string };
+}) => (
   <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
     <div className="flex items-center gap-2 mb-2">
       <strong className="text-green-800 dark:text-green-200">
@@ -286,18 +327,13 @@ const ToolResponsePart = ({ part }: { part: any }) => (
   </div>
 );
 
-const ToolCodePart = ({ part }: { part: any }) => (
+const ToolCodePart = ({ part }: { part: { code: string } }) => (
   <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
     <div className="flex items-center gap-2 mb-2">
-      <strong className="text-slate-800 dark:text-slate-200">
-        Tool Code
-      </strong>
+      <strong className="text-slate-800 dark:text-slate-200">Tool Code</strong>
     </div>
     <div className="mt-2 text-xs overflow-x-auto bg-white dark:bg-gray-900 p-2 rounded border max-w-full">
-      <Markdown>{`\
-${part.code}
-\
-`}</Markdown>
+      <Markdown>{`${part.code}`}</Markdown>
     </div>
   </div>
 );

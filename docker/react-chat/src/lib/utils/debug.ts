@@ -192,9 +192,20 @@ const debugManager = new DebugManager();
 // Export the debug interface
 export const debug = debugManager;
 
+interface DebugAPI {
+  enable: (enabled?: boolean) => void;
+  enableCategory: (category: string, enabled?: boolean) => void;
+  enableRateLimit: (enabled?: boolean, maxLogs?: number) => void;
+  getConfig: () => DebugConfig;
+  enableConnection: () => void;
+  disableConnection: () => void;
+  enableStreaming: () => void;
+  disableStreaming: () => void;
+}
+
 // Make debug controls available globally for development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  (window as any).debug = {
+  ((window as unknown) as { debug: DebugAPI }).debug = {
     enable: (enabled?: boolean) => debugManager.enableDebug(enabled),
     enableCategory: (category: string, enabled?: boolean) => {
       const validCategories = ['connection', 'streaming', 'general', 'error', 'warn', 'critical'];
