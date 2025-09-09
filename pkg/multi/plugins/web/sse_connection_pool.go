@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 )

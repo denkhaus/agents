@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"trpc.group/trpc-go/trpc-agent-go/log"
 )
 

@@ -20,7 +20,7 @@ import (
 
 	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -60,7 +60,7 @@ func (m *mockChatProcessor) CreateSession(ctx context.Context, key session.Key, 
 	return &session.Session{
 		ID:        uuid.New().String(),
 		AppName:   key.AppName,
-		UserID:    key.UserID,  // Use the UserID from the key
+		UserID:    key.UserID, // Use the UserID from the key
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}, nil
@@ -129,11 +129,8 @@ func (m *mockAgent) Run(ctx context.Context, inv *agent.Invocation) (<-chan *eve
 }
 
 func TestServer_Handler(t *testing.T) {
-	agents := map[string]agent.Agent{
-		"test-agent": &mockAgent{name: "test-agent", description: "test description"},
-	}
 
-	server := New(agents)
+	server := New()
 	handler := server.Handler()
 
 	if handler == nil {
@@ -192,7 +189,7 @@ func TestServer_handleCreateSession(t *testing.T) {
 	// Set up the route variables that gorilla/mux would normally set.
 	req = mux.SetURLVars(req, map[string]string{
 		"appName": "test-agent",
-		"agentId":  agentID.String(), // Changed from userId to agentId to match the route
+		"agentId": agentID.String(), // Changed from userId to agentId to match the route
 	})
 
 	server.handleCreateSession(w, req)
@@ -279,12 +276,12 @@ func TestServer_handleRun(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected map[string]interface{}, got %T", events[0].Parts[0])
 		}
-		
+
 		content, ok := partMap["content"].(string)
 		if !ok {
 			t.Fatalf("expected content to be a string, got %T", partMap["content"])
 		}
-		
+
 		if content != "test response" {
 			t.Errorf("unexpected response content: got '%s', want 'test response'", content)
 		}

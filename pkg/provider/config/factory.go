@@ -83,6 +83,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment Envir
 		ag,
 		agentConfig.AgentID,
 		agentConfig.Setting.Agent.StreamingEnabled,
+		agentConfig.Role,
 	), nil
 }
 

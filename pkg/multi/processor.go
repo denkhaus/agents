@@ -10,6 +10,7 @@ import (
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -248,12 +249,19 @@ func (p *chatProcessorImpl) SendMessage(
 	sessionID uuid.UUID,
 	message model.Message,
 ) (<-chan *event.Event, error) {
-	agent, exists := p.agents[toAgentID]
+	ag, exists := p.agents[toAgentID]
 	if !exists {
 		return nil, fmt.Errorf("agent %q not found", toAgentID)
 	}
 
-	return agent.Run(ctx, fromAgentID, sessionID, message)
+	state := agent.WithRuntimeState(map[string]interface{}{
+		"from":      fromAgentID,
+		"to":        toAgentID,
+		"session":   sessionID,
+		"streaming": ag.IsStreaming(),
+	})
+
+	return ag.Run(ctx, fromAgentID, sessionID, message, state)
 }
 
 // SendMessageWithProcessing sends a message to an agent and automatically processes all resulting events.

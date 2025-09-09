@@ -15,7 +15,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
 )
 
 // validateConfigCommand validates the system configuration
@@ -77,10 +76,18 @@ func (a *App) listEnvironmentsCommand(c *cli.Context) error {
 	return nil
 }
 
+func (a *App) RunCommand(ctx *cli.Context) error {
+	return a.runCommand(
+		ctx.Context,
+		ctx.String("environment"),
+		ctx.String("server-addr"),
+	)
+}
+
 // runCommand starts the multi-agent system
-func (a *App) runCommand(c *cli.Context) error {
-	ctx := c.Context
-	envName := config.EnvironmentName(c.String("environment"))
+func (a *App) runCommand(ctx context.Context, environmentName, serverAddr string) error {
+
+	envName := config.EnvironmentName(environmentName)
 
 	logger.Log.Info("Starting agents system",
 		zap.String("version", appVersion),
@@ -122,23 +129,19 @@ func (a *App) runCommand(c *cli.Context) error {
 
 	g := new(errgroup.Group)
 	g.Go(func() error {
-		return a.startDebugServer(ctx, envConfig, agents, c.String("debug-addr"))
+		return a.startServer(ctx, envConfig, agents, serverAddr)
 	})
 
 	return g.Wait()
 }
 
-// startDebugServer starts the debug HTTP server
-func (a *App) startDebugServer(
+// startServer starts the debug HTTP server
+func (a *App) startServer(
 	ctx context.Context,
 	envConfig *config.EnvironmentConfig,
 	agents []shared.TheAgent,
 	addr string,
 ) error {
-	debugAgents := make(map[string]agent.Agent)
-	for _, ag := range agents {
-		debugAgents[ag.Info().Name] = ag
-	}
 
 	condenserService, err := a.createCondenser(ctx, envConfig)
 	if err != nil {
@@ -151,7 +154,7 @@ func (a *App) startDebugServer(
 		multi.WithAgents(agents...),
 	)
 
-	server := web.New(debugAgents,
+	server := web.New(
 		web.WithChatProcessor(processor),
 		web.WithLogger(logger.Log),
 	)

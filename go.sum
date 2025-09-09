@@ -472,8 +472,8 @@ trpc.group/trpc-go/trpc-a2a-go v0.2.3 h1:fImDVqA6geyXAhK/4qKqITnDkBG+eAWJMBilzd7
 trpc.group/trpc-go/trpc-a2a-go v0.2.3/go.mod h1:lu052zH/pTlTBwWMU/E3UckR0U9ajL1NlhiRkIF9R6A=
 trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f h1:DZdIJREGtrlZx0wAzOjWE93eujk3ihETla9LTWhQUHI=
 trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f/go.mod h1:nO0sywg+tqO6O8rlXnXzKjTMb3XF3QlXKUBXLvi7dWM=
-trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250903061708-c9123c15b069 h1:gAYlEF7qhVEE6WhzsUveJ6dU80+6I+u7l2kr0nzsexc=
-trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250903061708-c9123c15b069/go.mod h1:uY+Hd4z7I50fbEPe2jud62Aa8ZEJ0Gl8Wq5MY2hRElQ=
+trpc.group/trpc-go/trpc-agent-go v0.1.2 h1:awJG6riLNilU3x9uehAhFiX8EEyXJN1Q/1fyrv2sdQk=
+trpc.group/trpc-go/trpc-agent-go v0.1.2/go.mod h1:qawcNZjzNq6zpeWpylSGf7VNNYBb0QlO2z7DLIYPme4=
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3 h1:1U9oL8domeUurj/B7uDNvW6SKmniGD0/EAXz6uephsI=
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3/go.mod h1:Y7eKEMD7p6PKuJgvfr1WIVlbn5WvmdPoIx5MVxaMQWw=
 trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3 h1:xGG7k3iYVf1R+31TuYJUiPwoEUMM61E79REr1vUWCGo=

@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	debugServerDefaultAddr = ":6999"
-	appName                = "agents-system"
-	appUsage               = "Multi-agent system with environment-based configuration"
-	appVersion             = "1.0.0"
+	serverDefaultAddr = ":6999"
+	appName           = "agents-system"
+	appUsage          = "Multi-agent system with environment-based configuration"
+	appVersion        = "1.0.0"
 )
 
 // App represents the main application with dependency injection
@@ -71,16 +71,10 @@ func createCLIApp(app *App) *cli.App {
 				Usage:   "Environment to run (development, production, experiment)",
 				EnvVars: []string{"AGENTS_ENVIRONMENT"},
 			},
-			&cli.BoolFlag{
-				Name:    "debug-server",
-				Aliases: []string{"d"},
-				Value:   true,
-				Usage:   "Enable debug HTTP server",
-			},
 			&cli.StringFlag{
-				Name:  "debug-addr",
-				Value: debugServerDefaultAddr,
-				Usage: "Debug server listen address",
+				Name:  "server-addr",
+				Value: serverDefaultAddr,
+				Usage: "Server listen address",
 			},
 		},
 		Commands: []*cli.Command{
@@ -88,7 +82,7 @@ func createCLIApp(app *App) *cli.App {
 				Name:    "run",
 				Aliases: []string{"start", "r"},
 				Usage:   "Start the multi-agent system",
-				Action:  app.runCommand,
+				Action:  app.RunCommand,
 			},
 			{
 				Name:    "list-environments",
@@ -104,7 +98,7 @@ func createCLIApp(app *App) *cli.App {
 			},
 		},
 		DefaultCommand: "run",
-		Action:         app.runCommand, // Default action when no command specified
+		Action:         app.RunCommand, // Default action when no command specified
 		Before: func(c *cli.Context) error {
 			// Setup logging based on environment
 			env := c.String("environment")
@@ -152,7 +146,7 @@ func main() {
 
 	// Run the CLI application with context
 	cliApp := createCLIApp(app)
-	
+
 	// Create a context-aware version of os.Args
 	if err := cliApp.RunContext(ctx, os.Args); err != nil {
 		logger.Log.Fatal("Application error", zap.Error(err))

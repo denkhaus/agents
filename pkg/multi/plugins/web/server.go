@@ -22,16 +22,14 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 
-	"trpc.group/trpc-go/trpc-agent-go/agent"
-
 	//itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
 	"github.com/denkhaus/agents/pkg/multi"
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 )
 
 // New creates a new CLI HTTP server with explicit agent registration. The
 // behaviour can be tweaked via functional options.
-func New(agents map[string]agent.Agent, opts ...Option) *Server {
+func New(opts ...Option) *Server {
 	s := &Server{
 		router:         mux.NewRouter(),
 		traces:         make(map[string]attribute.Set),

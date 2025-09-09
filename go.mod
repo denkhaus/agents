@@ -34,7 +34,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	trpc.group/trpc-go/trpc-a2a-go v0.2.3
 	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250827051055-44ab1c9e449f
-	trpc.group/trpc-go/trpc-agent-go v0.0.5-0.20250903061708-c9123c15b069
+	trpc.group/trpc-go/trpc-agent-go v0.1.2
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3
 	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.3
 	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250829092715-dc49bf15fb03

@@ -33,6 +33,10 @@ func (p *AgentRunner) Info() *shared.AgentInfo {
 	return p.wrapper.GetInfo()
 }
 
+func (p *AgentRunner) IsStreaming() bool {
+	return p.wrapper.IsStreaming()
+}
+
 // String returns a string representation of the agent runner.
 func (p *AgentRunner) String() string {
 	return fmt.Sprintf("%s-[%s]", p.wrapper.Info().Name, p.wrapper.ID())

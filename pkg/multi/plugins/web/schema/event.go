@@ -98,7 +98,11 @@ func (p *LLMEvent) determineEventRole() model.Role {
 		if p.base.Response.Object == model.ObjectTypeToolResponse {
 			role = model.RoleTool
 		} else if len(p.base.Response.Choices) > 0 {
-			role = p.base.Response.Choices[0].Message.Role
+			if p.base.Response.Choices[0].Message.Role != "" {
+				role = p.base.Response.Choices[0].Message.Role
+			} else if p.base.Response.Choices[0].Delta.Role != "" {
+				role = p.base.Response.Choices[0].Delta.Role
+			}
 		}
 	}
 

@@ -177,9 +177,10 @@ func (p *theAgentImpl) GetInfo() *AgentInfo {
 	}
 }
 
-func NewAgent(agent agent.Agent, agentID uuid.UUID, isStreaming bool) TheAgent {
+func NewAgent(agent agent.Agent, agentID uuid.UUID, isStreaming bool, role AgentRole) TheAgent {
 	return &theAgentImpl{
 		Agent:       agent,
+		role:        role,
 		id:          agentID,
 		isStreaming: isStreaming,
 	}

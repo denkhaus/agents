@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"

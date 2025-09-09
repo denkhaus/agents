@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/pkg/multi"
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/internal/schema"
+	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"go.uber.org/zap"

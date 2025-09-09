@@ -27,6 +27,7 @@ type ChatProcessor interface {
 	// This is a convenience method that handles event processing internally.
 	SendMessageWithProcessing(ctx context.Context, fromAgentID, toAgentID, sessionID uuid.UUID, message model.Message) error
 
+	// Session functions to access underlying session data
 	CreateSession(ctx context.Context, key session.Key, state session.StateMap, options ...session.Option) (*session.Session, error)
 	ListSessions(ctx context.Context, userKey session.UserKey, options ...session.Option) ([]*session.Session, error)
 	DeleteSession(ctx context.Context, key session.Key, options ...session.Option) error
