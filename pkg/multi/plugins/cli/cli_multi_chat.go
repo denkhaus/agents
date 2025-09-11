@@ -11,9 +11,11 @@ import (
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/acarl005/stripansi"
 	"github.com/chzyer/readline"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/mattn/go-runewidth"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -72,7 +74,7 @@ func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlug
 	}
 
 	processorOptions = append(processorOptions, chat.ProcessorOptions...)
-	chat.Processor = multi.NewChatProcessor(processorOptions...)
+	chat.Processor = multi.NewChatProcessor(chat.SessionID, processorOptions...)
 	chat.setupMessageListener()
 
 	return chat
@@ -81,14 +83,14 @@ func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlug
 // setupMessageListener configures the message interceptor to display inter-agent communication.
 func (p *cliMultiAgentChatImpl) setupMessageListener() {
 	// Add a message interceptor to the broker
-	p.Processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
-		fromName := p.Processor.GetAgentNameByID(fromID)
-		toName := p.Processor.GetAgentNameByID(toID)
+	p.Processor.SetMessageInterceptor(func(routing *messaging.RoutingInfo, content string) {
+		fromName := p.Processor.GetAgentNameByID(routing.FromAgentID)
+		toName := p.Processor.GetAgentNameByID(routing.ToAgentID)
 
 		if fromName != "" && toName != "" {
 			// Format: "FromName (FromID) -> ToName (ToID)"
 			header := fmt.Sprintf("%s (%s) -> %s (%s)",
-				fromName, fromID, toName, toID,
+				fromName, routing.FromAgentID, toName, routing.ToAgentID,
 			)
 			p.printWithBorderColored(header, content, plugins.MessageTypeIntercept)
 		}
@@ -96,34 +98,34 @@ func (p *cliMultiAgentChatImpl) setupMessageListener() {
 }
 
 // handleOnProgress handles progress updates by printing them to stdout.
-func (p *cliMultiAgentChatImpl) handleOnProgress(messageType multi.SystemMessageType, format string, a ...any) {
+func (p *cliMultiAgentChatImpl) handleOnProgress(routing *messaging.RoutingInfo, messageType multi.SystemMessageType, format string, a ...any) {
 	p.printSystemMessage(format, a...)
 }
 
 // handleOnMessage handles agent messages by displaying them with a formatted border.
-func (p *cliMultiAgentChatImpl) handleOnMessage(info *shared.AgentInfo, content string) {
+func (p *cliMultiAgentChatImpl) handleOnMessage(routing *messaging.RoutingInfo, content string) {
 	// Detect if this is a reasoning/planning message based on content
 	msgType := p.detectMessageType(content)
-	p.printWithBorderColored(info.String(), content, msgType)
+	p.printWithBorderColored(routing.String(), content, msgType)
 }
 
 // handleOnError handles agent errors by displaying them with a formatted border.
-func (p *cliMultiAgentChatImpl) handleOnError(info *shared.AgentInfo, err error) {
-	p.printWithBorderColored(info.String(), fmt.Sprintf("%+v", err), plugins.MessageTypeAgentError)
+func (p *cliMultiAgentChatImpl) handleOnError(routing *messaging.RoutingInfo, err error) {
+	p.printWithBorderColored(routing.String(), fmt.Sprintf("%+v", err), plugins.MessageTypeAgentError)
 }
 
 // handleOnToolCall handles tool calls made by agents by displaying them with a formatted border.
-func (p *cliMultiAgentChatImpl) handleOnToolCall(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
+func (p *cliMultiAgentChatImpl) handleOnToolCall(routing *messaging.RoutingInfo, functionDef model.FunctionDefinitionParam) {
 	toolCallInfo := fmt.Sprintf("Tool Call: %s", functionDef.Name)
 	if len(functionDef.Arguments) > 0 {
 		toolCallInfo += fmt.Sprintf("\nArguments: %s", string(functionDef.Arguments))
 	}
-	p.printWithBorderColored(info.String()+" [TOOL]", toolCallInfo, plugins.MessageTypeToolCall)
+	p.printWithBorderColored(routing.String()+" [TOOL]", toolCallInfo, plugins.MessageTypeToolCall)
 }
 
 // handleOnReasoningMessage handles reasoning messages from agents.
-func (p *cliMultiAgentChatImpl) handleOnReasoningMessage(info *shared.AgentInfo, reasoning string) {
-	p.printWithBorderColored(info.String(), reasoning, plugins.MessageTypeReasoningMessage)
+func (p *cliMultiAgentChatImpl) handleOnReasoningMessage(routing *messaging.RoutingInfo, reasoning string) {
+	p.printWithBorderColored(routing.String(), reasoning, plugins.MessageTypeReasoningMessage)
 }
 
 // Start runs the interactive chat loop, handling user input and agent communication.
@@ -452,13 +454,17 @@ func (p *cliMultiAgentChatImpl) sendMessageToAgent(ctx context.Context, input st
 			p.activeMutex.Unlock()
 		}()
 
+		routing := &messaging.RoutingInfo{
+			FromAgentID: shared.AgentIDHuman,
+			ToAgentID:   p.currentAgent.ID(),
+			SessionID:   p.SessionID,
+			Streaming:   utils.BoolPtr(p.currentAgent.IsStreaming()),
+		}
 		// Use SendMessageWithProcessing but with cancellable context
 		userMessage := model.NewUserMessage(input)
 		err := p.Processor.SendMessageWithProcessing(
 			agentCtx,
-			shared.AgentIDHuman,
-			p.currentAgent.ID(),
-			p.SessionID,
+			routing,
 			userMessage,
 		)
 

@@ -1,7 +1,9 @@
 package multi
 
 import (
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/shared"
+	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 )
@@ -19,19 +21,22 @@ const (
 )
 
 // OnError is a callback function type for handling errors from agents.
-type OnError func(info *shared.AgentInfo, err error)
+type OnError func(info *messaging.RoutingInfo, err error)
 
 // OnProgress is a callback function type for reporting progress updates.
-type OnProgress func(messageType SystemMessageType, format string, a ...any)
+type OnProgress func(info *messaging.RoutingInfo, messageType SystemMessageType, format string, a ...any)
 
 // OnMessage is a callback function type for handling messages from agents.
-type OnMessage func(info *shared.AgentInfo, content string)
+type OnMessage func(info *messaging.RoutingInfo, content string)
+
+// OnRawEvent is a callback function type for handling every event without filtering.
+type OnRawEvent func(info *messaging.RoutingInfo, event *event.Event)
 
 // OnReasoningMessage is a callback function type for handling reasoning/thinking messages from agents.
-type OnReasoningMessage func(info *shared.AgentInfo, content string)
+type OnReasoningMessage func(info *messaging.RoutingInfo, content string)
 
 // OnToolCall is a callback function type for handling tool calls made by agents.
-type OnToolCall func(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam)
+type OnToolCall func(info *messaging.RoutingInfo, functionDef model.FunctionDefinitionParam)
 
 // Options contains configuration settings for the ChatProcessor.
 type Options struct {
@@ -40,6 +45,7 @@ type Options struct {
 	sessionService     session.Service
 	onToolCall         OnToolCall
 	onMessage          OnMessage
+	onRawEvent         OnRawEvent
 	onReasoningMessage OnReasoningMessage
 	onProgress         OnProgress
 	onError            OnError
@@ -73,6 +79,13 @@ func WithAgents(agents ...shared.TheAgent) ChatProcessorOption {
 func WithOnError(onError OnError) ChatProcessorOption {
 	return func(opts *Options) {
 		opts.onError = onError
+	}
+}
+
+// WithOnProgress sets the progress callback function for the ChatProcessor.
+func WithOnRawEvent(onRawEvent OnRawEvent) ChatProcessorOption {
+	return func(opts *Options) {
+		opts.onRawEvent = onRawEvent
 	}
 }
 

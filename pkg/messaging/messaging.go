@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/tensorzero/util"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -16,15 +17,17 @@ import (
 // MessagingWrapper wraps any agent.Agent to add messaging capabilities
 type messagingWrapper struct {
 	shared.TheAgent
-	broker MessageBroker
+	broker    MessageBroker
+	sessionID uuid.UUID
 }
 
 // NewWrapper creates a new messaging wrapper with a predefined ID
-func NewWrapper(baseAgent shared.TheAgent, broker MessageBroker) shared.TheAgent {
+func NewWrapper(baseAgent shared.TheAgent, sessionID uuid.UUID, broker MessageBroker) shared.TheAgent {
 	// Create wrapper with predefined ID
 	wrapper := &messagingWrapper{
-		TheAgent: baseAgent,
-		broker:   broker,
+		TheAgent:  baseAgent,
+		sessionID: sessionID,
+		broker:    broker,
 	}
 
 	// Register with broker using the predefined ID
@@ -35,7 +38,14 @@ func NewWrapper(baseAgent shared.TheAgent, broker MessageBroker) shared.TheAgent
 
 // SendMessage sends a message to another agent by ID
 func (mw *messagingWrapper) SendMessage(to uuid.UUID, content string) error {
-	return mw.broker.SendMessage(mw.ID(), to, content)
+	routing := &RoutingInfo{
+		FromAgentID: mw.ID(),
+		ToAgentID:   to,
+		SessionID:   mw.sessionID,
+		Streaming:   util.BoolPtr(mw.IsStreaming()),
+	}
+
+	return mw.broker.SendMessage(routing, content)
 }
 
 // GetMessageChannel returns the message channel for this agent
@@ -117,7 +127,7 @@ func (mw *messagingWrapper) messageToEvent(msg *Message) *event.Event {
 	return &event.Event{
 		Response:     response,
 		InvocationID: uuid.New().String(),
-		Author:       msg.From.String(),
+		Author:       msg.FromAgentID.String(),
 		ID:           msg.ID,
 		Timestamp:    msg.Timestamp,
 	}

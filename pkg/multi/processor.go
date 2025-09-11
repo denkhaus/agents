@@ -8,9 +8,9 @@ import (
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 	"trpc.group/trpc-go/trpc-agent-go/runner"
@@ -22,16 +22,18 @@ import (
 // the lifecycle and communication between multiple agents.
 type chatProcessorImpl struct {
 	Options
-	agents map[uuid.UUID]*AgentRunner
-	broker messaging.MessageBroker
+	agents    map[uuid.UUID]*AgentRunner
+	broker    messaging.MessageBroker
+	sessionID uuid.UUID
 }
 
 // NewChatProcessor creates a new ChatProcessor instance with the given options.
 // It initializes the message broker, sets up default configuration, and registers all agents.
-func NewChatProcessor(opts ...ChatProcessorOption) ChatProcessor {
+func NewChatProcessor(sessionID uuid.UUID, opts ...ChatProcessorOption) ChatProcessor {
 	processor := &chatProcessorImpl{
-		agents: make(map[uuid.UUID]*AgentRunner),
-		broker: messaging.NewMessageBroker(),
+		agents:    make(map[uuid.UUID]*AgentRunner),
+		broker:    messaging.NewMessageBroker(),
+		sessionID: sessionID,
 		Options: Options{
 			sessionService:  inmemory.NewSessionService(),
 			applicationName: "chat-app-default",
@@ -44,28 +46,54 @@ func NewChatProcessor(opts ...ChatProcessorOption) ChatProcessor {
 
 	// Ensure all callbacks have default implementations to prevent nil panics.
 	if processor.onProgress == nil {
-		processor.onProgress = func(messageType SystemMessageType, format string, a ...any) {
-			logger.Log.Warn("onProgress callback not initialized", zap.String("app_name", processor.applicationName))
+		processor.onProgress = func(info *messaging.RoutingInfo, messageType SystemMessageType, format string, a ...any) {
+			logger.Log.Warn("onProgress callback not initialized",
+				zap.String("app_name", processor.applicationName),
+				zap.Any("from_agent_id", info.FromAgentID),
+				zap.Any("to_agent_id", info.ToAgentID),
+				zap.Any("session_id", info.SessionID),
+			)
 		}
 	}
 	if processor.onMessage == nil {
-		processor.onMessage = func(info *shared.AgentInfo, content string) {
-			logger.Log.Warn("onMessage callback not initialized", zap.String("app_name", processor.applicationName))
+		processor.onMessage = func(info *messaging.RoutingInfo, content string) {
+			logger.Log.Warn("onMessage callback not initialized",
+				zap.String("app_name", processor.applicationName),
+				zap.Any("from_agent_id", info.FromAgentID),
+				zap.Any("to_agent_id", info.ToAgentID),
+				zap.Any("session_id", info.SessionID),
+			)
 		}
 	}
 	if processor.onReasoningMessage == nil {
-		processor.onReasoningMessage = func(info *shared.AgentInfo, content string) {
-			logger.Log.Warn("onReasoningMessage callback not initialized", zap.String("app_name", processor.applicationName))
+		processor.onReasoningMessage = func(info *messaging.RoutingInfo, content string) {
+			logger.Log.Warn("onReasoningMessage callback not initialized",
+				zap.String("app_name", processor.applicationName),
+				zap.Any("from_agent_id", info.FromAgentID),
+				zap.Any("to_agent_id", info.ToAgentID),
+				zap.Any("session_id", info.SessionID),
+			)
 		}
 	}
 	if processor.onToolCall == nil {
-		processor.onToolCall = func(info *shared.AgentInfo, functionDef model.FunctionDefinitionParam) {
-			logger.Log.Warn("onToolCall callback not initialized", zap.String("app_name", processor.applicationName))
+		processor.onToolCall = func(info *messaging.RoutingInfo, functionDef model.FunctionDefinitionParam) {
+			logger.Log.Warn("onToolCall callback not initialized",
+				zap.String("app_name", processor.applicationName),
+				zap.Any("from_agent_id", info.FromAgentID),
+				zap.Any("to_agent_id", info.ToAgentID),
+				zap.Any("session_id", info.SessionID),
+			)
 		}
 	}
 	if processor.onError == nil {
-		processor.onError = func(info *shared.AgentInfo, err error) {
-			logger.Log.Warn("onError callback not initialized", zap.String("app_name", processor.applicationName), zap.Error(err))
+		processor.onError = func(info *messaging.RoutingInfo, err error) {
+			logger.Log.Warn("onError callback not initialized",
+				zap.String("app_name", processor.applicationName),
+				zap.Any("from_agent_id", info.FromAgentID),
+				zap.Any("to_agent_id", info.ToAgentID),
+				zap.Any("session_id", info.SessionID),
+				zap.Error(err),
+			)
 		}
 	}
 
@@ -89,7 +117,7 @@ func (p *chatProcessorImpl) initAgents() {
 			continue
 		}
 
-		wrapper := messaging.NewWrapper(agent, p.broker)
+		wrapper := messaging.NewWrapper(agent, p.sessionID, p.broker)
 
 		ar := &AgentRunner{
 			wrapper: wrapper,
@@ -205,7 +233,7 @@ func (p *chatProcessorImpl) GetAgentByName(name string) shared.TheAgent {
 	return nil
 }
 
-// startMessageProcessing starts a goroutine to process incoming messages for the given agent.
+// startMessageProcessing starts a goroutine to process incoming inter-agent messages for the given agent.
 // It listens on the agent's message channel and forwards messages to the agent's runner.
 func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 	go func() {
@@ -216,27 +244,37 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 			return
 		}
 
+		routingInfo := &messaging.RoutingInfo{
+			Streaming: utils.BoolPtr(agent.IsStreaming()),
+			ToAgentID: agent.ID(),
+		}
+
 		// Process incoming messages
 		for msg := range msgChan {
 			// Create a context for message processing
 			ctx := context.Background()
 
 			// Format the message content
-			messageContent := fmt.Sprintf("Message from %s: %s", p.GetAgentNameByID(msg.From), msg.Content)
+			messageContent := fmt.Sprintf("Message from agent: %s id: %s\n\n%s",
+				p.GetAgentNameByID(msg.FromAgentID), msg.FromAgentID, msg.Content,
+			)
+
+			routingInfo.SessionID = msg.SessionID
+			routingInfo.FromAgentID = msg.FromAgentID
 
 			// Send to the agent's runner
-			events, err := agent.Run(ctx, msg.From, msg.Session, model.NewUserMessage(messageContent))
+			events, err := agent.Run(ctx, routingInfo, model.NewUserMessage(messageContent))
 			if err != nil {
 				logger.Log.Error("failed to process message for agent", zap.String("agent", agent.Name()), zap.Error(err))
 				continue
 			}
 
 			// Process events from the agent's response
-			go func() {
+			go func(info *messaging.RoutingInfo) {
 				for event := range events {
-					p.processEvent(event)
+					p.processEvent(info, event)
 				}
-			}()
+			}(routingInfo)
 		}
 	}()
 }
@@ -245,63 +283,55 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 // The caller is responsible for processing the events from the returned channel.
 func (p *chatProcessorImpl) SendMessage(
 	ctx context.Context,
-	fromAgentID, toAgentID uuid.UUID,
-	sessionID uuid.UUID,
+	routingInfo *messaging.RoutingInfo,
 	message model.Message,
 ) (<-chan *event.Event, error) {
-	ag, exists := p.agents[toAgentID]
+	ag, exists := p.agents[routingInfo.ToAgentID]
 	if !exists {
-		return nil, fmt.Errorf("agent %q not found", toAgentID)
+		return nil, fmt.Errorf("agent %q not found", routingInfo.ToAgentID)
 	}
 
-	state := agent.WithRuntimeState(map[string]interface{}{
-		"from":      fromAgentID,
-		"to":        toAgentID,
-		"session":   sessionID,
-		"streaming": ag.IsStreaming(),
-	})
-
-	return ag.Run(ctx, fromAgentID, sessionID, message, state)
+	return ag.Run(ctx, routingInfo, message)
 }
 
 // SendMessageWithProcessing sends a message to an agent and automatically processes all resulting events.
 // This method handles event processing internally and provides progress updates through callbacks.
 func (p *chatProcessorImpl) SendMessageWithProcessing(
 	ctx context.Context,
-	fromAgentID, toAgentID uuid.UUID,
-	sessionID uuid.UUID,
+	routingInfo *messaging.RoutingInfo,
 	message model.Message,
 ) error {
-	agent, exists := p.agents[toAgentID]
+	agent, exists := p.agents[routingInfo.ToAgentID]
 	if !exists {
-		return fmt.Errorf("agent %q not found", toAgentID)
+		return fmt.Errorf("agent %q not found", routingInfo.ToAgentID)
 	}
 
-	p.onProgress(SystemMessageSending, "sending message to %s...", agent)
+	p.onProgress(routingInfo, SystemMessageSending, "sending message to %s...", agent)
 
-	events, err := agent.Run(ctx, fromAgentID, sessionID, message)
+	events, err := agent.Run(ctx, routingInfo, message)
 	if err != nil {
-		return fmt.Errorf("failed to send message from %s to %s: %w", fromAgentID, toAgentID, err)
+		return fmt.Errorf("failed to send message from %s to %s: %w", routingInfo.FromAgentID, routingInfo.ToAgentID, err)
 	}
 
-	p.onProgress(SystemMessageDelivered, "message delivered to %s - Processing...", agent)
+	p.onProgress(routingInfo, SystemMessageDelivered, "message delivered to %s - Processing...", agent)
 
 	// Process events
 	for event := range events {
-		p.processEvent(event)
+		p.processEvent(routingInfo, event)
 	}
 
-	p.onProgress(SystemMessageProcessed, "%s finished processing", agent)
+	p.onProgress(routingInfo, SystemMessageProcessed, "%s finished processing", agent)
 	return nil
 }
 
 // processEvent processes a single event from an agent's response.
 // It handles errors, assistant messages, and tool calls by invoking the appropriate callbacks.
-func (p *chatProcessorImpl) processEvent(event *event.Event) {
+func (p *chatProcessorImpl) processEvent(info *messaging.RoutingInfo, event *event.Event) {
 	if event.Error != nil {
-		info := p.GetAgentInfoByAuthor(event.Author)
 		p.onError(info, errors.New(event.Error.Message))
 	}
+
+	p.onRawEvent(info, event)
 
 	if event.Response != nil && len(event.Response.Choices) > 0 {
 		choice := event.Response.Choices[0]
@@ -309,21 +339,18 @@ func (p *chatProcessorImpl) processEvent(event *event.Event) {
 		// Show reasoning content first if present (future-proof detection)
 		if choice.Message.ReasoningContent != "" {
 			fmt.Printf("[DEBUG] ReasoningMessage detected for %s\n", event.Author)
-			info := p.GetAgentInfoByAuthor(event.Author)
 			p.onReasoningMessage(info, choice.Message.ReasoningContent)
 		}
 
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {
 			fmt.Printf("[DEBUG] NormalMessage detected for %s\n", event.Author)
-			info := p.GetAgentInfoByAuthor(event.Author)
 			p.onMessage(info, choice.Message.Content)
 		}
 
 		// Show tool calls (but suppress the generic "sending message" for cleaner output)
 		if len(choice.Message.ToolCalls) > 0 {
 			for _, toolCall := range choice.Message.ToolCalls {
-				info := p.GetAgentInfoByAuthor(event.Author)
 				p.onToolCall(info, toolCall.Function)
 			}
 		}

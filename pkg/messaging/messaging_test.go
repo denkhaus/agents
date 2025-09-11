@@ -103,8 +103,8 @@ func TestMessageBroker(t *testing.T) {
 	agent2 := &TestAgent{name: "Agent2", uuid: uuid.New()}
 
 	// Convert to shared.TheAgent using the shared.NewAgent function
-	wrapper1 := NewWrapper(shared.NewAgent(agent1, agent1.uuid, false), broker)
-	wrapper2 := NewWrapper(shared.NewAgent(agent2, agent2.uuid, false), broker)
+	wrapper1 := NewWrapper(shared.NewAgent(agent1, agent1.uuid, false, shared.AgentRoleCoder), broker)
+	wrapper2 := NewWrapper(shared.NewAgent(agent2, agent2.uuid, false, shared.AgentRoleDebugger), broker)
 
 	// Type assert to access messaging-specific methods
 	messagingWrapper1, ok := wrapper1.(*messagingWrapper)
@@ -144,7 +144,7 @@ func TestMessagingWrapper(t *testing.T) {
 	uuid1 := uuid.New()
 	testAgent := &TestAgent{name: "TestAgent", uuid: uuid1}
 	// Convert to shared.TheAgent using the shared.NewAgent function
-	wrapper := NewWrapper(shared.NewAgent(testAgent, uuid1, false), broker)
+	wrapper := NewWrapper(shared.NewAgent(testAgent, uuid1, false, shared.AgentRoleCoder), broker)
 
 	// Type assert to access messaging-specific methods
 	messagingWrapper, ok := wrapper.(*messagingWrapper)

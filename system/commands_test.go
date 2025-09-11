@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/denkhaus/agents/logger"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/denkhaus/agents/pkg/provider/config"
@@ -15,8 +18,89 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
+
+type Invocation struct {
+	ID         uuid.UUID
+	EventsByID map[uuid.UUID][]*schema.LLMEvent `json:"events"`
+}
+
+func (p *Invocation) AddEvent(event *schema.LLMEvent) {
+	if p.EventsByID == nil {
+		p.EventsByID = make(map[uuid.UUID][]*schema.LLMEvent)
+	}
+
+	if p.EventsByID[event.ID] == nil {
+		p.EventsByID[event.ID] = []*schema.LLMEvent{event}
+	} else {
+		p.EventsByID[event.ID] = append(p.EventsByID[event.ID], event)
+	}
+}
+
+func (p *Invocation) EventCount() int {
+	total := 0
+	for _, evts := range p.EventsByID {
+		total += len(evts)
+	}
+
+	return total
+}
+
+type EventCollector struct {
+	Invokations map[uuid.UUID]*Invocation
+}
+
+func (p *EventCollector) AddEvent(event *schema.LLMEvent) {
+	if p.Invokations == nil {
+		p.Invokations = make(map[uuid.UUID]*Invocation)
+	}
+
+	if inv, ok := p.Invokations[event.InvocationID]; ok {
+		inv.AddEvent(event)
+	} else {
+		inv := &Invocation{
+			ID: event.InvocationID,
+		}
+		p.Invokations[event.InvocationID] = inv
+		inv.AddEvent(event)
+	}
+}
+
+func (p *EventCollector) EventCount() int {
+	total := 0
+	for _, inv := range p.Invokations {
+		total += inv.EventCount()
+	}
+
+	return total
+}
+
+func (p *EventCollector) Persist() error {
+
+	// Serialize output struct to JSON and save to file
+	jsonData, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal output to JSON: %w", err)
+	}
+
+	// Create filename with timestamp
+	timestamp := time.Now().Format("20060102_150405")
+	filename := fmt.Sprintf("llm_events_%s.json", timestamp)
+
+	err = os.WriteFile(filename, jsonData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write JSON file: %w", err)
+	}
+
+	logger.Log.Info("LLM events saved to file",
+		zap.String("filename", filename),
+		zap.Int("event_count", p.EventCount()),
+	)
+
+	return nil
+}
 
 func Test_Processor(t *testing.T) {
 
@@ -29,7 +113,11 @@ func Test_Processor(t *testing.T) {
 
 	ctx := context.Background()
 	environmentName := "production"
-	sessionID := uuid.New()
+	routing := &messaging.RoutingInfo{
+		FromAgentID: shared.AgentIDHuman,
+		ToAgentID:   shared.AgentIDCoder,
+		SessionID:   uuid.New(),
+	}
 
 	envName := config.EnvironmentName(environmentName)
 
@@ -76,30 +164,64 @@ func Test_Processor(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	collector := EventCollector{}
+	collectEvents := func(info *messaging.RoutingInfo, ev *event.Event) {
+		llmEvent, err := schema.NewLLMEvent(info, ev)
+		if err != nil {
+			logger.Log.Error("failed to create llm event", zap.Error(err))
+			return
+		}
+
+		if llmEvent != nil {
+			collector.AddEvent(llmEvent)
+			logger.Log.Debug("Added event to collector",
+				zap.String("event_id", llmEvent.ID.String()),
+				zap.String("invocation_id", llmEvent.InvocationID.String()),
+				zap.Int("total_events", collector.EventCount()),
+			)
+			spew.Dump(llmEvent)
+		}
+	}
+
 	processor := multi.NewChatProcessor(
 		multi.WithSessionService(condenserService),
 		multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
+		multi.WithOnRawEvent(func(info *messaging.RoutingInfo, ev *event.Event) {
+			collectEvents(info, ev)
+		}),
 		multi.WithAgents(agents...),
 	)
 
 	evts, err := processor.SendMessage(
 		ctx,
-		shared.AgentIDHuman,
-		shared.AgentIDCoder,
-		sessionID,
-		model.NewUserMessage("hi, what's your name?"),
+		routing,
+		model.NewUserMessage("Get the current time by tool and send it to the coder agent."),
 	)
 
 	if err != nil {
 		assert.NoError(t, err)
 	}
 
-	for ev := range evts {
-		llmEvent, err := schema.NewLLMEvent(ev, false)
-		if err != nil {
-			logger.Log.Error("failed to create llm event", zap.Error(err))
-		}
+	timer := time.NewTimer(time.Minute * 5)
+	defer timer.Stop()
 
-		spew.Dump(llmEvent)
+	for {
+		select {
+		case <-timer.C:
+			logger.Log.Info("Timer expired, persisting events")
+			err := collector.Persist()
+			assert.NoError(t, err)
+			return
+		case ev, ok := <-evts:
+			if !ok {
+				// Channel closed, persist remaining events
+				logger.Log.Info("Event channel closed, persisting events")
+				err := collector.Persist()
+				assert.NoError(t, err)
+				return
+			}
+
+			collectEvents(routing, ev)
+		}
 	}
 }

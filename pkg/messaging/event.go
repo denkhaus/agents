@@ -1,11 +1,13 @@
-package schema
+package messaging
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
@@ -31,18 +33,81 @@ func (et EventType) Validate() bool {
 	}
 }
 
-func NewLLMEvent(base *event.Event, isStreaming bool) (*LLMEvent, error) {
+// NewInterAgentEvent creates a new LLMEvent for inter-agent communication
+func NewInterAgentEvent(
+	routing *RoutingInfo,
+	message string,
+	eventType InterAgentEventType,
+) *LLMEvent {
+
+	dt := time.Now()
+	return &LLMEvent{
+		Routing:          routing,
+		ID:               uuid.New(),
+		InvocationID:     uuid.New(),
+		Author:           routing.FromAgentID.String(),
+		CreatedTimestamp: dt.Unix(),
+		Created:          dt,
+		Type:             EventTypeInterAgent,
+		Done:             true,
+		Partial:          false,
+		Role:             model.RoleAssistant,
+		InterAgent:       &eventType,
+		Parts: []Part{
+			&TextPart{Content: message},
+		},
+	}
+}
+
+//TODO: CHeck if the underlying event is an error event
+// func NewErrorEvent(invocationID, author, errorType, errorMessage string) *Event {
+// 	return &Event{
+// 		Response: &model.Response{
+// 			Object: model.ObjectTypeError,
+// 			Done:   true,
+// 			Error: &model.ResponseError{
+// 				Type:    errorType,
+// 				Message: errorMessage,
+// 			},
+// 		},
+// 		ID:           uuid.New().String(),
+// 		Timestamp:    time.Now(),
+// 		InvocationID: invocationID,
+// 		Author:       author,
+// 	}
+// }
+
+func NewLLMEvent(info *RoutingInfo, base *event.Event) (*LLMEvent, error) {
 	ev := &LLMEvent{
 		base: base,
 	}
 
-	return ev.extract(isStreaming)
+	if info == nil {
+		return nil, errors.New("no routing info available")
+	}
+
+	if info.Streaming == nil {
+		return nil, errors.New("no streaming info available")
+	}
+
+	return ev.extract(info, *info.Streaming)
 }
 
-func (p *LLMEvent) extract(isStreaming bool) (*LLMEvent, error) {
-	p.ID = p.eventID()
-	p.InvocationID = p.base.InvocationID
-	p.Timestamp = p.base.Timestamp.Unix()
+func (p *LLMEvent) extract(info *RoutingInfo, isStreaming bool) (*LLMEvent, error) {
+
+	var err error
+
+	p.ID, err = p.eventID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse event id: %w", err)
+	}
+
+	invocationUUIDString := strings.TrimPrefix(p.base.InvocationID, "invocation-")
+	p.InvocationID, err = uuid.Parse(invocationUUIDString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse invocation id: %w", err)
+	}
+
 	p.Author = p.base.Author
 
 	p.Role = p.determineEventRole()
@@ -52,7 +117,7 @@ func (p *LLMEvent) extract(isStreaming bool) (*LLMEvent, error) {
 	parts, isToolEvent := p.filterEventParts(parts, isStreaming)
 	// Skip event if no meaningful parts, unless it's a tool-related event
 	if len(parts) == 0 && !isToolEvent {
-		return nil, errors.New("empty event")
+		return nil, nil
 	}
 
 	p.Parts = parts
@@ -162,7 +227,8 @@ func (p *LLMEvent) addResponseMetadata() {
 		p.Type = EventType(p.base.Response.Object)
 	}
 	if p.base.Response.Created != 0 {
-		p.Created = p.base.Response.Created
+		p.Created = time.Unix(p.base.Response.Created, 0)
+		p.CreatedTimestamp = p.base.Response.Created
 	}
 	if p.base.Response.Model != "" {
 		p.Model = p.base.Response.Model
@@ -172,11 +238,11 @@ func (p *LLMEvent) addResponseMetadata() {
 // eventID returns the canonical identifier for an event.
 // If the underlying model.Response already contains a non-empty ID we
 // prefer it; otherwise we fall back to the envelope‐level event ID.
-func (p *LLMEvent) eventID() string {
+func (p *LLMEvent) eventID() (uuid.UUID, error) {
 	if p.base.Response != nil && p.base.Response.ID != "" {
-		return p.base.Response.ID
+		return uuid.Parse(p.base.Response.ID)
 	}
-	return p.base.ID
+	return uuid.Parse(p.base.ID)
 }
 
 // isToolResponse reports whether the supplied event represents a tool
@@ -202,6 +268,7 @@ func (p *LLMEvent) buildFunctionCallPart(tc model.ToolCall) Part {
 	}
 
 	return &FunctionCallPart{
+		Type: EventPartTypeFunctionCall,
 		Name: tc.Function.Name,
 		Args: args,
 		ID:   tc.ID,
@@ -214,6 +281,7 @@ func (p *LLMEvent) buildFunctionCallPart(tc model.ToolCall) Part {
 // from the upstream payload, so we intentionally leave it blank.
 func (p *LLMEvent) buildFunctionResponsePart(respObj interface{}, id string, name string) Part {
 	return &FunctionResponsePart{
+		Type: EventPartTypeFunctionResponse,
 		Name: name,
 		Args: respObj,
 		ID:   id,
@@ -236,7 +304,10 @@ func (p *LLMEvent) buildEventParts() []Part {
 			// information (both as plain text and as function_response). Keeping
 			// only the structured function_response part provides a cleaner view.
 			if p.base.Response.Object != model.ObjectTypeToolResponse {
-				parts = append(parts, &TextPart{Content: choice.Message.Content})
+				parts = append(parts, &TextPart{
+					Type:    EventPartTypeText,
+					Content: choice.Message.Content,
+				})
 			}
 		}
 
@@ -247,7 +318,10 @@ func (p *LLMEvent) buildEventParts() []Part {
 
 		// Streaming delta text.
 		if choice.Delta.Content != "" {
-			parts = append(parts, &TextPart{Content: choice.Delta.Content})
+			parts = append(parts, &TextPart{
+				Type:    EventPartTypeTextFragment,
+				Content: choice.Delta.Content,
+			})
 		}
 		// Tool calls in streaming delta.
 		for _, tc := range choice.Delta.ToolCalls {
@@ -265,7 +339,9 @@ func (p *LLMEvent) buildEventParts() []Part {
 				}
 			}
 
-			parts = append(parts, p.buildFunctionResponsePart(respObj, choice.Message.ToolID, choice.Message.ToolName))
+			parts = append(parts, p.buildFunctionResponsePart(
+				respObj, choice.Message.ToolID, choice.Message.ToolName,
+			))
 		}
 	}
 

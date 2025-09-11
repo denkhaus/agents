@@ -3,15 +3,16 @@ package schema
 import (
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/session"
 )
 
 // NewADKSession converts an internal session object to the ADKSession
 func NewADKSession(s *session.Session) (*ADKSession, error) {
-	adkEvents := make([]*LLMEvent, 0, len(s.Events))
+	adkEvents := make([]*messaging.LLMEvent, 0, len(s.Events))
 	for _, e := range s.Events {
-		ev, err := NewLLMEvent(&e, false)
+		ev, err := messaging.NewLLMEvent(routing, &e)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create LLMEvent: %w", err)
 		}

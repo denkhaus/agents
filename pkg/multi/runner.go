@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
@@ -47,17 +48,23 @@ func (p *AgentRunner) String() string {
 // and runOpts provides additional configuration options.
 func (p *AgentRunner) Run(
 	ctx context.Context,
-	fromAgentID uuid.UUID,
-	sessionID uuid.UUID,
+	routingInfo *messaging.RoutingInfo,
 	userMessage model.Message,
 	runOpts ...agent.RunOption,
 ) (<-chan *event.Event, error) {
 
+	state := agent.WithRuntimeState(map[string]interface{}{
+		"from_agent_id": routingInfo.FromAgentID,
+		"to_agent_id":   routingInfo.ToAgentID,
+		"session_id":    routingInfo.SessionID,
+		"streaming":     p.IsStreaming(),
+	})
+
 	return p.runner.Run(
 		ctx,
-		fromAgentID.String(),
-		sessionID.String(),
+		routingInfo.FromAgentID.String(),
+		routingInfo.SessionID.String(),
 		userMessage,
-		runOpts...,
+		state,
 	)
 }

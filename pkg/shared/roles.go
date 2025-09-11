@@ -16,11 +16,15 @@ func (p AgentRole) Validate() error {
 		AgentRoleDebugger,
 		AgentRoleProjectManager,
 		AgentRoleResearcher,
+		AgentRoleReviewer,
 		AgentRoleHuman:
 		return nil
 	default:
-		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s, %s, %s",
-			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger, AgentRoleProjectManager, AgentRoleHuman, AgentRoleResearcher)
+		return fmt.Errorf("invalid agent role: %s. Valid roles are: %s, %s, %s, %s, %s, %s, %s",
+			p, AgentRoleSupervisor, AgentRoleCoder, AgentRoleDebugger,
+			AgentRoleProjectManager, AgentRoleHuman, AgentRoleResearcher,
+			AgentRoleReviewer,
+		)
 	}
 }
 
@@ -31,4 +35,5 @@ const (
 	AgentRoleProjectManager AgentRole = "project_manager" // Changed hyphen to underscore
 	AgentRoleHuman          AgentRole = "human"
 	AgentRoleResearcher     AgentRole = "researcher"
+	AgentRoleReviewer       AgentRole = "reviewer"
 )

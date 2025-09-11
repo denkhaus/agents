@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -32,7 +34,7 @@ func newMockSSEChatProcessor() *mockSSEChatProcessor {
 
 func (m *mockSSEChatProcessor) SendMessage(
 	ctx context.Context,
-	fromAgentID, toAgentID, sessionID uuid.UUID,
+	routing *messaging.RoutingInfo,
 	message model.Message,
 ) (<-chan *event.Event, error) {
 	events := make(chan *event.Event, 2)
@@ -121,17 +123,20 @@ func TestServer_handleRunSSE(t *testing.T) {
 
 	// Create a test request for SSE streaming
 	requestBody := schema.AgentRunRequest{
-		AppName:     "test-app",
-		FromAgentID: fromAgentID,
-		ToAgentID:   toAgentID,
-		SessionID:   sessionID,
+		AppName: "test-app",
+		RoutingInfo: messaging.RoutingInfo{
+			FromAgentID: fromAgentID,
+			ToAgentID:   toAgentID,
+			SessionID:   sessionID,
+			Streaming:   utils.BoolPtr(true),
+		},
+
 		Content: schema.Content{
 			Role: "user",
 			Parts: []schema.PartIncoming{
 				{Text: "Hello, SSE streaming!"},
 			},
 		},
-		Streaming: true,
 	}
 
 	bodyBytes, _ := json.Marshal(requestBody)
@@ -178,17 +183,20 @@ func TestServer_handleRunSSE_NonStreaming(t *testing.T) {
 
 	// Create a test request for non-streaming
 	requestBody := schema.AgentRunRequest{
-		AppName:     "test-app",
-		FromAgentID: fromAgentID,
-		ToAgentID:   toAgentID,
-		SessionID:   sessionID,
+		AppName: "test-app",
+		RoutingInfo: messaging.RoutingInfo{
+			FromAgentID: fromAgentID,
+			ToAgentID:   toAgentID,
+			SessionID:   sessionID,
+			Streaming:   utils.BoolPtr(false),
+		},
+
 		Content: schema.Content{
 			Role: "user",
 			Parts: []schema.PartIncoming{
 				{Text: "Hello, non-streaming!"},
 			},
 		},
-		Streaming: false,
 	}
 
 	bodyBytes, _ := json.Marshal(requestBody)
@@ -335,8 +343,8 @@ func TestSSEConnectionPool_BroadcastToAgent(t *testing.T) {
 
 	// Create a test event
 	event := &schema.LLMEvent{
-		ID:           uuid.New().String(),
-		InvocationID: uuid.New().String(),
+		ID:           uuid.New(),
+		InvocationID: uuid.New(),
 		Author:       "test-agent",
 		Type:         schema.EventTypeAssistant,
 		Done:         true,
@@ -380,17 +388,19 @@ func TestServer_RegisterSSEConnectionForRequest(t *testing.T) {
 	agentID := uuid.New()
 
 	request := schema.AgentRunRequest{
-		AppName:     "test-app",
-		FromAgentID: uuid.New(),
-		ToAgentID:   agentID,
-		SessionID:   sessionID,
+		AppName: "test-app",
+		RoutingInfo: messaging.RoutingInfo{
+			FromAgentID: uuid.New(),
+			ToAgentID:   agentID,
+			SessionID:   sessionID,
+			Streaming:   utils.BoolPtr(true),
+		},
 		Content: schema.Content{
 			Role: "user",
 			Parts: []schema.PartIncoming{
 				{Text: "Test message"},
 			},
 		},
-		Streaming: true,
 	}
 
 	// Create a mock HTTP response writer

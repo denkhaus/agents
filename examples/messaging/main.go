@@ -140,10 +140,10 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 			ctx := context.Background()
 
 			// Format the message content
-			messageContent := fmt.Sprintf("Message from %s: %s", cs.getAgentNameByID(msg.From), msg.Content)
+			messageContent := fmt.Sprintf("Message from %s: %s", cs.getAgentNameByID(msg.FromAgent), msg.Content)
 
 			// Send to the agent's runner
-			events, err := agent.Runner.Run(ctx, msg.From.String(), fmt.Sprintf("msg-%s", msg.ID), model.NewUserMessage(messageContent))
+			events, err := agent.Runner.Run(ctx, msg.FromAgent.String(), fmt.Sprintf("msg-%s", msg.ID), model.NewUserMessage(messageContent))
 			if err != nil {
 				logger.Log.Error("failed to process message for agent", zap.String("agent", agent.Name), zap.Error(err))
 				continue
@@ -160,7 +160,7 @@ func (cs *ChatSystem) startMessageProcessing(agent *AgentRunner) {
 }
 
 // CreateAgent creates an AI agent and adds it to the system
-func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction string, agentID uuid.UUID) error {
+func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction string, agentID uuid.UUID, role shared.AgentRole) error {
 	// Get the pre-registered agent entry
 	agentEntry, exists := cs.agents[strings.ToLower(agentName)]
 	if !exists {
@@ -182,7 +182,7 @@ func (cs *ChatSystem) CreateAgent(agentName, agentDescription, instruction strin
 
 	// Wrap with messaging using predefined ID
 	wrapper := messaging.NewWrapper(
-		shared.NewAgent(baseAgent, agentID, false),
+		shared.NewAgent(baseAgent, agentID, false, role),
 		cs.broker,
 	)
 
@@ -265,19 +265,21 @@ func main() {
 	agentMetadata := []struct {
 		name, description, instruction string
 		agentID                        uuid.UUID
+		role                           shared.AgentRole
 	}{
 		{
 			"Coder",
 			"Expert software engineer",
 			"You are a skilled programmer who writes clean, efficient code. Help with coding tasks and collaborate with other agents when needed.",
 			uuid.New(),
+			shared.AgentRoleCoder,
 		},
 		{
 			"Reviewer",
 			"Expert code reviewer",
 			"You are an experienced code reviewer. Analyze code for quality, security, and best practices. Collaborate with other agents when needed.",
 			uuid.New(),
-		},
+			shared.AgentRoleReviewer},
 	}
 
 	// Pre-create agent entries with IDs
@@ -295,6 +297,7 @@ func main() {
 			meta.description,
 			meta.instruction,
 			meta.agentID,
+			meta.role,
 		)
 		if err != nil {
 			log.Fatal("Failed to create", meta.name+":", err)

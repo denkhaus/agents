@@ -21,11 +21,11 @@ type ChatProcessor interface {
 
 	// SendMessage sends a message from one agent to another and returns a channel of events.
 	// The caller is responsible for processing the events from the returned channel.
-	SendMessage(ctx context.Context, fromAgentID, toAgentID, sessionID uuid.UUID, message model.Message) (<-chan *event.Event, error)
+	SendMessage(ctx context.Context, routingInfo *messaging.RoutingInfo, message model.Message) (<-chan *event.Event, error)
 
 	// SendMessageWithProcessing sends a message and automatically processes all resulting events.
 	// This is a convenience method that handles event processing internally.
-	SendMessageWithProcessing(ctx context.Context, fromAgentID, toAgentID, sessionID uuid.UUID, message model.Message) error
+	SendMessageWithProcessing(ctx context.Context, routingInfo *messaging.RoutingInfo, message model.Message) error
 
 	// Session functions to access underlying session data
 	CreateSession(ctx context.Context, key session.Key, state session.StateMap, options ...session.Option) (*session.Session, error)
@@ -55,8 +55,11 @@ type ChatProcessor interface {
 	// Returns nil if no agent is found with the given name.
 	GetAgentByName(name string) shared.TheAgent
 
-	// SetOnMessageCallback sets the message callback function for the ChatProcessor.
-	SetOnMessageCallback(onMessage OnMessage)
-	// SetOnToolCallCallback sets the tool call callback function for the ChatProcessor.
-	SetOnToolCallCallback(onToolCall OnToolCall)
+	// // SetOnMessageCallback sets the message callback function for the ChatProcessor.
+	// SetOnMessageCallback(onMessage OnMessage)
+	// // SetOnToolCallCallback sets the tool call callback function for the ChatProcessor.
+	// SetOnToolCallCallback(onToolCall OnToolCall)
+
+	// SetOnRawEventCallback sets the on raw event callback function for the ChatProcessor.
+	SetOnRawEventCallback(onRawEvent OnRawEvent)
 }

@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	//itelemetry "trpc.group/trpc-go/trpc-agent-go/internal/telemetry"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 )
@@ -150,8 +151,13 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	if req.Streaming == nil {
+		http.Error(w, "streaming field is undefined", http.StatusBadRequest)
+		return
+	}
+
 	// If the request is for streaming, delegate to the SSE handler.
-	if req.Streaming {
+	if *req.Streaming {
 		// As we can't directly pass the decoded body, the SSE handler will re-decode.
 		// A more optimized approach might involve passing the decoded struct via context.
 		s.handleRunSSE(w, r)
@@ -160,9 +166,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	out, err := s.chatProcessor.SendMessage(
 		r.Context(),
-		req.FromAgentID,
-		req.ToAgentID,
-		req.SessionID,
+		&req.RoutingInfo,
 		req.Content.ToMessage(),
 	)
 
@@ -173,16 +177,17 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	// For non-streaming, we might want to collect all events or just return the final one.
 	// ADK web might expect a list of events. Let's send all of them.
-	var events []*schema.LLMEvent
+	var events []*messaging.LLMEvent
 	for e := range out {
 		if e.Response != nil && e.Response.IsPartial {
 			continue // skip streaming chunks in non-streaming endpoint
 		}
-		if ev, err := schema.NewLLMEvent(e, false); err == nil && ev != nil {
+		ev, err := messaging.NewLLMEvent(&req.RoutingInfo, e)
+		if err != nil {
+			s.logger.Error("Error creating LLMEvent", zap.Error(err))
+		} else if ev != nil {
 			events = append(events, ev)
 		}
-		// Note: Silently ignoring events that fail to convert for now
-		// In a production system, you might want to log these errors
 	}
 
 	s.writeJSON(w, events)
@@ -217,9 +222,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 
 	out, err := s.chatProcessor.SendMessage(
 		r.Context(),
-		req.FromAgentID,
-		req.ToAgentID,
-		req.SessionID,
+		&req.RoutingInfo,
 		req.Content.ToMessage(),
 	)
 
@@ -228,9 +231,14 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Streaming {
+	if req.Streaming == nil {
+		http.Error(w, "streaming field is undefined", http.StatusBadRequest)
+		return
+	}
+
+	if *req.Streaming {
 		for e := range out {
-			sseEvent, err := schema.NewLLMEvent(e, req.Streaming)
+			sseEvent, err := messaging.NewLLMEvent(&req.RoutingInfo, e)
 			if err != nil || sseEvent == nil {
 				continue
 			}
@@ -245,7 +253,7 @@ func (s *Server) handleRunSSE(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Non-streaming mode: wait for the first complete event and send only that.
 		for e := range out {
-			sseEvent, err := schema.NewLLMEvent(e, req.Streaming)
+			sseEvent, err := messaging.NewLLMEvent(&req.RoutingInfo, e)
 			if err != nil {
 				s.logger.Error("Error creating LLMEvent", zap.Error(err))
 				continue

@@ -1,14 +1,26 @@
 {
-  "name": "development-project",
+  "name": "scientific-misinformation-response",
   "version": "0.1.0",
-  "description": "Development project - structure to be determined based on requirements",
-  "main": "index.js",
+  "description": "Web application for responding to scientific misinformation with evidence-based content",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "lint": "eslint src/",
+    "build": "echo \"Build process to be implemented\""
   },
-  "keywords": ["development", "project"],
-  "author": "Development Team",
+  "keywords": ["science", "misinformation", "education", "api"],
+  "author": "Scientific Response Team",
   "license": "MIT",
-  "devDependencies": {},
-  "dependencies": {}
+  "devDependencies": {
+    "nodemon": "^3.0.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0"
+  }
 }

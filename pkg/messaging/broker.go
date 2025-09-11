@@ -39,37 +39,36 @@ func (mb *messageBrokerImpl) UnregisterAgent(agentID uuid.UUID) {
 }
 
 // SendMessage sends a message from one agent to another
-func (mb *messageBrokerImpl) SendMessage(from, to uuid.UUID, content string) error {
+func (mb *messageBrokerImpl) SendMessage(routing *RoutingInfo, content string) error {
 	mb.mu.RLock()
 	interceptor := mb.interceptor
 	mb.mu.RUnlock()
 
 	// Call interceptor if set (for displaying messages in chat)
 	if interceptor != nil {
-		interceptor(from, to, content)
+		interceptor(routing, content)
 	}
 
 	mb.mu.RLock()
 	defer mb.mu.RUnlock()
 
 	// Check if recipient exists
-	if !mb.agents.Exists(to) {
-		return fmt.Errorf("agent %s not found", to)
+	if !mb.agents.Exists(routing.ToAgentID) {
+		return fmt.Errorf("agent %s not found", routing.ToAgentID)
 	}
 
 	// Check if channel exists
-	ch, exists := mb.channels.Get(to)
+	ch, exists := mb.channels.Get(routing.ToAgentID)
 	if !exists {
-		return fmt.Errorf("channel for agent %s not found", to)
+		return fmt.Errorf("channel for agent %s not found", routing.ToAgentID)
 	}
 
 	// Create and send message
 	message := &Message{
-		ID:        uuid.New().String(),
-		From:      from,
-		To:        to,
-		Content:   content,
-		Timestamp: time.Now(),
+		ID:          uuid.New().String(),
+		RoutingInfo: *routing,
+		Content:     content,
+		Timestamp:   time.Now(),
 	}
 
 	// Non-blocking send with timeout
@@ -77,7 +76,7 @@ func (mb *messageBrokerImpl) SendMessage(from, to uuid.UUID, content string) err
 	case ch <- message:
 		return nil
 	case <-time.After(5 * time.Second):
-		return fmt.Errorf("timeout sending message to %s", to)
+		return fmt.Errorf("timeout sending message to %s", routing.ToAgentID)
 	}
 }
 

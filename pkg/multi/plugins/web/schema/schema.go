@@ -13,109 +13,20 @@
 package schema
 
 import (
-	"time"
-
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/event"
-	"trpc.group/trpc-go/trpc-agent-go/model"
 )
-
-type Part interface {
-}
-
-type TextPart struct {
-	Content string `json:"content,omitempty"`
-}
-
-type FunctionCallPart struct {
-	Name string      `json:"name,omitempty"`
-	Args interface{} `json:"args,omitempty"`
-	ID   string      `json:"id,omitempty"`
-}
-
-type FunctionResponsePart struct {
-	Name     string      `json:"name,omitempty"`
-	Args     interface{} `json:"args,omitempty"`
-	ID       string      `json:"id,omitempty"`
-	Response interface{} `json:"response,omitempty"`
-}
-
-type InterAgentPart struct {
-	FromAgentID string `json:"from_agent_id,omitempty"`
-	ToAgentID   string `json:"to_agent_id,omitempty"`
-	Message     string `json:"message,omitempty"`
-	Direction   string `json:"direction,omitempty"`
-}
-
-type UsageMetaData struct {
-	PromptTokenCount     int `json:"prompt_token_count,omitempty"`
-	CandidatesTokenCount int `json:"candidates_token_count,omitempty"`
-	TotalTokenCount      int `json:"total_token_count,omitempty"`
-}
-
-type InterAgentEventType string
-
-const (
-	InterAgentCommunication InterAgentEventType = "communication"
-	InterAgentReceived      InterAgentEventType = "received"
-)
-
-type InterAgentData struct {
-	FromAgent string              `json:"from_agent"`
-	ToAgent   string              `json:"to_agent"`
-	Type      InterAgentEventType `json:"type"`
-}
-
-// NewInterAgentEvent creates a new LLMEvent for inter-agent communication
-func NewInterAgentEvent(fromAgentID, toAgentID, message string, eventType InterAgentEventType) *LLMEvent {
-	return &LLMEvent{
-		ID:           uuid.New().String(),
-		InvocationID: uuid.New().String(),
-		Author:       fromAgentID,
-		Timestamp:    time.Now().Unix(),
-		Type:         EventTypeInterAgent,
-		Done:         true,
-		Partial:      false,
-		Role:         model.RoleAssistant,
-		Parts: []Part{
-			&TextPart{Content: message},
-		},
-		InterAgent: &InterAgentData{
-			FromAgent: fromAgentID,
-			ToAgent:   toAgentID,
-			Type:      eventType,
-		},
-	}
-}
-
-
-type LLMEvent struct {
-	base         *event.Event     `json:"-"`
-	Usage        *UsageMetaData   `json:"usage,omitempty"`
-	Done         bool             `json:"done,omitempty"`
-	Partial      bool             `json:"partial,omitempty"`
-	Type         EventType        `json:"type,omitempty"`
-	Created      int64            `json:"created,omitempty"`
-	Model        string           `json:"model,omitempty"`
-	Role         model.Role       `json:"role,omitempty"`
-	Parts        []Part           `json:"parts,omitempty"`
-	Timestamp    int64            `json:"timestamp,omitempty"`
-	ID           string           `json:"id,omitempty"`
-	InvocationID string           `json:"invocation_id,omitempty"`
-	Author       string           `json:"author,omitempty"`
-	InterAgent   *InterAgentData  `json:"inter_agent,omitempty"`
-}
 
 // ADKSession mirrors the structure expected by ADK Web UI for a session.
 // Field names follow the camel-case convention required by the UI.
 type ADKSession struct {
-	AppName        string            `json:"appName"`
-	AgentID        uuid.UUID         `json:"agentId"`
-	ID             uuid.UUID         `json:"id"`
-	CreateTime     int64             `json:"createTime"`
-	LastUpdateTime int64             `json:"lastUpdateTime"`
-	State          map[string][]byte `json:"state"`
-	Events         []*LLMEvent       `json:"events"`
+	AppName        string                `json:"appName"`
+	AgentID        uuid.UUID             `json:"agentId"`
+	ID             uuid.UUID             `json:"id"`
+	CreateTime     int64                 `json:"createTime"`
+	LastUpdateTime int64                 `json:"lastUpdateTime"`
+	State          map[string][]byte     `json:"state"`
+	Events         []*messaging.LLMEvent `json:"events"`
 }
 
 // Span represents a single span in the trace.
@@ -162,12 +73,9 @@ type FunctionResponse struct {
 }
 
 type AgentRunRequest struct {
-	AppName     string    `json:"appName"`
-	FromAgentID uuid.UUID `json:"fromAgentId"`
-	ToAgentID   uuid.UUID `json:"toAgentId"`
-	SessionID   uuid.UUID `json:"sessionId"`
-	Content     Content   `json:"content"`
-	Streaming   bool      `json:"streaming"`
+	messaging.RoutingInfo `json:",inline"`
+	AppName               string  `json:"appName"`
+	Content               Content `json:"content"`
 }
 
 // TraceLLMRequest represents a trace request for LLM operations.
