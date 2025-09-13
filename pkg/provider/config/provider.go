@@ -353,7 +353,7 @@ func (p *simplifiedCueConfigProvider) GetAgentsInEnvironment(environment Environ
 	}
 
 	if includeHuman {
-		agentsInfo = append(agentsInfo, &shared.AgentInfoHuman)
+		agentsInfo = append(agentsInfo, shared.AgentInfoHuman)
 	}
 
 	return agentsInfo, nil
@@ -374,7 +374,7 @@ func (p *simplifiedCueConfigProvider) GetAgentInfoByID(agentID uuid.UUID) (*shar
 		}
 
 		for _, agentInfo := range agents {
-			if agentInfo.ID() == agentID {
+			if agentInfo.ID == agentID {
 				return agentInfo, nil
 			}
 		}

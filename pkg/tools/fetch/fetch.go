@@ -24,9 +24,9 @@ const (
 
 // ToolConfig holds configuration for the fetch tool
 type ToolConfig struct {
-	DefaultTimeout int               `json:"default_timeout,omitempty"`
-	DefaultHeaders map[string]string `json:"default_headers,omitempty"`
-	MaxRetries     int               `json:"max_retries,omitempty"`
+	DefaultTimeout int               `json:"default_timeout" mapstructure:"default_timeout"`
+	DefaultHeaders map[string]string `json:"default_headers" mapstructure:"default_headers"`
+	MaxRetries     int               `json:"max_retries" mapstructure:"max_retries"`
 }
 
 // fetchArgs holds the input for the fetch tool.

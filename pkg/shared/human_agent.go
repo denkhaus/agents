@@ -26,12 +26,16 @@ func (d *humanAgentImpl) GetInfo() *AgentInfo {
 	return &d.AgentInfo
 }
 
-func (d *humanAgentImpl) IsStreaming() bool {
+func (d *humanAgentImpl) GetIsStreaming() bool {
 	return false
 }
 
 func (d *humanAgentImpl) GetRole() AgentRole {
 	return AgentRoleHuman
+}
+
+func (d *humanAgentImpl) GetID() uuid.UUID {
+	return d.ID
 }
 
 func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) (<-chan *event.Event, error) {
@@ -56,7 +60,7 @@ func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) 
 			event := &event.Event{
 				Response:     response,
 				InvocationID: uuid.New().String(),
-				Author:       d.ID().String(),
+				Author:       d.ID.String(),
 				ID:           uuid.New().String(),
 				Timestamp:    time.Now(),
 			}
@@ -77,7 +81,12 @@ func (d *humanAgentImpl) Run(ctx context.Context, invocation *agent.Invocation) 
 }
 
 func (d *humanAgentImpl) Info() agent.Info {
-	return d.AgentInfo.Info
+	return agent.Info{
+		Name:         d.Name,
+		Description:  d.Description,
+		InputSchema:  d.InputSchema,
+		OutputSchema: d.OutputSchema,
+	}
 }
 
 func (d *humanAgentImpl) Tools() []tool.Tool {

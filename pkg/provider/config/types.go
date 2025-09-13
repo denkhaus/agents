@@ -5,6 +5,7 @@ import (
 
 	"github.com/denkhaus/agents/pkg/session/condenser"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
@@ -27,13 +28,13 @@ type AgentConfig struct {
 func (p *AgentConfig) ToAgentInfo() *shared.AgentInfo {
 	agent := p.Setting.Agent
 
-	agentInfo := shared.NewAgentInfo(
-		p.AgentID,
-		p.Role,
-		agent.StreamingEnabled,
-		p.Name,
-		p.Description,
-	)
+	agentInfo := shared.AgentInfo{
+		Role:        p.Role,
+		Name:        p.Name,
+		ID:          p.AgentID,
+		Description: p.Description,
+		IsStreaming: utils.BoolPtr(agent.StreamingEnabled),
+	}
 
 	agentInfo.InputSchema = agent.InputSchema
 	agentInfo.OutputSchema = agent.OutputSchema

@@ -28,9 +28,9 @@ func (pts *projectTaskToolSet) listAvailableAgents(ctx context.Context, args lis
 	agents := make([]AgentInfo, len(pts.availableAgents))
 	for i, agent := range pts.availableAgents {
 		agents[i] = AgentInfo{
-			ID:          agent.ID().String(),
+			ID:          agent.ID.String(),
 			Name:        agent.Name,
-			Role:        string(agent.Role()),
+			Role:        string(agent.Role),
 			Description: agent.Description,
 		}
 	}
@@ -69,7 +69,7 @@ func (pts *projectTaskToolSet) assignTaskToAgent(ctx context.Context, args assig
 	agentExists := false
 	var agentName string
 	for _, agent := range pts.availableAgents {
-		if agent.ID() == agentID {
+		if agent.ID == agentID {
 			agentExists = true
 			agentName = agent.Name
 			break
@@ -148,7 +148,7 @@ func (pts *projectTaskToolSet) listTasksByAgent(ctx context.Context, args listTa
 	// Find agent name for better logging
 	var agentName string
 	for _, agent := range pts.availableAgents {
-		if agent.ID() == agentID {
+		if agent.ID == agentID {
 			agentName = agent.Name
 			break
 		}

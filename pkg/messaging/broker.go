@@ -59,7 +59,7 @@ func (mb *messageBrokerImpl) SendMessage(fromAgentID uuid.UUID, toAgentID uuid.U
 		FromAgentID: fromAgentID,
 		ToAgentID:   toAgentID,
 		SessionID:   mb.sessionID,
-		Streaming:   utils.BoolPtr(recipient.IsStreaming()),
+		Streaming:   utils.BoolPtr(recipient.GetIsStreaming()),
 	}
 
 	// Call interceptor if set (for displaying messages in chat)

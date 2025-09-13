@@ -22,6 +22,7 @@ import (
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
@@ -78,8 +79,8 @@ func (m *mockChatProcessor) GetAgentInfoByAuthor(author string) *shared.AgentInf
 func (m *mockChatProcessor) GetAgentInfoByID(agentID uuid.UUID) *shared.AgentInfo { return nil }
 func (m *mockChatProcessor) GetAllAgentInfos() []*shared.AgentInfo {
 	return []*shared.AgentInfo{
-		{Info: agent.Info{Name: "agent1"}},
-		{Info: agent.Info{Name: "agent2"}},
+		{Name: "agent1"},
+		{Name: "agent2"},
 	}
 }
 func (m *mockChatProcessor) GetApplicationName() string { return "test-app" }
@@ -230,17 +231,20 @@ func TestServer_handleRun(t *testing.T) {
 
 	// Create a test request.
 	requestBody := schema.AgentRunRequest{
-		AppName:     "test-agent",
-		FromAgentID: fromAgentID,
-		ToAgentID:   toAgentID,
-		SessionID:   sessionID,
+		AppName: "test-agent",
+		RoutingInfo: messaging.RoutingInfo{
+			FromAgentID: fromAgentID,
+			ToAgentID:   toAgentID,
+			SessionID:   sessionID,
+			Streaming:   utils.BoolPtr(false),
+		},
+
 		Content: schema.Content{
 			Role: "user",
 			Parts: []schema.PartIncoming{
 				{Text: "Hello, world!"},
 			},
 		},
-		Streaming: false,
 	}
 
 	bodyBytes, _ := json.Marshal(requestBody)
@@ -258,7 +262,7 @@ func TestServer_handleRun(t *testing.T) {
 		t.Errorf("unexpected status: got %d, want %d", w.Code, http.StatusOK)
 	}
 
-	var events []*schema.LLMEvent
+	var events []*messaging.LLMEvent
 	if err := json.Unmarshal(w.Body.Bytes(), &events); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}

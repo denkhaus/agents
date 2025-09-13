@@ -94,7 +94,7 @@ func (f *UnifiedAgentFactory) CreateAgentByID(ctx context.Context, environment E
 		return nil, fmt.Errorf("failed to get agent info for ID %s: %w", agentID, err)
 	}
 
-	return f.CreateAgent(ctx, environment, agentInfo.Role())
+	return f.CreateAgent(ctx, environment, agentInfo.Role)
 }
 
 // ValidateConfiguration validates all configurations
@@ -211,7 +211,7 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 
 	// Prepare prompt context for rendering
 	promptContext := map[string]interface{}{
-		shared.ContextKeyToolInfo:  utils.GetToolInfo(tools...),
+		shared.ContextKeyToolInfo:  shared.GetToolInfo(tools...),
 		shared.ContextKeyAgentInfo: agentInfo,
 	}
 

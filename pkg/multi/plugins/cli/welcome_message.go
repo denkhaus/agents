@@ -12,7 +12,7 @@ func GetWelcomeMessage(agents []*shared.AgentInfo, displayWidth int) string {
 	agentList := ""
 	if len(agents) > 0 {
 		for _, info := range agents {
-			agentList += fmt.Sprintf("- **%s** (ID: %s)\n", info.Name, info.ID())
+			agentList += fmt.Sprintf("- **%s** (ID: %s)\n", info.Name, info.ID)
 		}
 	} else {
 		agentList = "- No agents available\n"

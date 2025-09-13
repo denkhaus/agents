@@ -21,7 +21,7 @@ type AgentRunner struct {
 
 // ID returns the unique identifier of the agent.
 func (p *AgentRunner) ID() uuid.UUID {
-	return p.wrapper.ID()
+	return p.wrapper.GetID()
 }
 
 // Name returns the name of the agent.
@@ -35,12 +35,12 @@ func (p *AgentRunner) Info() *shared.AgentInfo {
 }
 
 func (p *AgentRunner) IsStreaming() bool {
-	return p.wrapper.IsStreaming()
+	return p.wrapper.GetIsStreaming()
 }
 
 // String returns a string representation of the agent runner.
 func (p *AgentRunner) String() string {
-	return fmt.Sprintf("%s-[%s]", p.wrapper.Info().Name, p.wrapper.ID())
+	return fmt.Sprintf("%s-[%s]", p.wrapper.Info().Name, p.wrapper.GetID())
 }
 
 // Run executes the agent with a message from another agent and returns a channel of events.

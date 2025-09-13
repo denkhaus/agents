@@ -15,7 +15,6 @@ import (
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
-	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/mattn/go-runewidth"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -145,7 +144,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 
 	// Add agent names to completer
 	for _, agent := range p.Processor.GetAllAgentInfos() {
-		if agent.Role() != shared.AgentRoleHuman {
+		if agent.Role != shared.AgentRoleHuman {
 			completer.Children = append(completer.Children, readline.PcItem("/"+agent.Name))
 		}
 	}
@@ -222,10 +221,10 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 						marker = " (current)"
 					}
 					// Mark human agents as non-selectable
-					if info.Role() == shared.AgentRoleHuman {
-						builder.WriteString(fmt.Sprintf("- %s (ID: %s) [HUMAN - not selectable]%s\n", info.Name, info.ID(), marker))
+					if info.Role == shared.AgentRoleHuman {
+						builder.WriteString(fmt.Sprintf("- %s (ID: %s) [HUMAN - not selectable]%s\n", info.Name, info.ID, marker))
 					} else {
-						builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, info.ID(), marker))
+						builder.WriteString(fmt.Sprintf("- %s (ID: %s)%s\n", info.Name, info.ID, marker))
 					}
 				}
 				builder.WriteString("=========================")
@@ -255,7 +254,7 @@ func (p *cliMultiAgentChatImpl) Start(ctx context.Context) error {
 				agentInfo := p.Processor.GetAgentInfoByAuthor(command)
 				if agentInfo != nil {
 					// Prevent selecting the human agent as a target
-					if agentInfo.Role() == shared.AgentRoleHuman {
+					if agentInfo.Role == shared.AgentRoleHuman {
 						p.printSystemMessage("Cannot select human agent '%s' as a target. You can only send messages to AI agents.", agentInfo.Name)
 					} else {
 						p.currentAgent = agentInfo
@@ -456,9 +455,9 @@ func (p *cliMultiAgentChatImpl) sendMessageToAgent(ctx context.Context, input st
 
 		routing := &messaging.RoutingInfo{
 			FromAgentID: shared.AgentIDHuman,
-			ToAgentID:   p.currentAgent.ID(),
+			ToAgentID:   p.currentAgent.ID,
 			SessionID:   p.SessionID,
-			Streaming:   utils.BoolPtr(p.currentAgent.IsStreaming()),
+			Streaming:   p.currentAgent.IsStreaming,
 		}
 		// Use SendMessageWithProcessing but with cancellable context
 		userMessage := model.NewUserMessage(input)

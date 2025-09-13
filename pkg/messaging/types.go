@@ -34,11 +34,11 @@ type Message struct {
 type Interceptor func(routing *RoutingInfo, content string)
 
 type MessageBroker interface {
+	shared.MessageSender
 	RegisterAgent(agentID uuid.UUID, agent shared.TheAgent)
 	UnregisterAgent(agentID uuid.UUID)
 	GetMessageChannel(agentID uuid.UUID) (<-chan *Message, error)
 	SetMessageInterceptor(interceptor Interceptor)
-	SendMessage(fromAgentID uuid.UUID, toAgentID uuid.UUID, content string) error
 	ListAgentIDs() []uuid.UUID
 }
 

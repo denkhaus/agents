@@ -156,7 +156,7 @@ func Test_Processor(t *testing.T) {
 		logger.Log.Info("Agent ready",
 			zap.String("name", ag.Info().Name),
 			zap.String("role", string(ag.GetRole())),
-			zap.String("id", ag.ID().String()),
+			zap.Any("id", ag.GetID()),
 		)
 	}
 

@@ -103,19 +103,30 @@ func (p *chatProcessorImpl) GetApplicationName() string {
 	return p.applicationName
 }
 
+func getAgentInfo(availableAgents []shared.TheAgent) []*shared.AgentInfo {
+	result := make([]*shared.AgentInfo, len(availableAgents))
+	for idx, agent := range availableAgents {
+		result[idx] = agent.GetInfo()
+	}
+
+	return result
+}
+
 // initAgents initializes all agents in the processor by creating AgentRunner instances
 // and setting up message processing for each agent.
 func (p *chatProcessorImpl) initAgents() {
+	agentInfos := getAgentInfo(p.availableAgents)
 	for _, agent := range p.availableAgents {
-		if _, exists := p.agents[agent.ID()]; exists {
+		agentID := agent.GetID()
+		if _, exists := p.agents[agentID]; exists {
 			logger.Log.Warn("agent already registered in chat processor",
 				zap.String("app_name", p.applicationName),
-				zap.Any("agent_id", agent.ID()),
+				zap.Any("agent_id", agentID),
 			)
 			continue
 		}
 
-		wrapper := messaging.NewWrapper(agent, p.broker)
+		wrapper := messaging.NewWrapper(agent, p.broker, agentInfos...)
 
 		ar := &AgentRunner{
 			wrapper: wrapper,
@@ -128,7 +139,7 @@ func (p *chatProcessorImpl) initAgents() {
 			),
 		}
 
-		p.agents[agent.ID()] = ar
+		p.agents[agentID] = ar
 		p.startMessageProcessing(ar)
 	}
 }
