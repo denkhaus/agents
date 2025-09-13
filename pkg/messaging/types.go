@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/shared/resource"
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
@@ -34,18 +34,19 @@ type Message struct {
 type Interceptor func(routing *RoutingInfo, content string)
 
 type MessageBroker interface {
-	RegisterAgent(agentID uuid.UUID, agent agent.Agent)
+	RegisterAgent(agentID uuid.UUID, agent shared.TheAgent)
 	UnregisterAgent(agentID uuid.UUID)
 	GetMessageChannel(agentID uuid.UUID) (<-chan *Message, error)
 	SetMessageInterceptor(interceptor Interceptor)
-	SendMessage(routing *RoutingInfo, content string) error
+	SendMessage(fromAgentID uuid.UUID, toAgentID uuid.UUID, content string) error
 	ListAgentIDs() []uuid.UUID
 }
 
 // messageBrokerImpl handles routing messages between agents
 type messageBrokerImpl struct {
 	mu          sync.RWMutex
-	agents      *resource.Manager[agent.Agent]
+	sessionID   uuid.UUID
+	agents      *resource.Manager[shared.TheAgent]
 	channels    *resource.Manager[chan *Message]
 	interceptor func(routing *RoutingInfo, content string)
 }

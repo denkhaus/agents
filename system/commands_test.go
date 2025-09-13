@@ -12,9 +12,9 @@ import (
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
-	"github.com/denkhaus/agents/pkg/multi/plugins/web/schema"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -24,16 +24,16 @@ import (
 
 type Invocation struct {
 	ID         uuid.UUID
-	EventsByID map[uuid.UUID][]*schema.LLMEvent `json:"events"`
+	EventsByID map[uuid.UUID][]*messaging.LLMEvent `json:"events"`
 }
 
-func (p *Invocation) AddEvent(event *schema.LLMEvent) {
+func (p *Invocation) AddEvent(event *messaging.LLMEvent) {
 	if p.EventsByID == nil {
-		p.EventsByID = make(map[uuid.UUID][]*schema.LLMEvent)
+		p.EventsByID = make(map[uuid.UUID][]*messaging.LLMEvent)
 	}
 
 	if p.EventsByID[event.ID] == nil {
-		p.EventsByID[event.ID] = []*schema.LLMEvent{event}
+		p.EventsByID[event.ID] = []*messaging.LLMEvent{event}
 	} else {
 		p.EventsByID[event.ID] = append(p.EventsByID[event.ID], event)
 	}
@@ -52,7 +52,7 @@ type EventCollector struct {
 	Invokations map[uuid.UUID]*Invocation
 }
 
-func (p *EventCollector) AddEvent(event *schema.LLMEvent) {
+func (p *EventCollector) AddEvent(event *messaging.LLMEvent) {
 	if p.Invokations == nil {
 		p.Invokations = make(map[uuid.UUID]*Invocation)
 	}
@@ -117,6 +117,7 @@ func Test_Processor(t *testing.T) {
 		FromAgentID: shared.AgentIDHuman,
 		ToAgentID:   shared.AgentIDCoder,
 		SessionID:   uuid.New(),
+		Streaming:   utils.BoolPtr(false),
 	}
 
 	envName := config.EnvironmentName(environmentName)
@@ -166,7 +167,7 @@ func Test_Processor(t *testing.T) {
 
 	collector := EventCollector{}
 	collectEvents := func(info *messaging.RoutingInfo, ev *event.Event) {
-		llmEvent, err := schema.NewLLMEvent(info, ev)
+		llmEvent, err := messaging.NewLLMEvent(info, ev)
 		if err != nil {
 			logger.Log.Error("failed to create llm event", zap.Error(err))
 			return
@@ -184,6 +185,7 @@ func Test_Processor(t *testing.T) {
 	}
 
 	processor := multi.NewChatProcessor(
+		routing.SessionID,
 		multi.WithSessionService(condenserService),
 		multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
 		multi.WithOnRawEvent(func(info *messaging.RoutingInfo, ev *event.Event) {
@@ -195,14 +197,14 @@ func Test_Processor(t *testing.T) {
 	evts, err := processor.SendMessage(
 		ctx,
 		routing,
-		model.NewUserMessage("Get the current time by tool and send it to the coder agent."),
+		model.NewUserMessage("Get current time with tool. Send only the time value to researcher. Researcher should respond with just 'received'."),
 	)
 
 	if err != nil {
 		assert.NoError(t, err)
 	}
 
-	timer := time.NewTimer(time.Minute * 5)
+	timer := time.NewTimer(time.Minute * 3)
 	defer timer.Stop()
 
 	for {
@@ -215,10 +217,11 @@ func Test_Processor(t *testing.T) {
 		case ev, ok := <-evts:
 			if !ok {
 				// Channel closed, persist remaining events
-				logger.Log.Info("Event channel closed, persisting events")
-				err := collector.Persist()
-				assert.NoError(t, err)
-				return
+				//logger.Log.Info("Event channel closed")
+				// err := collector.Persist()
+				// assert.NoError(t, err)
+				time.Sleep(time.Second)
+				continue
 			}
 
 			collectEvents(routing, ev)

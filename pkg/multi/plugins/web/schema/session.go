@@ -11,15 +11,16 @@ import (
 // NewADKSession converts an internal session object to the ADKSession
 func NewADKSession(s *session.Session) (*ADKSession, error) {
 	adkEvents := make([]*messaging.LLMEvent, 0, len(s.Events))
-	for _, e := range s.Events {
-		ev, err := messaging.NewLLMEvent(routing, &e)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create LLMEvent: %w", err)
-		}
-		if ev != nil {
-			adkEvents = append(adkEvents, ev)
-		}
-	}
+
+	// for _, e := range s.Events {
+	// 	ev, err := messaging.NewLLMEvent(routing, &e)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to create LLMEvent: %w", err)
+	// 	}
+	// 	if ev != nil {
+	// 		adkEvents = append(adkEvents, ev)
+	// 	}
+	// }
 
 	agentID, err := uuid.Parse(s.UserID)
 	if err != nil {

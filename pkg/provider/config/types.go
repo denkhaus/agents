@@ -63,7 +63,6 @@ type SettingsConfig struct {
 type AgentSettings struct {
 	ApplicationName   string                 `json:"application_name"`
 	PlanningEnabled   bool                   `json:"planning_enabled"`
-	ReactEnabled      bool                   `json:"react_enabled"`
 	MaxIterations     int                    `json:"max_iterations"`
 	Timeout           int                    `json:"timeout"`
 	StreamingEnabled  bool                   `json:"streaming_enabled"`

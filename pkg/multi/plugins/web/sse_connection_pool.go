@@ -110,13 +110,13 @@ func (pool *SSEConnectionPool) SendEventToConnection(conn *SSEConnection, event 
 }
 
 // BroadcastToAgent sends an event to all connections of a specific agent
-func (pool *SSEConnectionPool) BroadcastToAgent(event *messaging.LLMEvent) int {
+func (pool *SSEConnectionPool) BroadcastToAgent(agentID uuid.UUID, event *messaging.LLMEvent) int {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
 	sentCount := 0
 	for connectionID, conn := range pool.connections {
-		if conn.AgentID == event.Routing.ToAgentID {
+		if conn.AgentID == agentID {
 			go pool.SendEventToConnection(conn, event)
 			sentCount++
 			log.Debugf("Sent inter-agent event to connection: %s", connectionID)

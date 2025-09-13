@@ -26,6 +26,7 @@ func WithChatProcessor(processor multi.ChatProcessor) Option {
 	return func(s *Server) {
 
 		s.chatProcessor = processor
+		s.setupInterAgentInterceptor()
 		s.chatProcessor.SetOnRawEventCallback(func(routing *messaging.RoutingInfo, event *event.Event) {
 
 			llmEvent, err := messaging.NewLLMEvent(routing, event)
@@ -35,19 +36,22 @@ func WithChatProcessor(processor multi.ChatProcessor) Option {
 			}
 
 			if llmEvent != nil {
-				s.ssePool.BroadcastToAgent(llmEvent)
+				s.ssePool.BroadcastToAgent(routing.ToAgentID, llmEvent)
 			}
 		})
 
-		// Now, set the fully wired-up processor on the server.
-		s.chatProcessor.SetMessageInterceptor(func(routing *messaging.RoutingInfo, content string) {
-			if routing.FromAgentID != uuid.Nil && routing.ToAgentID != uuid.Nil {
-				interAgentEvent := s.createInterAgentEvent(routing, content)
-				// Broadcast to all active SSE connections
-				s.broadcastInterAgentEvent(interAgentEvent)
-			}
-		})
 	}
+}
+
+func (s *Server) setupInterAgentInterceptor() {
+	// Now, set the fully wired-up processor on the server.
+	s.chatProcessor.SetMessageInterceptor(func(routing *messaging.RoutingInfo, content string) {
+		if routing.FromAgentID != uuid.Nil && routing.ToAgentID != uuid.Nil {
+			interAgentEvent := s.createInterAgentEvent(routing, content)
+			// Broadcast to all active SSE connections
+			s.broadcastInterAgentEvent(interAgentEvent)
+		}
+	})
 }
 
 // createInterAgentEvent creates a modern LLMEvent for inter-agent communication

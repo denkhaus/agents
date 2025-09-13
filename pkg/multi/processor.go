@@ -22,18 +22,16 @@ import (
 // the lifecycle and communication between multiple agents.
 type chatProcessorImpl struct {
 	Options
-	agents    map[uuid.UUID]*AgentRunner
-	broker    messaging.MessageBroker
-	sessionID uuid.UUID
+	agents map[uuid.UUID]*AgentRunner
+	broker messaging.MessageBroker
 }
 
 // NewChatProcessor creates a new ChatProcessor instance with the given options.
 // It initializes the message broker, sets up default configuration, and registers all agents.
 func NewChatProcessor(sessionID uuid.UUID, opts ...ChatProcessorOption) ChatProcessor {
 	processor := &chatProcessorImpl{
-		agents:    make(map[uuid.UUID]*AgentRunner),
-		broker:    messaging.NewMessageBroker(),
-		sessionID: sessionID,
+		agents: make(map[uuid.UUID]*AgentRunner),
+		broker: messaging.NewMessageBroker(sessionID),
 		Options: Options{
 			sessionService:  inmemory.NewSessionService(),
 			applicationName: "chat-app-default",
@@ -117,7 +115,7 @@ func (p *chatProcessorImpl) initAgents() {
 			continue
 		}
 
-		wrapper := messaging.NewWrapper(agent, p.sessionID, p.broker)
+		wrapper := messaging.NewWrapper(agent, p.broker)
 
 		ar := &AgentRunner{
 			wrapper: wrapper,
@@ -159,6 +157,11 @@ func (p *chatProcessorImpl) SetOnMessageCallback(onMessage OnMessage) {
 // SetOnToolCallCallback sets the tool call callback function for the ChatProcessor.
 func (p *chatProcessorImpl) SetOnToolCallCallback(onToolCall OnToolCall) {
 	p.onToolCall = onToolCall
+}
+
+// SetOnRawEventCallback sets the raw event callback function for the ChatProcessor.
+func (p *chatProcessorImpl) SetOnRawEventCallback(onRawEvent OnRawEvent) {
+	p.onRawEvent = onRawEvent
 }
 
 // SetMessageInterceptor sets a message interceptor on the underlying message broker.

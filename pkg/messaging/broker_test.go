@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -38,8 +39,32 @@ func (ma *mockAgent) FindSubAgent(name string) agent.Agent {
 	return nil
 }
 
+func (ma *mockAgent) ID() uuid.UUID {
+	return ma.id
+}
+
+func (ma *mockAgent) IsStreaming() bool {
+	return false
+}
+
+func (ma *mockAgent) GetInfo() *shared.AgentInfo {
+	info := shared.NewAgentInfo(
+		ma.id,
+		"test",
+		false,
+		ma.name,
+		"Mock agent for testing",
+	)
+	return &info
+}
+
+func (ma *mockAgent) GetRole() shared.AgentRole {
+	return "test"
+}
+
 func TestResourceManagerIntegration(t *testing.T) {
-	broker := NewMessageBroker()
+	sessionID := uuid.New()
+	broker := NewMessageBroker(sessionID)
 
 	// Create test agents
 	uuid1 := uuid.New()
@@ -47,9 +72,13 @@ func TestResourceManagerIntegration(t *testing.T) {
 	agent1 := &mockAgent{name: "Agent1", id: uuid1}
 	agent2 := &mockAgent{name: "Agent2", id: uuid2}
 
+	// Convert to shared.TheAgent using the shared.NewAgent function
+	wrapper1 := shared.NewAgent(agent1, uuid1, false, shared.AgentRole("test"))
+	wrapper2 := shared.NewAgent(agent2, uuid2, false, shared.AgentRole("test"))
+
 	// Register agents
-	broker.RegisterAgent(uuid1, agent1)
-	broker.RegisterAgent(uuid2, agent2)
+	broker.RegisterAgent(uuid1, wrapper1)
+	broker.RegisterAgent(uuid2, wrapper2)
 
 	// Check that agents are registered
 	agentIDs := broker.ListAgentIDs()

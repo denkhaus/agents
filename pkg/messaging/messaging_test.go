@@ -97,7 +97,8 @@ func (ta *TestAgent) GetRole() shared.AgentRole {
 }
 
 func TestMessageBroker(t *testing.T) {
-	broker := NewMessageBroker()
+	sessionID := uuid.New()
+	broker := NewMessageBroker(sessionID)
 
 	agent1 := &TestAgent{name: "Agent1", uuid: uuid.New()}
 	agent2 := &TestAgent{name: "Agent2", uuid: uuid.New()}
@@ -139,7 +140,8 @@ func TestMessageBroker(t *testing.T) {
 }
 
 func TestMessagingWrapper(t *testing.T) {
-	broker := NewMessageBroker()
+	sessionID := uuid.New()
+	broker := NewMessageBroker(sessionID)
 
 	uuid1 := uuid.New()
 	testAgent := &TestAgent{name: "TestAgent", uuid: uuid1}

@@ -4,21 +4,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/shared/resource"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
-	"trpc.group/trpc-go/trpc-agent-go/agent"
 )
 
 // NewMessageBroker creates a new message broker
-func NewMessageBroker() MessageBroker {
+func NewMessageBroker(sessionID uuid.UUID) MessageBroker {
 	return &messageBrokerImpl{
-		agents:   resource.NewManager[agent.Agent](),
-		channels: resource.NewManager[chan *Message](),
+		sessionID: sessionID,
+		agents:    resource.NewManager[shared.TheAgent](),
+		channels:  resource.NewManager[chan *Message](),
 	}
 }
 
 // RegisterAgent registers an agent with a predefined ID
-func (mb *messageBrokerImpl) RegisterAgent(agentID uuid.UUID, agent agent.Agent) {
+func (mb *messageBrokerImpl) RegisterAgent(agentID uuid.UUID, agent shared.TheAgent) {
 	mb.mu.Lock()
 	defer mb.mu.Unlock()
 
@@ -39,10 +41,26 @@ func (mb *messageBrokerImpl) UnregisterAgent(agentID uuid.UUID) {
 }
 
 // SendMessage sends a message from one agent to another
-func (mb *messageBrokerImpl) SendMessage(routing *RoutingInfo, content string) error {
+func (mb *messageBrokerImpl) SendMessage(fromAgentID uuid.UUID, toAgentID uuid.UUID, content string) error {
+
+	var recipient shared.TheAgent
+
 	mb.mu.RLock()
+	agent, ok := mb.agents.Get(toAgentID)
+	if !ok {
+		return fmt.Errorf("agent %s not found", toAgentID)
+	}
+
+	recipient = agent
 	interceptor := mb.interceptor
 	mb.mu.RUnlock()
+
+	routing := &RoutingInfo{
+		FromAgentID: fromAgentID,
+		ToAgentID:   toAgentID,
+		SessionID:   mb.sessionID,
+		Streaming:   utils.BoolPtr(recipient.IsStreaming()),
+	}
 
 	// Call interceptor if set (for displaying messages in chat)
 	if interceptor != nil {
@@ -52,15 +70,10 @@ func (mb *messageBrokerImpl) SendMessage(routing *RoutingInfo, content string) e
 	mb.mu.RLock()
 	defer mb.mu.RUnlock()
 
-	// Check if recipient exists
-	if !mb.agents.Exists(routing.ToAgentID) {
-		return fmt.Errorf("agent %s not found", routing.ToAgentID)
-	}
-
 	// Check if channel exists
-	ch, exists := mb.channels.Get(routing.ToAgentID)
+	ch, exists := mb.channels.Get(toAgentID)
 	if !exists {
-		return fmt.Errorf("channel for agent %s not found", routing.ToAgentID)
+		return fmt.Errorf("channel for agent %s not found", toAgentID)
 	}
 
 	// Create and send message
@@ -76,7 +89,7 @@ func (mb *messageBrokerImpl) SendMessage(routing *RoutingInfo, content string) e
 	case ch <- message:
 		return nil
 	case <-time.After(5 * time.Second):
-		return fmt.Errorf("timeout sending message to %s", routing.ToAgentID)
+		return fmt.Errorf("timeout sending message to %s", toAgentID)
 	}
 }
 
