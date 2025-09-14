@@ -41,7 +41,7 @@ func NewCUEConfigProvider(injector *do.Injector) (ConfigProvider, error) {
 
 // LoadSystemConfig loads the complete system configuration
 func (p *simplifiedCueConfigProvider) LoadSystemConfig() (*SystemConfig, error) {
-	systemPath := filepath.Join(p.configPath, "system.cue")
+	systemPath := filepath.Join(p.configPath, "system", "system.cue")
 
 	if _, err := os.Stat(systemPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("system configuration file not found: %s", systemPath)
