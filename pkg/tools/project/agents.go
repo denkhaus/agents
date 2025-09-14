@@ -12,45 +12,6 @@ import (
 
 // Agent Management Tools
 
-// listAvailableAgents lists all available agents in the system
-func (pts *projectTaskToolSet) listAvailableAgents(ctx context.Context, args listAvailableAgentsArgs) (listAvailableAgentsResult, error) {
-	pts.logger.Info("Listing available agents")
-
-	if len(pts.availableAgents) == 0 {
-		return listAvailableAgentsResult{
-			Agents:  []AgentInfo{},
-			Count:   0,
-			Message: "No agents are currently available in the system",
-		}, nil
-	}
-
-	// Convert shared.AgentInfo to our AgentInfo type
-	agents := make([]AgentInfo, len(pts.availableAgents))
-	for i, agent := range pts.availableAgents {
-		agents[i] = AgentInfo{
-			ID:          agent.ID.String(),
-			Name:        agent.Name,
-			Role:        string(agent.Role),
-			Description: agent.Description,
-		}
-	}
-
-	pts.logger.Info("Found available agents", zap.Int("count", len(agents)))
-	return listAvailableAgentsResult{
-		Agents:  agents,
-		Count:   len(agents),
-		Message: fmt.Sprintf("Found %d available agents", len(agents)),
-	}, nil
-}
-
-func (pts *projectTaskToolSet) listAvailableAgentsTool() tool.CallableTool {
-	return function.NewFunctionTool(
-		pts.listAvailableAgents,
-		function.WithName("list_available_agents"),
-		function.WithDescription("List all available agents in the system with their capabilities and descriptions. Use this to discover which agents are available for task assignment. Each agent has a unique ID, name, role, and detailed description of their capabilities."),
-	)
-}
-
 // assignTaskToAgent assigns a task to a specific agent
 func (pts *projectTaskToolSet) assignTaskToAgent(ctx context.Context, args assignTaskToAgentArgs) (assignTaskToAgentResult, error) {
 	taskID, err := uuid.Parse(args.TaskID)

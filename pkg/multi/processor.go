@@ -28,7 +28,7 @@ type chatProcessorImpl struct {
 
 // NewChatProcessor creates a new ChatProcessor instance with the given options.
 // It initializes the message broker, sets up default configuration, and registers all agents.
-func NewChatProcessor(sessionID uuid.UUID, opts ...ChatProcessorOption) ChatProcessor {
+func NewChatProcessor(sessionID uuid.UUID, opts ...ChatProcessorOption) (ChatProcessor, error) {
 	processor := &chatProcessorImpl{
 		agents: make(map[uuid.UUID]*AgentRunner),
 		broker: messaging.NewMessageBroker(sessionID),
@@ -95,17 +95,21 @@ func NewChatProcessor(sessionID uuid.UUID, opts ...ChatProcessorOption) ChatProc
 		}
 	}
 
-	processor.initAgents()
-	return processor
+	err := processor.initAgents()
+	if err != nil {
+		return nil, fmt.Errorf("failed to init agents:%w", err)
+	}
+
+	return processor, nil
 }
 
 func (p *chatProcessorImpl) GetApplicationName() string {
 	return p.applicationName
 }
 
-func getAgentInfo(availableAgents []shared.TheAgent) []*shared.AgentInfo {
-	result := make([]*shared.AgentInfo, len(availableAgents))
-	for idx, agent := range availableAgents {
+func (p *chatProcessorImpl) getAgentInfo() []*shared.AgentInfo {
+	result := make([]*shared.AgentInfo, len(p.availableAgents))
+	for idx, agent := range p.availableAgents {
 		result[idx] = agent.GetInfo()
 	}
 
@@ -114,8 +118,8 @@ func getAgentInfo(availableAgents []shared.TheAgent) []*shared.AgentInfo {
 
 // initAgents initializes all agents in the processor by creating AgentRunner instances
 // and setting up message processing for each agent.
-func (p *chatProcessorImpl) initAgents() {
-	agentInfos := getAgentInfo(p.availableAgents)
+func (p *chatProcessorImpl) initAgents() error {
+	agentInfos := p.getAgentInfo()
 	for _, agent := range p.availableAgents {
 		agentID := agent.GetID()
 		if _, exists := p.agents[agentID]; exists {
@@ -126,7 +130,12 @@ func (p *chatProcessorImpl) initAgents() {
 			continue
 		}
 
-		wrapper := messaging.NewWrapper(agent, p.broker, agentInfos...)
+		wrapper, err := messaging.NewAgentWrapper(agent, p.broker, agentInfos...)
+		if err != nil {
+			return fmt.Errorf("failed to create the wrapper for the %q agent: %w",
+				agent.GetInfo().Name, err,
+			)
+		}
 
 		ar := &AgentRunner{
 			wrapper: wrapper,
@@ -142,6 +151,8 @@ func (p *chatProcessorImpl) initAgents() {
 		p.agents[agentID] = ar
 		p.startMessageProcessing(ar)
 	}
+
+	return nil
 }
 
 func (p *chatProcessorImpl) DeleteSession(ctx context.Context, key session.Key, options ...session.Option) error {
@@ -269,7 +280,7 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 			ctx := context.Background()
 
 			// Format the message content
-			messageContent := fmt.Sprintf("Message from agent: %s id: %s\n\n%s",
+			messageContent := fmt.Sprintf("Message from %s-[%s]:\n\n%s",
 				p.GetAgentNameByID(msg.FromAgentID), msg.FromAgentID, msg.Content,
 			)
 
@@ -286,7 +297,7 @@ func (p *chatProcessorImpl) startMessageProcessing(agent *AgentRunner) {
 			// Process events from the agent's response
 			go func(info *messaging.RoutingInfo) {
 				for event := range events {
-					p.processEvent(info, event)
+					p.processEvent(info.SwapFromTo(), event)
 				}
 			}(routingInfo)
 		}
@@ -331,7 +342,7 @@ func (p *chatProcessorImpl) SendMessageWithProcessing(
 
 	// Process events
 	for event := range events {
-		p.processEvent(routingInfo, event)
+		p.processEvent(routingInfo.SwapFromTo(), event)
 	}
 
 	p.onProgress(routingInfo, SystemMessageProcessed, "%s finished processing", agent)
@@ -352,13 +363,11 @@ func (p *chatProcessorImpl) processEvent(info *messaging.RoutingInfo, event *eve
 
 		// Show reasoning content first if present (future-proof detection)
 		if choice.Message.ReasoningContent != "" {
-			fmt.Printf("[DEBUG] ReasoningMessage detected for %s\n", event.Author)
 			p.onReasoningMessage(info, choice.Message.ReasoningContent)
 		}
 
 		// Show assistant messages
 		if choice.Message.Role == model.RoleAssistant && choice.Message.Content != "" {
-			fmt.Printf("[DEBUG] NormalMessage detected for %s\n", event.Author)
 			p.onMessage(info, choice.Message.Content)
 		}
 

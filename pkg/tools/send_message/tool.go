@@ -4,6 +4,7 @@ package sendmessage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/denkhaus/agents/pkg/shared"
@@ -23,8 +24,9 @@ const (
 
 // ToolConfig holds configuration for the messaging tool
 type ToolConfig struct {
-	Sender  shared.MessageSender `json:"broker" mapstructure:"broker"`
-	AgentID uuid.UUID            `json:"agent_id" mapstructure:"agent_id"`
+	Sender                   shared.MessageSender `json:"broker" mapstructure:"broker"`
+	AllowedToCommunicateWith []uuid.UUID          `json:"allowed_to_communicate_with" mapstructure:"allowed_to_communicate_with"`
+	AgentID                  uuid.UUID            `json:"agent_id" mapstructure:"agent_id"`
 }
 
 // sendMessageArgs holds the input for the messaging tool.
@@ -40,14 +42,35 @@ type sendMessageResult struct {
 	Content string `json:"content"`
 }
 
+type SendMessageFunc func(context.Context, sendMessageArgs) (sendMessageResult, error)
+
 // sendMessage performs the message sending operation.
 // It sends a message from the current agent to another agent by ID.
-func sendMessage(sender shared.MessageSender, agentID uuid.UUID) func(context.Context, sendMessageArgs) (sendMessageResult, error) {
+func sendMessage(sender shared.MessageSender, agentID uuid.UUID, allowedToCommunicateWith []uuid.UUID) SendMessageFunc {
+
+	isAllowed := func(agentID uuid.UUID) bool {
+		for _, id := range allowedToCommunicateWith {
+			if agentID == id {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	return func(ctx context.Context, args sendMessageArgs) (sendMessageResult, error) {
 		// Parse the recipient UUID
 		to, err := uuid.Parse(args.To)
 		if err != nil {
 			return sendMessageResult{}, fmt.Errorf("invalid 'to' parameter: %w", err)
+		}
+
+		if to == agentID {
+			return sendMessageResult{}, errors.New("you cannot send a message to yourself")
+		}
+
+		if !isAllowed(to) {
+			return sendMessageResult{}, fmt.Errorf("you are not allowed to send a message to the agent with id %q", to)
 		}
 
 		// Send the message through the broker
@@ -71,14 +94,19 @@ func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
 			return nil, fmt.Errorf("failed to bind messaging tool config: %w", err)
 		}
 
-		return New(toolConfig.Sender, toolConfig.AgentID)
+		return New(
+			toolConfig.Sender,
+			toolConfig.AgentID,
+			toolConfig.AllowedToCommunicateWith,
+		)
+
 	}, nil
 }
 
-func New(sender shared.MessageSender, agentID uuid.UUID) (tool.Tool, error) {
+func New(sender shared.MessageSender, agentID uuid.UUID, allowedToCommunicateWith []uuid.UUID) (tool.Tool, error) {
 	// Create messaging tool for inter-agent communication.
 	messagingTool := function.NewFunctionTool(
-		sendMessage(sender, agentID),
+		sendMessage(sender, agentID, allowedToCommunicateWith),
 		function.WithName(ToolName),
 		function.WithDescription(
 			"Send a message to another agent by ID",

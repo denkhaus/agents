@@ -17,6 +17,7 @@ import (
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"github.com/mattn/go-runewidth"
+	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
@@ -52,7 +53,7 @@ type cliMultiAgentChatImpl struct {
 
 // NewCLIMultiAgentChat creates a new CLI-based multi-agent chat plugin.
 // It sets up the chat processor with the provided options and configures message handling.
-func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
+func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) (plugins.ChatPlugin, error) {
 	chat := &cliMultiAgentChatImpl{
 		Options: plugins.Options{
 			SessionID:    uuid.New(),
@@ -70,13 +71,19 @@ func NewCLIMultiAgentChat(opts ...plugins.MultiAgentChatOption) plugins.ChatPlug
 		multi.WithOnReasoningMessage(chat.handleOnReasoningMessage),
 		multi.WithOnError(chat.handleOnError),
 		multi.WithOnToolCall(chat.handleOnToolCall),
+		multi.WithOnRawEvent(chat.handleOnRawEvent),
 	}
 
 	processorOptions = append(processorOptions, chat.ProcessorOptions...)
-	chat.Processor = multi.NewChatProcessor(chat.SessionID, processorOptions...)
-	chat.setupMessageListener()
 
-	return chat
+	var err error
+	chat.Processor, err = multi.NewChatProcessor(chat.SessionID, processorOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	chat.setupMessageListener()
+	return chat, nil
 }
 
 // setupMessageListener configures the message interceptor to display inter-agent communication.
@@ -94,6 +101,10 @@ func (p *cliMultiAgentChatImpl) setupMessageListener() {
 			p.printWithBorderColored(header, content, plugins.MessageTypeIntercept)
 		}
 	})
+}
+
+func (p *cliMultiAgentChatImpl) handleOnRawEvent(info *messaging.RoutingInfo, event *event.Event) {
+
 }
 
 // handleOnProgress handles progress updates by printing them to stdout.

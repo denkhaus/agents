@@ -84,6 +84,7 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment Envir
 		agentConfig.AgentID,
 		agentConfig.Setting.Agent.StreamingEnabled,
 		agentConfig.Role,
+		agentConfig.Setting.Agent.AllowedToCommunicateWith,
 	), nil
 }
 
@@ -211,13 +212,12 @@ func (f *UnifiedAgentFactory) createLLMAgent(
 
 	// Prepare prompt context for rendering
 	promptContext := map[string]interface{}{
-		shared.ContextKeyToolInfo:  shared.GetToolInfo(tools...),
-		shared.ContextKeyAgentInfo: agentInfo,
+		shared.ContextKeyToolInfo: shared.GetToolInfo(tools...),
 	}
 
 	// Validate prompt context against schema
 	if err := utils.ValidateSchema(promptContext, agentConfig.Prompt.Schema); err != nil {
-		return nil, fmt.Errorf("prompt context validation failed for agent %s: %w", agentConfig.Name, err)
+		return nil, fmt.Errorf("prompt context validation failed for agent %q: %w", agentConfig.Name, err)
 	}
 
 	// Render prompt content using text/template

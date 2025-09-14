@@ -18,55 +18,81 @@ import (
 // Constants & helpers ----------------------------------------------------------
 // -----------------------------------------------------------------------------
 const (
-	ToolName = "get_agent_info"
+	ToolName = "list_available_agents"
 )
 
 // AgentInfoToolConfig holds configuration for the agent info tool
 type AgentInfoToolConfig struct {
-	AvailableAgents []*shared.AgentInfo `json:"available_agents" mapstructure:"available_agents"`
-	CallingAgentID  uuid.UUID           `json:"calling_agent_id" mapstructure:"calling_agent_id"`
+	AvailableAgents          []*shared.AgentInfo `json:"available_agents" mapstructure:"available_agents"`
+	AllowedToCommunicateWith []uuid.UUID         `json:"allowed_to_communicate_with" mapstructure:"allowed_to_communicate_with"`
+	CallingAgentID           uuid.UUID           `json:"calling_agent_id" mapstructure:"calling_agent_id"`
 }
 
-// getAgentInfoArgs holds the input for the agent info tool.
-type getAgentInfoArgs struct {
-	// No parameters needed - always returns all available agents
+// listAvailableAgentsArgs defines the arguments for listing available agents (empty struct)
+type listAvailableAgentsArgs struct{}
+
+// listAvailableAgentsResult defines the result of listing available agents
+type listAvailableAgentsResult struct {
+	Agents  []AgentInfo `json:"agents" description:"List of available agents in the system"`
+	Count   int         `json:"count" description:"Number of available agents"`
+	Message string      `json:"message" description:"A message describing the result"`
 }
 
-// AgentInfoResponse represents information about a single agent
-type AgentInfoResponse struct {
-	ID          uuid.UUID        `json:"id"`
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Role        shared.AgentRole `json:"role"`
-	IsSelf      bool             `json:"is_self"` // Indicates if this is the calling agent's own info
+// AgentInfo represents information about an available agent
+type AgentInfo struct {
+	ID                   uuid.UUID        `json:"id" description:"Unique identifier of the agent. Use this ID to communicate with the agent using the 'send_message' tool"`
+	Name                 string           `json:"name" description:"Display name of the agent"`
+	Role                 shared.AgentRole `json:"role" description:"Role/type of the agent (e.g., researcher, coder, project-manager)"`
+	Description          string           `json:"description" description:"Detailed description of the agent's capabilities and purpose"`
+	IsSelf               bool             `json:"is_self" description:"Your own information will be marked with 'true'."`
+	AllowedToCommunicate bool             `json:"allowed_to_communicate" description:"This defines if you are allowed to communicate with the agent."`
 }
 
-// getAgentInfoResult holds the output for the agent info tool.
-type getAgentInfoResult struct {
-	Agents []AgentInfoResponse `json:"agents"`
-	Count  int                 `json:"count"`
-}
+type ListAvailableAgentsFunc func(context.Context, listAvailableAgentsArgs) (listAvailableAgentsResult, error)
 
-// getAgentInfo performs the agent information retrieval operation.
+// listAvailableAgents performs the agent information retrieval operation.
 // It returns information about all available agents, marking the calling agent's info as "self".
-func getAgentInfo(availableAgents []*shared.AgentInfo, callingAgentID uuid.UUID) func(context.Context, getAgentInfoArgs) (getAgentInfoResult, error) {
-	return func(ctx context.Context, args getAgentInfoArgs) (getAgentInfoResult, error) {
-		// Always return all available agents
-		agents := make([]AgentInfoResponse, len(availableAgents))
-		for i, agent := range availableAgents {
-			isSelf := agent.ID == callingAgentID
-			agents[i] = AgentInfoResponse{
-				ID:          agent.ID,
-				Name:        agent.Name,
-				Description: agent.Description,
-				Role:        agent.Role,
-				IsSelf:      isSelf,
+func listAvailableAgents(
+	availableAgents []*shared.AgentInfo,
+	callingAgentID uuid.UUID,
+	allowedToCommunicateWith []uuid.UUID,
+) ListAvailableAgentsFunc {
+
+	isAllowed := func(agentID uuid.UUID) bool {
+		for _, id := range allowedToCommunicateWith {
+			if agentID == id {
+				return true
 			}
 		}
 
-		return getAgentInfoResult{
-			Agents: agents,
-			Count:  len(agents),
+		return false
+	}
+
+	return func(ctx context.Context, args listAvailableAgentsArgs) (listAvailableAgentsResult, error) {
+
+		// Always return all available agents
+		agents := make([]AgentInfo, len(availableAgents))
+		for i, agent := range availableAgents {
+			isSelf := agent.ID == callingAgentID
+			allowed := isAllowed(agent.ID)
+			if isSelf {
+				allowed = false
+			}
+
+			agents[i] = AgentInfo{
+				ID:                   agent.ID,
+				Name:                 agent.Name,
+				Description:          agent.Description,
+				Role:                 agent.Role,
+				IsSelf:               isSelf,
+				AllowedToCommunicate: allowed,
+			}
+		}
+
+		return listAvailableAgentsResult{
+			Agents:  agents,
+			Count:   len(agents),
+			Message: fmt.Sprintf("Found %d available agents", len(agents)),
 		}, nil
 	}
 }
@@ -84,19 +110,24 @@ func NewWithDI(injector *do.Injector) (tools.ToolFactoryFunc, error) {
 			agents = availableAgents
 		}
 
-		return New(agents, toolConfig.CallingAgentID)
+		return New(
+			agents,
+			toolConfig.CallingAgentID,
+			toolConfig.AllowedToCommunicateWith,
+		)
+
 	}, nil
 }
 
-func New(availableAgents []*shared.AgentInfo, callingAgentID uuid.UUID) (tool.Tool, error) {
+func New(availableAgents []*shared.AgentInfo, callingAgentID uuid.UUID, allowedToCommunicateWith []uuid.UUID) (tool.Tool, error) {
 	// Create agent info tool for retrieving information about available agents.
 	agentInfoTool := function.NewFunctionTool(
-		getAgentInfo(availableAgents, callingAgentID),
+		listAvailableAgents(availableAgents, callingAgentID, allowedToCommunicateWith),
 		function.WithName(ToolName),
-		function.WithDescription(
-			"Get information about all available agents in the system. Returns details like name, description, and role for each agent. Your own information will be marked with 'is_self: true'.",
-		),
-	)
+		function.WithDescription(`List all available agents in the system with their capabilities and descriptions.
+		Use this to discover which agents you can communicate with by the 'send_message' tool.
+		Each agent has a unique ID, name, role, and detailed description of their capabilities.
+		`))
 
 	return agentInfoTool, nil
 }

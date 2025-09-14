@@ -13,21 +13,31 @@ import (
 
 // humanAgentImpl implements the agent.Agent interface for the human
 type humanAgentImpl struct {
-	AgentInfo
+	*AgentInfo
 }
 
-func NewHumanAgent(info AgentInfo) TheAgent {
+func NewHumanAgent(info *AgentInfo) TheAgent {
 	return &humanAgentImpl{
 		AgentInfo: info,
 	}
 }
 
 func (d *humanAgentImpl) GetInfo() *AgentInfo {
-	return &d.AgentInfo
+	return d.AgentInfo
 }
 
 func (d *humanAgentImpl) GetIsStreaming() bool {
 	return false
+}
+
+func (d *humanAgentImpl) GetAllowedToCommunicateWith() []uuid.UUID {
+	return []uuid.UUID{
+		AgentIDSupervisor,
+		AgentIDCoder,
+		AgentIDDebugger,
+		AgentIDProjectManager,
+		AgentIDResearcher,
+	}
 }
 
 func (d *humanAgentImpl) GetRole() AgentRole {

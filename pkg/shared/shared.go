@@ -60,6 +60,11 @@ func (p *AgentInfo) Equal(info *AgentInfo) bool {
 
 type TheAgent interface {
 	agent.Agent
+
+	// GetAllowedToCommunicateWith defines the agents this agent instanc can communicate with
+	GetAllowedToCommunicateWith() []uuid.UUID
+
+	// GetIsStreaming defines if the agent has streaming capabilities or not
 	GetIsStreaming() bool
 	GetInfo() *AgentInfo
 	GetRole() AgentRole
@@ -68,36 +73,55 @@ type TheAgent interface {
 
 type theAgentImpl struct {
 	agent.Agent
-	info AgentInfo
+	allowedToCommunicateWith []uuid.UUID
+	id                       uuid.UUID
+	role                     AgentRole
+	isStreaming              *bool
 }
 
 func (p *theAgentImpl) GetID() uuid.UUID {
-	return p.info.ID
+	return p.id
+}
+
+func (p *theAgentImpl) GetAllowedToCommunicateWith() []uuid.UUID {
+	return p.allowedToCommunicateWith
 }
 
 func (p *theAgentImpl) GetRole() AgentRole {
-	return p.info.Role
+	return p.role
 }
 
 func (p *theAgentImpl) GetIsStreaming() bool {
-	if p.info.IsStreaming != nil {
-		return *p.info.IsStreaming
+	if p.isStreaming != nil {
+		return *p.isStreaming
 	}
 
 	return false
 }
 
 func (p *theAgentImpl) GetInfo() *AgentInfo {
-	return &p.info
+	return &AgentInfo{
+		ID:           p.id,
+		IsStreaming:  p.isStreaming,
+		Name:         p.Agent.Info().Name,
+		Description:  p.Agent.Info().Description,
+		InputSchema:  p.Agent.Info().InputSchema,
+		OutputSchema: p.Agent.Info().OutputSchema,
+	}
 }
 
-func NewAgent(agent agent.Agent, agentID uuid.UUID, isStreaming bool, role AgentRole) TheAgent {
+func NewAgent(
+	agent agent.Agent,
+	agentID uuid.UUID,
+	isStreaming bool,
+	role AgentRole,
+	allowedToCommunicateWith []uuid.UUID,
+) TheAgent {
 	return &theAgentImpl{
-		Agent: agent,
-		info: AgentInfo{
-			Role:        role,
-			ID:          agentID,
-			IsStreaming: utils.BoolPtr(isStreaming),
-		},
+		Agent:                    agent,
+		id:                       agentID,
+		allowedToCommunicateWith: allowedToCommunicateWith,
+		isStreaming:              utils.BoolPtr(isStreaming),
+		role:                     role,
 	}
 }

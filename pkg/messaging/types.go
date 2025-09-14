@@ -23,6 +23,15 @@ func (p *RoutingInfo) String() string {
 	return fmt.Sprintf("[%s]->[%s]", p.FromAgentID, p.ToAgentID)
 }
 
+func (p *RoutingInfo) SwapFromTo() *RoutingInfo {
+	newFromAgentID := p.ToAgentID
+	newToAgentID := p.FromAgentID
+	p.FromAgentID = newFromAgentID
+	p.ToAgentID = newToAgentID
+
+	return p
+}
+
 // Message represents a message between agents
 type Message struct {
 	RoutingInfo

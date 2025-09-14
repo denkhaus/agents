@@ -1,3 +1,4 @@
 .env
+.env.docker
 tmp_
 screenshots/*

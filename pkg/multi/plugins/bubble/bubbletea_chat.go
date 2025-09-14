@@ -79,7 +79,7 @@ var (
 )
 
 // NewBubbleTeaChatPlugin creates a new enhanced Bubble Tea chat plugin
-func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPlugin {
+func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) (plugins.ChatPlugin, error) {
 	chat := &bubbleTeaChatPluginImpl{
 		Options: plugins.Options{
 			SessionID: uuid.New(),
@@ -91,16 +91,17 @@ func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPl
 		opt(&chat.Options)
 	}
 
-	if chat.SessionID == uuid.Nil {
-		chat.SessionID = uuid.New()
-	}
-
 	// Create processor if not provided
 	if chat.processor == nil {
-		chat.processor = multi.NewChatProcessor(chat.SessionID, chat.ProcessorOptions...)
+		var err error
+
+		chat.processor, err = multi.NewChatProcessor(chat.SessionID, chat.ProcessorOptions...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return chat
+	return chat, nil
 }
 
 // Start begins the Bubble Tea chat interface
@@ -181,7 +182,15 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 
 	// Apply the processor options if not already set
 	if p.processor == nil {
-		p.processor = multi.NewChatProcessor(p.SessionID, append(p.ProcessorOptions, processorOptions...)...)
+		var err error
+		p.processor, err = multi.NewChatProcessor(p.SessionID,
+			append(p.ProcessorOptions, processorOptions...)...,
+		)
+
+		if err != nil {
+			return err
+		}
+
 		model.processor = p.processor
 	}
 

@@ -252,24 +252,6 @@ type setTaskEstimateResult struct {
 	Message string       `json:"message" description:"A message describing the result"`
 }
 
-// listAvailableAgentsArgs defines the arguments for listing available agents (empty struct)
-type listAvailableAgentsArgs struct{}
-
-// listAvailableAgentsResult defines the result of listing available agents
-type listAvailableAgentsResult struct {
-	Agents  []AgentInfo `json:"agents" description:"List of available agents in the system"`
-	Count   int         `json:"count" description:"Number of available agents"`
-	Message string      `json:"message" description:"A message describing the result"`
-}
-
-// AgentInfo represents information about an available agent
-type AgentInfo struct {
-	ID          string `json:"id" description:"Unique identifier of the agent"`
-	Name        string `json:"name" description:"Display name of the agent"`
-	Role        string `json:"role" description:"Role/type of the agent (e.g., researcher, coder, project-manager)"`
-	Description string `json:"description" description:"Detailed description of the agent's capabilities and purpose"`
-}
-
 // assignTaskToAgentArgs defines the arguments for assigning a task to an agent
 type assignTaskToAgentArgs struct {
 	TaskID  string `json:"task_id" description:"The ID of the task to assign"`

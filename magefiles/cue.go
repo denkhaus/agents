@@ -37,7 +37,7 @@ func (Cue) Validate() error {
 
 // Update updates all cue definitions and dependencies.
 func (Cue) Update() error {
-	fmt.Println("Updating CUE definitions and dependencies...")
+	fmt.Println("Updating CUE definitions and dependencies in the config package...")
 
 	// Find all Go packages to generate CUE definitions from
 	packages, err := findCUEGeneratedPackages(configDir)

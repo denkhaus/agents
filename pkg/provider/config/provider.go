@@ -331,12 +331,12 @@ func (p *simplifiedCueConfigProvider) GetAgentsInEnvironment(environment Environ
 		}
 
 		// Load sub-agent info
-		info, err := p.loadSubAgentInfo(environment, agentConfig)
+		subAgentInfo, err := p.loadSubAgentInfo(environment, agentConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load subagent info for agent %s: %w", agentName, err)
 		}
 
-		for agentID, agentInfo := range info {
+		for agentID, agentInfo := range subAgentInfo {
 			if _, exists := agentMap[agentID]; !exists {
 				agentMap[agentID] = agentInfo
 			}

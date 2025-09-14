@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/shared"
 	agentinfo "github.com/denkhaus/agents/pkg/tools/agent_info"
 	sendmessage "github.com/denkhaus/agents/pkg/tools/send_message"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
@@ -22,10 +20,16 @@ type messagingWrapper struct {
 	shared.TheAgent
 	broker          MessageBroker
 	availableAgents []*shared.AgentInfo
+	tools           []tool.Tool
 }
 
-// NewWrapper creates a new messaging wrapper with a predefined ID
-func NewWrapper(baseAgent shared.TheAgent, broker MessageBroker, availableAgents ...*shared.AgentInfo) shared.TheAgent {
+// NewAgentWrapper creates a new messaging wrapper around a base agent to enable inter-agent communication
+func NewAgentWrapper(
+	baseAgent shared.TheAgent,
+	broker MessageBroker,
+	availableAgents ...*shared.AgentInfo,
+) (shared.TheAgent, error) {
+
 	// Create wrapper with predefined ID
 	wrapper := &messagingWrapper{
 		TheAgent:        baseAgent,
@@ -36,7 +40,20 @@ func NewWrapper(baseAgent shared.TheAgent, broker MessageBroker, availableAgents
 	// Register with broker using the predefined ID
 	broker.RegisterAgent(baseAgent.GetID(), wrapper)
 
-	return wrapper
+	if err := wrapper.assembleTools(); err != nil {
+		return nil, err
+	}
+
+	return wrapper, nil
+}
+
+// Info implements the agent.Agent interface
+func (mw *messagingWrapper) Info() agent.Info {
+	return mw.TheAgent.Info()
+}
+
+func (mw *messagingWrapper) Tools() []tool.Tool {
+	return mw.tools
 }
 
 // SendMessage sends a message to another agent by ID
@@ -129,43 +146,44 @@ func (mw *messagingWrapper) messageToEvent(msg *Message) *event.Event {
 	}
 }
 
-// Info implements the agent.Agent interface
-func (mw *messagingWrapper) Info() agent.Info {
-	return mw.TheAgent.Info()
+func (mw *messagingWrapper) appendToolSafe(tool tool.Tool) error {
+	for _, t := range mw.tools {
+		currentToolName := t.Declaration().Name
+		if currentToolName == tool.Declaration().Name {
+			return fmt.Errorf("the %q tool already exists in the tool collection of %q agent",
+				currentToolName, mw.TheAgent.GetInfo().Name,
+			)
+		}
+	}
+
+	mw.tools = append(mw.tools, tool)
+	return nil
 }
 
 // Tools implements the agent.Agent interface
-func (mw *messagingWrapper) assembleTools() ([]tool.Tool, error) {
-	// Get tools from the base agent
-	baseTools := mw.TheAgent.Tools()
+func (mw *messagingWrapper) assembleTools() error {
 
-	var tools []tool.Tool
-	tools = append(tools, baseTools...)
+	mw.tools = mw.TheAgent.Tools()
 
-	// Add our messaging tool
-	messagingTool, err := sendmessage.New(mw.broker, mw.GetID())
+	messagingTool, err := sendmessage.New(mw.broker, mw.GetID(), mw.GetAllowedToCommunicateWith())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create %q tool: %w", sendmessage.ToolName, err)
+		return fmt.Errorf("failed to create %q tool: %w", sendmessage.ToolName, err)
 	}
 
-	tools = append(tools, messagingTool)
-
-	// Add our agent info tool
-	agentInfoTool, err := agentinfo.New(mw.availableAgents, mw.GetID())
+	err = mw.appendToolSafe(messagingTool)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create %q tool: %w", agentinfo.ToolName, err)
+		return err
 	}
 
-	tools = append(tools, agentInfoTool)
-
-	return tools, nil
-}
-
-func (mw *messagingWrapper) Tools() []tool.Tool {
-	tools, err := mw.assembleTools()
+	agentInfoTool, err := agentinfo.New(mw.availableAgents, mw.GetID(), mw.GetAllowedToCommunicateWith())
 	if err != nil {
-		logger.Log.Error("failed to assemble tools for wrapped agend", zap.Error(err))
+		return fmt.Errorf("failed to create %q tool: %w", agentinfo.ToolName, err)
 	}
 
-	return tools
+	err = mw.appendToolSafe(agentInfoTool)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

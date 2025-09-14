@@ -104,7 +104,6 @@ func New(opts ...Option) (tool.ToolSet, error) {
 			toolSet.getTaskDependenciesTool(),
 			toolSet.getDependentTasksTool(),
 			// Agent management tools (readonly)
-			toolSet.listAvailableAgentsTool(),
 			toolSet.listTasksByAgentTool(),
 			toolSet.listUnassignedTasksTool(),
 		}
@@ -140,7 +139,6 @@ func New(opts ...Option) (tool.ToolSet, error) {
 			toolSet.getTaskDependenciesTool(),
 			toolSet.getDependentTasksTool(),
 			// Agent management tools
-			toolSet.listAvailableAgentsTool(),
 			toolSet.assignTaskToAgentTool(),
 			toolSet.unassignTaskFromAgentTool(),
 			toolSet.listTasksByAgentTool(),

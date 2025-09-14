@@ -8,6 +8,7 @@ import (
 	"github.com/denkhaus/agents/pkg/multi/plugins"
 	cli_chat "github.com/denkhaus/agents/pkg/multi/plugins/cli"
 	"github.com/denkhaus/agents/pkg/provider/config"
+	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -49,15 +50,21 @@ func RunChatCommand(
 		return cli.Exit(fmt.Sprintf("No agents found in environment '%s'", envName), 1)
 	}
 
+	agents = append(agents, shared.NewHumanAgent(shared.AgentInfoHuman))
+
 	processorOptions := []multi.ChatProcessorOption{
 		multi.WithApplicationName(ctx.App.Name),
 		multi.WithAgents(agents...),
 	}
 
-	chat := cli_chat.NewCLIMultiAgentChat(
+	chat, err := cli_chat.NewCLIMultiAgentChat(
 		plugins.WithSessionID(uuid.New()),
 		plugins.WithProcessorOptions(processorOptions...),
 	)
+
+	if err != nil {
+		return cli.Exit(fmt.Sprintf("Failed to create multiagent chat: %v", err), 1)
+	}
 
 	return chat.Start(ctx.Context)
 }

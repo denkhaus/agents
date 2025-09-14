@@ -9,7 +9,7 @@ import (
 )
 
 type TimeAwarenessSettings struct {
-	Enabled    bool   `json:"is_enabled,omitempty"`
+	Enabled    bool   `json:"enabled,omitempty"`
 	TimeZone   string `json:"time_zone,omitempty"`
 	TimeFormat string `json:"time_format,omitempty"`
 }

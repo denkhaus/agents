@@ -107,12 +107,16 @@ func startServer(
 		return err
 	}
 
-	processor := multi.NewChatProcessor(
+	processor, err := multi.NewChatProcessor(
 		uuid.New(),
 		multi.WithSessionService(condenserService),
 		multi.WithApplicationName(fmt.Sprintf("%s-%s", appName, envConfig.Name)),
 		multi.WithAgents(agents...),
 	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create chat processor: %w", err)
+	}
 
 	server := web.New(
 		web.WithChatProcessor(processor),
