@@ -11,6 +11,7 @@ import (
 	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/provider/config"
+	"github.com/denkhaus/agents/system/commands"
 	"github.com/samber/do"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -79,32 +80,44 @@ func createCLIApp(app *App) *cli.App {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:    "run",
-				Aliases: []string{"start", "r"},
-				Usage:   "Start the multi-agent system",
-				Action:  app.RunCommand,
+				Name:    "serve",
+				Aliases: []string{"server", "s"},
+				Usage:   "Start the multi-agent server",
+				Action: func(c *cli.Context) error {
+					return commands.RunServerCommand(c, app.configProvider, app.agentFactory)
+				},
+			},
+			{
+				Name:    "chat",
+				Aliases: []string{"start", "c"},
+				Usage:   "Start the multi-agent chat",
+				Action: func(c *cli.Context) error {
+					return commands.RunChatCommand(c, app.configProvider, app.agentFactory)
+				},
 			},
 			{
 				Name:    "list-environments",
 				Aliases: []string{"list", "ls", "envs"},
 				Usage:   "List available environments",
-				Action:  app.listEnvironmentsCommand,
+				Action: func(c *cli.Context) error {
+					return commands.ListEnvironmentsCommand(c, app.configProvider)
+				},
 			},
 			{
 				Name:    "validate",
 				Aliases: []string{"check", "v"},
 				Usage:   "Validate system configuration",
-				Action:  app.validateConfigCommand,
+				Action: func(c *cli.Context) error {
+					return commands.ValidateConfigCommand(c, app.configProvider)
+				},
 			},
 		},
-		DefaultCommand: "run",
-		Action:         app.RunCommand, // Default action when no command specified
+		DefaultCommand: "chat",
+		// Default action when no command specified
+		Action: func(c *cli.Context) error {
+			return commands.RunChatCommand(c, app.configProvider, app.agentFactory)
+		},
 		Before: func(c *cli.Context) error {
-			// Setup logging based on environment
-			env := c.String("environment")
-			if env == "development" {
-				logger.Log.Info("Running in development mode with enhanced logging")
-			}
 			return nil
 		},
 		After: func(c *cli.Context) error {

@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/session/inmemory"
 )
 
-func (a *App) createCondenser(_ context.Context, envConfig *config.EnvironmentConfig) (*condenser.Service, error) {
+func CreateCondenser(_ context.Context, envConfig *config.EnvironmentConfig) (*condenser.Service, error) {
 	logger.Log.Info("create condenser service", zap.String("environment", envConfig.Name))
 	options := []condenser.ConfigOption{
 		condenser.WithTokenCountingMethod(envConfig.Condenser.TokenCountingMethod),

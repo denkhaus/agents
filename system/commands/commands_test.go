@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"context"
@@ -9,13 +9,16 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/denkhaus/agents/di"
 	"github.com/denkhaus/agents/logger"
 	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
 	"github.com/denkhaus/agents/pkg/utils"
+	sys_shared "github.com/denkhaus/agents/system/shared"
 	"github.com/google/uuid"
+	"github.com/samber/do"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -108,10 +111,13 @@ func Test_Processor(t *testing.T) {
 	os.Setenv("AGENTS_CONFIG_PATH", "/home/denkhaus/dev/gomodules/agents/config")
 	os.Setenv("AGENTS_DATABASE_URL", "postgres://agents:agents@localhost:6888/agents?sslmode=disable")
 
-	app, err := NewApp()
-	assert.NoError(t, err)
+	injector := di.NewContainer()
+
+	configProvider := do.MustInvoke[config.ConfigProvider](injector)
+	agentFactory := do.MustInvoke[config.AgentFactory](injector)
 
 	ctx := context.Background()
+	appName := "test-app"
 	environmentName := "production"
 	routing := &messaging.RoutingInfo{
 		FromAgentID: shared.AgentIDHuman,
@@ -122,13 +128,8 @@ func Test_Processor(t *testing.T) {
 
 	envName := config.EnvironmentName(environmentName)
 
-	logger.Log.Info("Starting agents system",
-		zap.String("version", appVersion),
-		zap.String("environment", string(envName)),
-	)
-
 	// Validate environment exists
-	envConfig, err := app.configProvider.LoadEnvironmentConfig(envName)
+	envConfig, err := configProvider.LoadEnvironmentConfig(envName)
 	if err != nil {
 		assert.NoError(t, err)
 	}
@@ -142,7 +143,7 @@ func Test_Processor(t *testing.T) {
 	)
 
 	// Create all agents automatically
-	agents, err := app.agentFactory.CreateAllAgentsInEnvironment(ctx, envName)
+	agents, err := agentFactory.CreateAllAgentsInEnvironment(ctx, envName)
 	if err != nil {
 		assert.NoError(t, err)
 	}
@@ -160,7 +161,7 @@ func Test_Processor(t *testing.T) {
 		)
 	}
 
-	condenserService, err := app.createCondenser(ctx, envConfig)
+	condenserService, err := sys_shared.CreateCondenser(ctx, envConfig)
 	if err != nil {
 		assert.NoError(t, err)
 	}

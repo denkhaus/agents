@@ -1,10 +1,9 @@
-package main
+package commands
 
 import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/denkhaus/agents/logger"
@@ -12,81 +11,39 @@ import (
 	"github.com/denkhaus/agents/pkg/multi/plugins/web"
 	"github.com/denkhaus/agents/pkg/provider/config"
 	"github.com/denkhaus/agents/pkg/shared"
+	sys_shared "github.com/denkhaus/agents/system/shared"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
-// validateConfigCommand validates the system configuration
-func (a *App) validateConfigCommand(c *cli.Context) error {
-	logger.Log.Info("Validating system configuration...")
+func RunServerCommand(
+	ctx *cli.Context,
+	configProvider config.ConfigProvider,
+	agentFactory config.AgentFactory,
+) error {
 
-	if err := a.configProvider.ValidateConfiguration(); err != nil {
-		return cli.Exit(fmt.Sprintf("Configuration validation failed: %v", err), 1)
-	}
-
-	// Load and validate system config
-	systemConfig, err := a.configProvider.LoadSystemConfig()
-	if err != nil {
-		return cli.Exit(fmt.Sprintf("Failed to load system config: %v", err), 1)
-	}
-
-	fmt.Printf("Configuration validation successful!\n\n")
-	fmt.Printf("System configuration:\n")
-	fmt.Printf("  Environments: %d\n", len(systemConfig.Environments))
-
-	for envName, envConfig := range systemConfig.Environments {
-		fmt.Printf("  * %s: %d agents, %d roles\n", envName, len(envConfig.Agents), len(envConfig.Roles))
-	}
-
-	return nil
-}
-
-// listEnvironmentsCommand shows available environments
-func (a *App) listEnvironmentsCommand(c *cli.Context) error {
-	systemConfig, err := a.configProvider.LoadSystemConfig()
-	if err != nil {
-		return cli.Exit(fmt.Sprintf("Failed to load system config: %v", err), 1)
-	}
-
-	fmt.Printf("Available environments (%d):\n\n", len(systemConfig.Environments))
-
-	// Sort environments for consistent output
-	envNames := make([]string, 0, len(systemConfig.Environments))
-	for name := range systemConfig.Environments {
-		envNames = append(envNames, string(name))
-	}
-	sort.Strings(envNames)
-
-	for _, name := range envNames {
-		envConfig := systemConfig.Environments[config.EnvironmentName(name)]
-		fmt.Printf("* %s\n", name)
-		fmt.Printf("  Description: %s\n", envConfig.Description)
-		fmt.Printf("  Agents: %d\n", len(envConfig.Agents))
-		fmt.Printf("  Role mappings: %d\n", len(envConfig.Roles))
-
-		if envConfig.Condenser.LoggingEnabled {
-			fmt.Printf("  Condenser: enabled (threshold: %.2f)\n", envConfig.Condenser.TriggerThreshold)
-		} else {
-			fmt.Printf("  Condenser: disabled\n")
-		}
-		fmt.Println()
-	}
-
-	return nil
-}
-
-func (a *App) RunCommand(ctx *cli.Context) error {
-	return a.runCommand(
+	return runServerCommand(
 		ctx.Context,
 		ctx.String("environment"),
 		ctx.String("server-addr"),
+		configProvider,
+		ctx.App.Version,
+		agentFactory,
+		ctx.App.Name,
 	)
 }
 
-// runCommand starts the multi-agent system
-func (a *App) runCommand(ctx context.Context, environmentName, serverAddr string) error {
+// runServerCommand starts the multi-agent system
+func runServerCommand(
+	ctx context.Context,
+	environmentName, serverAddr string,
+	configProvider config.ConfigProvider,
+	appVersion string,
+	agentFactory config.AgentFactory,
+	appName string,
+) error {
 
 	envName := config.EnvironmentName(environmentName)
 
@@ -96,7 +53,7 @@ func (a *App) runCommand(ctx context.Context, environmentName, serverAddr string
 	)
 
 	// Validate environment exists
-	envConfig, err := a.configProvider.LoadEnvironmentConfig(envName)
+	envConfig, err := configProvider.LoadEnvironmentConfig(envName)
 	if err != nil {
 		return cli.Exit(fmt.Sprintf("Failed to load environment '%s': %v", envName, err), 1)
 	}
@@ -110,7 +67,7 @@ func (a *App) runCommand(ctx context.Context, environmentName, serverAddr string
 	)
 
 	// Create all agents automatically
-	agents, err := a.agentFactory.CreateAllAgentsInEnvironment(ctx, envName)
+	agents, err := agentFactory.CreateAllAgentsInEnvironment(ctx, envName)
 	if err != nil {
 		return cli.Exit(fmt.Sprintf("Failed to create agents: %v", err), 1)
 	}
@@ -130,21 +87,22 @@ func (a *App) runCommand(ctx context.Context, environmentName, serverAddr string
 
 	g := new(errgroup.Group)
 	g.Go(func() error {
-		return a.startServer(ctx, envConfig, agents, serverAddr)
+		return startServer(ctx, envConfig, appName, agents, serverAddr)
 	})
 
 	return g.Wait()
 }
 
 // startServer starts the debug HTTP server
-func (a *App) startServer(
+func startServer(
 	ctx context.Context,
 	envConfig *config.EnvironmentConfig,
+	appName string,
 	agents []shared.TheAgent,
 	addr string,
 ) error {
 
-	condenserService, err := a.createCondenser(ctx, envConfig)
+	condenserService, err := sys_shared.CreateCondenser(ctx, envConfig)
 	if err != nil {
 		return err
 	}

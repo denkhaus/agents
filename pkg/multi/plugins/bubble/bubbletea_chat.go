@@ -10,6 +10,7 @@ import (
 	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/denkhaus/agents/pkg/messaging"
 	"github.com/denkhaus/agents/pkg/multi"
 	"github.com/denkhaus/agents/pkg/multi/plugins"
 	"github.com/denkhaus/agents/pkg/shared"
@@ -35,8 +36,8 @@ type enhancedChatModel struct {
 	historyIndex  int      // Current position in history (-1 = not navigating)
 	scrollOffset  int      // Offset for scrolling through messages
 	inputFocused  bool     // Whether input field has focus (for scroll control)
-	busyAgents    map[string]bool
-	agentSpinners map[string]*spinner.Spinner
+	busyAgents    map[uuid.UUID]bool
+	agentSpinners map[uuid.UUID]*spinner.Spinner
 	mainSpinner   *spinner.Spinner
 	width         int
 	height        int
@@ -90,9 +91,13 @@ func NewBubbleTeaChatPlugin(opts ...plugins.MultiAgentChatOption) plugins.ChatPl
 		opt(&chat.Options)
 	}
 
+	if chat.SessionID == uuid.Nil {
+		chat.SessionID = uuid.New()
+	}
+
 	// Create processor if not provided
 	if chat.processor == nil {
-		chat.processor = multi.NewChatProcessor(chat.ProcessorOptions...)
+		chat.processor = multi.NewChatProcessor(chat.SessionID, chat.ProcessorOptions...)
 	}
 
 	return chat
@@ -113,8 +118,8 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 		historyIndex:  -1,
 		scrollOffset:  0,
 		inputFocused:  true, // Start with input focused
-		busyAgents:    make(map[string]bool),
-		agentSpinners: make(map[string]*spinner.Spinner),
+		busyAgents:    make(map[uuid.UUID]bool),
+		agentSpinners: make(map[uuid.UUID]*spinner.Spinner),
 		mainSpinner:   mainSpinner,
 		width:         120,
 		height:        30,
@@ -125,47 +130,50 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 	for _, agent := range model.agents {
 		agentSpinner := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
 		agentSpinner.Suffix = fmt.Sprintf(" %s is thinking...", agent.Name)
-		model.agentSpinners[agent.ID().String()] = agentSpinner
+		model.agentSpinners[agent.ID] = agentSpinner
 	}
 
 	// Set up message handlers like in cli_multi_chat.go
-	p.processor.SetMessageInterceptor(func(fromID, toID uuid.UUID, content string) {
-		fromName := p.processor.GetAgentNameByID(fromID)
-		toName := p.processor.GetAgentNameByID(toID)
+	p.processor.SetMessageInterceptor(func(routing *messaging.RoutingInfo, content string) {
+		fromName := p.processor.GetAgentNameByID(routing.FromAgentID)
+		toName := p.processor.GetAgentNameByID(routing.ToAgentID)
 		model.addMessage(fmt.Sprintf("%s -> %s", fromName, toName), content, plugins.MessageTypeIntercept)
 	})
 
 	// Set up callbacks for real LLM responses
 	processorOptions := []multi.ChatProcessorOption{
-		multi.WithOnMessage(func(info *shared.AgentInfo, content string) {
+		multi.WithOnMessage(func(routing *messaging.RoutingInfo, content string) {
 			msgType := model.detectMessageType(content)
-			model.addMessage(info.Name, content, msgType)
+			fromName := p.processor.GetAgentNameByID(routing.FromAgentID)
+			model.addMessage(fromName, content, msgType)
 
 			// Stop spinner for this agent
-			if spinner, exists := model.agentSpinners[info.ID().String()]; exists {
+			if spinner, exists := model.agentSpinners[routing.FromAgentID]; exists {
 				spinner.Stop()
 			}
-			model.busyAgents[info.ID().String()] = false
+			model.busyAgents[routing.FromAgentID] = false
 		}),
-		multi.WithOnReasoningMessage(func(info *shared.AgentInfo, reasoning string) {
-			model.addMessage(info.Name, reasoning, plugins.MessageTypeReasoningMessage)
+		multi.WithOnReasoningMessage(func(routing *messaging.RoutingInfo, reasoning string) {
+			fromName := p.processor.GetAgentNameByID(routing.FromAgentID)
+			model.addMessage(fromName, reasoning, plugins.MessageTypeReasoningMessage)
 
 			// Stop spinner for this agent
-			if spinner, exists := model.agentSpinners[info.ID().String()]; exists {
+			if spinner, exists := model.agentSpinners[routing.FromAgentID]; exists {
 				spinner.Stop()
 			}
-			model.busyAgents[info.ID().String()] = false
+			model.busyAgents[routing.FromAgentID] = false
 		}),
-		multi.WithOnError(func(info *shared.AgentInfo, err error) {
-			model.addMessage(info.Name, fmt.Sprintf("Error: %v", err), plugins.MessageTypeError)
+		multi.WithOnError(func(routing *messaging.RoutingInfo, err error) {
+			fromName := p.processor.GetAgentNameByID(routing.FromAgentID)
+			model.addMessage(fromName, fmt.Sprintf("Error: %v", err), plugins.MessageTypeError)
 
 			// Stop spinner for this agent
-			if spinner, exists := model.agentSpinners[info.ID().String()]; exists {
+			if spinner, exists := model.agentSpinners[routing.FromAgentID]; exists {
 				spinner.Stop()
 			}
-			model.busyAgents[info.ID().String()] = false
+			model.busyAgents[routing.FromAgentID] = false
 		}),
-		multi.WithOnProgress(func(messageType multi.SystemMessageType, format string, a ...any) {
+		multi.WithOnProgress(func(routing *messaging.RoutingInfo, messageType multi.SystemMessageType, format string, a ...any) {
 			progressMsg := fmt.Sprintf(format, a...)
 			model.addMessage("SYSTEM", progressMsg, plugins.MessageTypeSystem)
 		}),
@@ -173,7 +181,7 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 
 	// Apply the processor options if not already set
 	if p.processor == nil {
-		p.processor = multi.NewChatProcessor(append(p.ProcessorOptions, processorOptions...)...)
+		p.processor = multi.NewChatProcessor(p.SessionID, append(p.ProcessorOptions, processorOptions...)...)
 		model.processor = p.processor
 	}
 
@@ -187,12 +195,12 @@ func (p *bubbleTeaChatPluginImpl) Start(ctx context.Context) error {
 type readyMsg struct{}
 type tickMsg time.Time
 type agentResponseMsg struct {
-	agentID string
+	agentID uuid.UUID
 	content string
 	msgType plugins.MessageType
 }
 type agentErrorMsg struct {
-	agentID string
+	agentID uuid.UUID
 	error   string
 }
 
@@ -224,7 +232,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		welcomeMsg.WriteString("Welcome to Multi-Agent Chat System!\n\n")
 		welcomeMsg.WriteString("Available agents:\n")
 		for _, agent := range m.agents {
-			welcomeMsg.WriteString(fmt.Sprintf("- %s (ID: %s)\n", agent.Name, agent.ID().String()))
+			welcomeMsg.WriteString(fmt.Sprintf("- %s (ID: %s)\n", agent.Name, agent.ID.String()))
 		}
 		welcomeMsg.WriteString("\nUse /<agent-name> to select an agent, /help for commands")
 
@@ -239,7 +247,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.busyAgents[msg.agentID] = false
 
 		// Get agent name
-		agentName := m.processor.GetAgentNameByID(uuid.MustParse(msg.agentID))
+		agentName := m.processor.GetAgentNameByID(msg.agentID)
 		m.addMessage(agentName, msg.content, msg.msgType)
 		return m, nil
 
@@ -251,7 +259,7 @@ func (m *enhancedChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.busyAgents[msg.agentID] = false
 
 		// Get agent name
-		agentName := m.processor.GetAgentNameByID(uuid.MustParse(msg.agentID))
+		agentName := m.processor.GetAgentNameByID(msg.agentID)
 		m.addMessage(agentName, msg.error, plugins.MessageTypeError)
 		return m, nil
 
@@ -431,9 +439,9 @@ func (m *enhancedChatModel) renderAgentList() string {
 
 	for _, agent := range m.agents {
 		status := "[ ]"
-		if m.busyAgents[agent.ID().String()] {
+		if m.busyAgents[agent.ID] {
 			status = "[⚡]" // Busy indicator
-		} else if m.currentAgent != nil && m.currentAgent.ID() == agent.ID() {
+		} else if m.currentAgent != nil && m.currentAgent.ID == agent.ID {
 			status = "[✓]" // Selected indicator
 		}
 
@@ -540,8 +548,8 @@ func (m *enhancedChatModel) renderInputArea() string {
 
 	// Add status information on a separate line if agent is busy
 	var fullContent string
-	if m.currentAgent != nil && m.busyAgents[m.currentAgent.ID().String()] {
-		if spinner, exists := m.agentSpinners[m.currentAgent.ID().String()]; exists {
+	if m.currentAgent != nil && m.busyAgents[m.currentAgent.ID] {
+		if spinner, exists := m.agentSpinners[m.currentAgent.ID]; exists {
 			statusLine := fmt.Sprintf("Status: %s", spinner.Suffix)
 			fullContent = fmt.Sprintf("%s\n%s", inputContent, statusLine)
 		} else {
@@ -709,7 +717,7 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 		return
 	}
 
-	agentID := m.currentAgent.ID().String()
+	agentID := m.currentAgent.ID
 
 	// Mark agent as busy and start spinner
 	m.busyAgents[agentID] = true
@@ -720,11 +728,16 @@ func (m *enhancedChatModel) sendToAgent(message string) {
 	// Send message using real ChatProcessor
 	go func() {
 		// Use the real SendMessage method instead to avoid callback issues
+
+		routing := &messaging.RoutingInfo{
+			FromAgentID: shared.AgentIDHuman,
+			ToAgentID:   m.currentAgent.ID, // To selected agent
+			SessionID:   m.sessionID,
+		}
+
 		events, err := m.processor.SendMessage(
 			m.ctx,
-			shared.AgentIDHuman, // From human
-			m.currentAgent.ID(), // To selected agent
-			m.sessionID,
+			routing,
 			model.NewUserMessage(message),
 		)
 

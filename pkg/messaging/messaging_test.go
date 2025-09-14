@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -81,13 +82,14 @@ func (ta *TestAgent) IsStreaming() bool {
 
 // GetInfo returns the agent information
 func (ta *TestAgent) GetInfo() *shared.AgentInfo {
-	info := shared.NewAgentInfo(
-		ta.uuid,
-		"test", // Using a simple string for test role
-		false,
-		ta.name,
-		"Test agent",
-	)
+	info := shared.AgentInfo{
+		ID:          ta.uuid,
+		Role:        "test", // Using a simple string for test role
+		IsStreaming: utils.BoolPtr(false),
+		Name:        ta.name,
+		Description: "Test agent",
+	}
+
 	return &info
 }
 
@@ -118,7 +120,7 @@ func TestMessageBroker(t *testing.T) {
 	}
 
 	// Test sending a message
-	err := messagingWrapper1.SendMessage(messagingWrapper2.ID(), "Hello from Agent1")
+	err := messagingWrapper1.SendMessage(messagingWrapper2.GetID(), "Hello from Agent1")
 	if err != nil {
 		t.Errorf("Failed to send message: %v", err)
 	}
@@ -155,7 +157,7 @@ func TestMessagingWrapper(t *testing.T) {
 	}
 
 	// Test that the wrapper has an ID
-	if messagingWrapper.ID() == uuid.Nil {
+	if messagingWrapper.GetID() == uuid.Nil {
 		t.Error("Wrapper should have a valid ID")
 	}
 
