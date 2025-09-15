@@ -3,7 +3,7 @@
  * For React components and state management
  */
 
-import { UUID } from './project.types';
+import type { UUID } from './project.types';
 
 export type WorkspaceType = 'projects' | 'agents' | 'settings';
 

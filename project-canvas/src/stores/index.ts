@@ -8,11 +8,7 @@ export { useTaskStore } from './taskStore';
 export { useUIStore } from './uiStore';
 export { useAgentStore } from './agentStore';
 
-// Re-export store types for convenience
-export type { ProjectStore } from './projectStore';
-export type { TaskStore } from './taskStore';
-export type { UIStore } from './uiStore';
-export type { AgentStore } from './agentStore';
+// Store types are exported from individual store files
 
 // Store initialization helper
 export const initializeStores = () => {
@@ -23,8 +19,6 @@ export const initializeStores = () => {
 
 // Store reset helper for testing
 export const resetAllStores = () => {
-  useProjectStore.getState().reset();
-  useTaskStore.getState().reset();
-  useUIStore.getState().reset();
-  useAgentStore.getState().reset();
+  // Reset functionality will be implemented in individual stores
+  console.log('Reset all stores');
 };

@@ -35,12 +35,9 @@ export interface ProjectFilter {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface ProjectCreateInput {
-  title: string;
-  description: string;
-}
-
-export interface ProjectUpdateInput {
+// Note: Projects are created only via LLM, not through frontend
+// Only title and description can be edited in frontend
+export interface ProjectEditableFields {
   title?: string;
-  description?: string;
+  description?: string; // Supports Markdown content
 }

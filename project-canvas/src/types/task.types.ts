@@ -5,13 +5,15 @@
 
 import { UUID } from './project.types';
 
-export enum TaskState {
-  PENDING = "pending",
-  IN_PROGRESS = "in-progress",
-  COMPLETED = "completed",
-  BLOCKED = "blocked",
-  CANCELLED = "cancelled"
-}
+export const TaskState = {
+  PENDING: "pending",
+  IN_PROGRESS: "in-progress",
+  COMPLETED: "completed",
+  BLOCKED: "blocked",
+  CANCELLED: "cancelled"
+} as const;
+
+export type TaskState = typeof TaskState[keyof typeof TaskState];
 
 export interface Task {
   id: UUID;
@@ -45,22 +47,14 @@ export interface TaskFilter {
   searchTerm?: string;
 }
 
-export interface TaskUpdates {
-  state?: TaskState;
-  complexity?: number;
+// Note: Tasks are created only via LLM, not through frontend
+// Only title and description can be edited in frontend
+export interface TaskEditableFields {
   title?: string;
-  description?: string;
-  estimate?: number;
-  assignedAgent?: UUID;
-  position?: { x: number; y: number };
+  description?: string; // Supports Markdown content
 }
 
-export interface TaskCreateInput {
-  projectId: UUID;
-  parentId?: UUID;
-  title: string;
-  description: string;
-  complexity: number;
-  estimate?: number;
-  assignedAgent?: UUID;
+// UI-only updates (position changes from drag & drop)
+export interface TaskUIUpdates {
+  position?: { x: number; y: number };
 }

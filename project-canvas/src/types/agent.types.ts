@@ -5,22 +5,26 @@
 
 import { UUID } from './project.types';
 
-export enum AgentRole {
-  SUPERVISOR = "supervisor",
-  PROJECT_MANAGER = "project-manager", 
-  CODER = "coder",
-  RESEARCHER = "researcher",
-  QA_ENGINEER = "qa-engineer",
-  DEVOPS = "devops",
-  DESIGNER = "designer"
-}
+export const AgentRole = {
+  SUPERVISOR: "supervisor",
+  PROJECT_MANAGER: "project-manager", 
+  CODER: "coder",
+  RESEARCHER: "researcher",
+  QA_ENGINEER: "qa-engineer",
+  DEVOPS: "devops",
+  DESIGNER: "designer"
+} as const;
 
-export enum AgentStatus {
-  ONLINE = "online",
-  OFFLINE = "offline",
-  BUSY = "busy",
-  IDLE = "idle"
-}
+export type AgentRole = typeof AgentRole[keyof typeof AgentRole];
+
+export const AgentStatus = {
+  ONLINE: "online",
+  OFFLINE: "offline",
+  BUSY: "busy",
+  IDLE: "idle"
+} as const;
+
+export type AgentStatus = typeof AgentStatus[keyof typeof AgentStatus];
 
 export interface Agent {
   id: UUID;
