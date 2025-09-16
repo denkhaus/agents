@@ -7,42 +7,19 @@ services:
     env_file: ../.env.docker
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     ports:
       - "6888:5432" # Use different port to avoid conflicts
-
-  ###########################################################################################
-  # New React Chat Client
-  react-chat:
-    build:
-      context: .
-      dockerfile: Dockerfile.react-chat
-    restart: unless-stopped
-    user: "1000"
-    networks:
-      - agents-network
-    env_file: ../.env.docker
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./react-chat:/app
-      - /app/node_modules
-    depends_on:
-      - agents
-    # Add health check to ensure the service is ready
     healthcheck:
       test:
         [
-          "CMD",
-          "wget",
-          "--quiet",
-          "--tries=1",
-          "--spider",
-          "http://localhost:3000",
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-agents} -d ${POSTGRES_DB:-agents}",
         ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   ###########################################################################################
   agents:
@@ -72,11 +49,18 @@ services:
     image: ghcr.io/get-convex/convex-backend:latest
     stop_grace_period: 10s
     stop_signal: SIGINT
+    env_file: ../.env.docker
+    restart: unless-stopped
     ports:
       - "${PORT:-3210}:3210"
       - "${SITE_PROXY_PORT:-3211}:3211"
     volumes:
       - convex_data:/convex/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agents-network
     environment:
       - INSTANCE_NAME
       - INSTANCE_SECRET
@@ -87,8 +71,8 @@ services:
       - DATABASE_URL
       - DISABLE_BEACON
       - REDACT_LOGS_TO_CLIENT
-      - DO_NOT_REQUIRE_SSL
-      - POSTGRES_URL
+      - DO_NOT_REQUIRE_SSL=true
+      - POSTGRES_URL=postgres://agents:agents@postgres:5432?sslmode=disable
       - MYSQL_URL
       - RUST_LOG=${RUST_LOG:-info}
       - RUST_BACKTRACE
@@ -116,10 +100,13 @@ services:
     image: ghcr.io/get-convex/convex-dashboard:latest
     stop_grace_period: 10s
     stop_signal: SIGINT
+    restart: unless-stopped
     ports:
       - "${DASHBOARD_PORT:-6791}:6791"
     environment:
       - NEXT_PUBLIC_DEPLOYMENT_URL=${NEXT_PUBLIC_DEPLOYMENT_URL:-http://127.0.0.1:${PORT:-3210}}
+    networks:
+      - agents-network
     depends_on:
       backend:
         condition: service_healthy

@@ -32,9 +32,9 @@ func (Docker) Up() error {
 	printSuccess("Services started successfully!")
 	fmt.Println()
 	printStatus("Service URLs:")
-	fmt.Println("  - React Chat UI: http://localhost:3000")
-	fmt.Println("  - ADK Web Frontend: http://localhost:4200")
-	fmt.Println("  - Backend API: http://localhost:6999")
+	fmt.Println("  - Agents Backend: http://localhost:9451")
+	fmt.Println("  - Convex Backend: http://localhost:3210")
+	fmt.Println("  - Convex Dashboard: http://localhost:6791")
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
 	printStatus("Use 'mage docker:logs' to view logs")
@@ -211,28 +211,120 @@ func (Docker) Config() error {
 	return sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "config")
 }
 
-// ReactChat starts only the React Chat interface and backend
-func (Docker) ReactChat() error {
-	printStatus("Starting React Chat interface with backend...")
+// Core starts only the core services (agents and postgres)
+func (Docker) Core() error {
+	printStatus("Starting core services (agents and postgres)...")
 
 	if err := ensureEnvFile(); err != nil {
 		return err
 	}
 
-	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "react-chat", "agents", "postgres"); err != nil {
-		return fmt.Errorf("failed to start React Chat services: %w", err)
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "agents", "postgres"); err != nil {
+		return fmt.Errorf("failed to start core services: %w", err)
 	}
 
-	printSuccess("React Chat services started successfully!")
+	printSuccess("Core services started successfully!")
 	fmt.Println()
 	printStatus("Service URLs:")
-	fmt.Println("  - React Chat UI: http://localhost:3000")
-	fmt.Println("  - Backend API: http://localhost:6999")
+	fmt.Println("  - Agents Backend: http://localhost:9451")
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
-	printStatus("Use 'mage docker:logs react-chat' to view React Chat logs")
-	printStatus("Use 'mage docker:down' to stop services")
+	printStatus("Use 'mage docker:logs agents' to view agents logs")
+	fmt.Println("Use 'mage docker:down' to stop services")
 
+	return nil
+}
+
+// InitDB initializes or reinitializes the PostgreSQL databases
+func (Docker) InitDB() error {
+	printStatus("Initializing PostgreSQL databases...")
+	
+	// Check if postgres service is running
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "ps", "postgres"); err != nil {
+		printWarning("PostgreSQL service not running. Starting it first...")
+		if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "postgres"); err != nil {
+			return fmt.Errorf("failed to start PostgreSQL service: %w", err)
+		}
+		printStatus("Waiting for PostgreSQL to be ready...")
+		if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "postgres", "pg_isready", "-U", "agents"); err != nil {
+			return fmt.Errorf("PostgreSQL not ready: %w", err)
+		}
+	}
+
+	printStatus("Creating required databases...")
+	
+	// Create agents database if it doesn't exist
+	printStatus("Creating 'agents' database...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "createdb", "-U", "agents", "agents"); err != nil {
+		printWarning("Database 'agents' may already exist (this is OK)")
+	}
+	
+	// Create convex_self_hosted database if it doesn't exist
+	printStatus("Creating 'convex_self_hosted' database...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "createdb", "-U", "agents", "convex_self_hosted"); err != nil {
+		printWarning("Database 'convex_self_hosted' may already exist (this is OK)")
+	}
+	
+	// Verify databases were created
+	printStatus("Verifying database creation...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "psql", "-U", "agents", "-l"); err != nil {
+		return fmt.Errorf("failed to list databases: %w", err)
+	}
+	
+	printSuccess("Database initialization completed!")
+	fmt.Println()
+	printStatus("Created databases:")
+	fmt.Println("  - agents: Used by the agents service")
+	fmt.Println("  - convex_self_hosted: Used by the Convex backend")
+	fmt.Println()
+	printStatus("Connection strings:")
+	fmt.Println("  - Agents: postgres://agents:agents@localhost:6888/agents?sslmode=disable")
+	fmt.Println("  - Convex: postgres://agents:agents@localhost:6888?sslmode=disable")
+	
+	return nil
+}
+
+// ResetDB stops services, removes database volume, and reinitializes databases
+func (Docker) ResetDB() error {
+	printWarning("This will completely reset all databases and data!")
+	fmt.Print("Are you sure? (y/N): ")
+	var response string
+	fmt.Scanln(&response)
+
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		printStatus("Database reset cancelled.")
+		return nil
+	}
+
+	printStatus("Resetting PostgreSQL databases...")
+	
+	// Stop all services
+	printStatus("Stopping services...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "down"); err != nil {
+		return fmt.Errorf("failed to stop services: %w", err)
+	}
+	
+	// Remove postgres data volume
+	printStatus("Removing postgres data volume...")
+	if err := sh.RunV("docker", "volume", "rm", "docker_postgres_data"); err != nil {
+		printWarning("Failed to remove postgres volume (may not exist)")
+	}
+	
+	// Start postgres service (will trigger initialization)
+	printStatus("Starting PostgreSQL with fresh volume...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "postgres"); err != nil {
+		return fmt.Errorf("failed to start PostgreSQL: %w", err)
+	}
+	
+	// Wait for postgres to be ready
+	printStatus("Waiting for PostgreSQL to initialize...")
+	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "postgres", "pg_isready", "-U", "agents"); err != nil {
+		return fmt.Errorf("PostgreSQL not ready after reset: %w", err)
+	}
+	
+	printSuccess("Database reset completed!")
+	printStatus("The initialization scripts in docker/postgres-init/ have been executed.")
+	
 	return nil
 }
 
@@ -254,39 +346,45 @@ func (Docker) Help() {
 	fmt.Println("  mage docker:exec        Execute command in service container")
 	fmt.Println("  mage docker:pull        Pull latest images")
 	fmt.Println("  mage docker:config      Validate and show configuration")
-	fmt.Println("  mage docker:reactchat   Start only React Chat interface")
+	fmt.Println("  mage docker:core        Start only core services (agents + postgres)")
+	fmt.Println("  mage docker:initdb      Initialize PostgreSQL databases")
+	fmt.Println("  mage docker:resetdb     Reset all databases (removes all data)")
 	fmt.Println("  mage docker:help        Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  mage docker:up                    # Start all services")
-	fmt.Println("  mage docker:logs react-chat       # Show React Chat logs")
-	fmt.Println("  mage docker:logs web               # Show ADK web logs")
-	fmt.Println("  mage docker:build react-chat      # Rebuild React Chat service")
-	fmt.Println("  mage docker:build web              # Rebuild ADK web service")
+	fmt.Println("  mage docker:logs agents           # Show agents backend logs")
+	fmt.Println("  mage docker:logs backend          # Show Convex backend logs")
+	fmt.Println("  mage docker:build agents          # Rebuild agents service")
 	fmt.Println("  mage docker:exec postgres psql    # Connect to PostgreSQL")
+	fmt.Println("  mage docker:initdb                 # Create required databases")
+	fmt.Println("  mage docker:resetdb                # Reset databases (WARNING: deletes all data)")
 	fmt.Println()
 	fmt.Println("Service URLs:")
-	fmt.Println("  - React Chat UI: http://localhost:3000")
-	fmt.Println("  - ADK Web Frontend: http://localhost:4200")
-	fmt.Println("  - Backend API: http://localhost:6999")
+	fmt.Println("  - Agents Backend: http://localhost:9451")
+	fmt.Println("  - Convex Backend: http://localhost:3210")
+	fmt.Println("  - Convex Dashboard: http://localhost:6791")
 	fmt.Println("  - PostgreSQL Database: localhost:6888")
 	fmt.Println()
 	fmt.Println("Configuration:")
-	fmt.Println("  Environment variables can be customized in .env (project root)")
-	fmt.Println("  All services use the same .env file for consistent configuration")
+	fmt.Println("  Environment variables can be customized in .env.docker (project root)")
+	fmt.Println("  All services use the same .env.docker file for consistent configuration")
+	fmt.Println()
+	fmt.Println("Related Commands:")
+	fmt.Println("  mage convex:help        Convex backend management (admin keys, status, etc.)")
 }
 
-// ensureEnvFile creates .env file from .env.example if it doesn't exist
+// ensureEnvFile creates .env.docker file from .env.example if it doesn't exist
 func ensureEnvFile() error {
-	// We now use the root .env file, so check if it exists
-	rootEnvPath := ".env"
+	// We use the root .env.docker file, so check if it exists
+	rootEnvPath := ".env.docker"
 
-	// Check if root .env file exists
+	// Check if root .env.docker file exists
 	if _, err := os.Stat(rootEnvPath); os.IsNotExist(err) {
-		return fmt.Errorf("root .env file not found. Please create .env in the project root directory")
+		return fmt.Errorf("root .env.docker file not found. Please create .env.docker in the project root directory")
 	}
 
-	printStatus("Using existing .env file from project root")
+	printStatus("Using existing .env.docker file from project root")
 	return nil
 }
 
