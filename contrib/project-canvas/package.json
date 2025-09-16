@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run convex\" \"vite\"",
+    "dev": "npm-run-all --parallel dev:convex dev:vite",
     "dev:vite": "vite",
     "dev:convex": "convex dev",
     "build": "tsc && vite build",
@@ -60,6 +60,7 @@
     "zustand": "5.0.8"
   },
   "devDependencies": {
+    "npm-run-all2": "^7.0.0",
     "@tailwindcss/typography": "^0.5.10",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.43",

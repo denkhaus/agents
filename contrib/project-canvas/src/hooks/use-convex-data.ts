@@ -42,7 +42,7 @@ export const useConvexProjects = () => {
 export const useConvexTasks = (projectId?: string) => {
   const convexTasks = useQuery(
     api.tasks.listByProject,
-    projectId ? { projectId: projectId as Id<"projects"> } : "skip"
+    projectId ? { projectId } : "skip" // No more casting needed, projectId is now string
   );
   const { setTasks } = useTaskStore();
 

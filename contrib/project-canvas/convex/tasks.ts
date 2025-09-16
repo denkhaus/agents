@@ -10,7 +10,7 @@ import { generateUUID } from "../src/utils/uuid";
 // Get all tasks for a project
 export const listByProject = query({
   args: { 
-    projectId: v.id("projects"),
+    projectId: v.string(), // UUID string instead of v.id("projects")
     includeCompleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -55,7 +55,7 @@ export const listByAgent = query({
 
 // Get root tasks (no parent) for a project
 export const listRootTasks = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.string() }, // UUID string instead of v.id("projects")
   handler: async (ctx, args) => {
     const tasks = await ctx.db
       .query("tasks")
@@ -69,7 +69,7 @@ export const listRootTasks = query({
 // Create a new task (LLM only)
 export const create = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.string(), // UUID string instead of v.id("projects")
     parentId: v.optional(v.id("tasks")),
     title: v.string(),
     description: v.string(),
@@ -293,10 +293,17 @@ async function updateProjectStats(ctx: any, projectId: string) {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((task: any) => task.state === "completed").length;
 
-  // Update project stats
-  await ctx.db.patch(projectId, {
-    totalTasks,
-    completedTasks,
-    progress: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 1000) / 10 : 0,
-  });
+  // Find the project by UUID and update stats
+  const project = await ctx.db
+    .query("projects")
+    .filter((q: any) => q.eq(q.field("id"), projectId))
+    .first();
+    
+  if (project) {
+    await ctx.db.patch(project._id, {
+      totalTasks,
+      completedTasks,
+      progress: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 1000) / 10 : 0,
+    });
+  }
 }

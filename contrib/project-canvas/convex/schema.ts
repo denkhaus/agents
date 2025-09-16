@@ -23,7 +23,7 @@ export default defineSchema({
   // Tasks table
   tasks: defineTable({
     id: v.string(),
-    projectId: v.id("projects"),
+    projectId: v.string(), // UUID string to match projects.id
     parentId: v.optional(v.id("tasks")),
     title: v.string(),
     description: v.string(),
