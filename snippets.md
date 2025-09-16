@@ -146,3 +146,7 @@ Ich habe die Logs gründlich analysiert. Wir sind kurz vor dem Ziel.
 ⠏ Dissecting SSE Implementation (esc to cancel, 3m 41s)
 
   hast du etwas gefunden?
+
+
+npx convex dev --once --run clearDatabase:clearDatabase
+npx convex dev --once --run seed:seedDatabase

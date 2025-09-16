@@ -44,10 +44,16 @@ export const allTasks = [
 // PROJECTS (2 Projekte wie im Go-Model definiert)
 // ============================================================================
 
+// Feste Project-IDs für konsistente Referenzen
+const PROJECT_IDS = {
+  ECOMMERCE: "53fd7995-1606-4360-65ae-9b057525c12e",
+  MOBILE: "980c9337-0630-41d0-3b95-b71caca7635b"
+};
+
 export const masterProjects: Project[] = [
   // Projekt 1: E-Commerce Platform Redesign (Hauptprojekt)
   {
-    id: generateUUID(),
+    id: PROJECT_IDS.ECOMMERCE,
     title: "E-Commerce Platform Redesign",
     description: `# E-Commerce Platform Redesign
 
@@ -79,7 +85,7 @@ Complete redesign and modernization of the existing e-commerce platform with imp
 
   // Projekt 2: Mobile App Development
   {
-    id: generateUUID(), 
+    id: PROJECT_IDS.MOBILE, 
     title: "Mobile App Development",
     description: `# Mobile App Development
 
@@ -115,9 +121,18 @@ Native mobile application for iOS and Android platforms with offline capabilitie
 // AGENTS (5 Agents wie im Go-Model definiert)
 // ============================================================================
 
+// Feste Agent-IDs für konsistente Referenzen
+const AGENT_IDS = {
+  DESIGNER: "agent-designer-001",
+  FRONTEND_DEV: "agent-frontend-002", 
+  BACKEND_DEV: "agent-backend-003",
+  QA_ENGINEER: "agent-qa-004",
+  DEVOPS: "agent-devops-005"
+};
+
 export const masterAgents: Agent[] = [
   {
-    id: generateUUID(),
+    id: AGENT_IDS.DESIGNER,
     name: "Design Lead",
     role: AgentRole.DESIGNER,
     description: "Senior UX/UI designer specializing in e-commerce platforms and design systems",
@@ -130,7 +145,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date('2024-01-20T14:30:00Z')
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.FRONTEND_DEV,
     name: "Frontend Developer",
     role: AgentRole.CODER,
     description: "React/TypeScript specialist with expertise in modern frontend development and performance optimization",
@@ -143,7 +158,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date('2024-01-20T14:25:00Z')
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.BACKEND_DEV,
     name: "Backend Developer",
     role: AgentRole.CODER,
     description: "Node.js/Express expert with database design and API architecture experience",
@@ -156,7 +171,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date('2024-01-20T14:20:00Z')
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.QA_ENGINEER,
     name: "QA Engineer", 
     role: AgentRole.QA_ENGINEER,
     description: "Quality assurance specialist with automated testing expertise and mobile testing experience",
@@ -169,7 +184,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date('2024-01-20T13:45:00Z')
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.DEVOPS,
     name: "DevOps Engineer",
     role: AgentRole.DEVOPS,
     description: "Infrastructure and deployment automation specialist with cloud and mobile deployment expertise",
@@ -217,7 +232,7 @@ export const ecommerceProjectTasks: Task[] = [
   // Phase 1: Research & Planning (3 Tasks)
   {
     id: ECOM_TASK_IDS.RESEARCH,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Market Research & User Analysis",
     description: `## Market Research & User Analysis
@@ -245,7 +260,7 @@ export const ecommerceProjectTasks: Task[] = [
     complexity: 6,
     depth: 0,
     estimate: 2400, // 40 hours in minutes
-    assignedAgent: masterAgents[0].id, // Designer
+    assignedAgent: AGENT_IDS.DESIGNER, // Designer
     dependencies: [],
     dependents: [ECOM_TASK_IDS.WIREFRAMES, ECOM_TASK_IDS.DESIGN_SYSTEM],
     createdAt: new Date('2024-01-15T09:00:00Z'),
@@ -256,7 +271,7 @@ export const ecommerceProjectTasks: Task[] = [
 
   {
     id: ECOM_TASK_IDS.WIREFRAMES,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Create Wireframes & Prototypes",
     description: `## Wireframes & Interactive Prototypes
@@ -287,7 +302,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 7,
     depth: 0,
     estimate: 1800, // 30 hours
-    assignedAgent: masterAgents[0].id, // Designer
+    assignedAgent: AGENT_IDS.DESIGNER, // Designer
     dependencies: [ECOM_TASK_IDS.RESEARCH],
     dependents: [ECOM_TASK_IDS.DESIGN_SYSTEM, ECOM_TASK_IDS.FRONTEND_SETUP],
     createdAt: new Date('2024-01-15T09:15:00Z'),
@@ -298,7 +313,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.DESIGN_SYSTEM,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Design System & Component Library",
     description: `## Design System Development
@@ -326,7 +341,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 8,
     depth: 0,
     estimate: 2160, // 36 hours
-    assignedAgent: masterAgents[0].id, // Designer
+    assignedAgent: AGENT_IDS.DESIGNER, // Designer
     dependencies: [ECOM_TASK_IDS.RESEARCH, ECOM_TASK_IDS.WIREFRAMES],
     dependents: [ECOM_TASK_IDS.FRONTEND_SETUP],
     createdAt: new Date('2024-01-15T09:30:00Z'),
@@ -337,7 +352,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   // Phase 2: Architecture (4 Tasks)
   {
     id: ECOM_TASK_IDS.API_DESIGN,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "API Architecture & Documentation",
     description: `## RESTful API Design
@@ -366,7 +381,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 7,
     depth: 0,
     estimate: 1440, // 24 hours
-    assignedAgent: masterAgents[2].id, // Backend Developer
+    assignedAgent: AGENT_IDS.BACKEND_DEV, // Backend Developer
     dependencies: [ECOM_TASK_IDS.RESEARCH],
     dependents: [ECOM_TASK_IDS.DATABASE_SCHEMA, ECOM_TASK_IDS.BACKEND_SETUP],
     createdAt: new Date('2024-01-15T10:00:00Z'),
@@ -376,7 +391,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.DATABASE_SCHEMA,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Database Schema Design",
     description: `## PostgreSQL Database Design
@@ -405,7 +420,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 6,
     depth: 0,
     estimate: 960, // 16 hours
-    assignedAgent: masterAgents[2].id, // Backend Developer
+    assignedAgent: AGENT_IDS.BACKEND_DEV, // Backend Developer
     dependencies: [ECOM_TASK_IDS.API_DESIGN],
     dependents: [ECOM_TASK_IDS.BACKEND_SETUP],
     createdAt: new Date('2024-01-15T10:15:00Z'),
@@ -415,7 +430,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.FRONTEND_SETUP,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Frontend Project Setup",
     description: `## React + TypeScript Setup
@@ -444,7 +459,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 5,
     depth: 0,
     estimate: 480, // 8 hours
-    assignedAgent: masterAgents[1].id, // Frontend Developer
+    assignedAgent: AGENT_IDS.FRONTEND_DEV, // Frontend Developer
     dependencies: [ECOM_TASK_IDS.WIREFRAMES, ECOM_TASK_IDS.DESIGN_SYSTEM],
     dependents: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     createdAt: new Date('2024-01-16T09:00:00Z'),
@@ -455,7 +470,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.BACKEND_SETUP,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Backend Infrastructure Setup",
     description: `## Node.js + Express Setup
@@ -485,7 +500,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 6,
     depth: 0,
     estimate: 720, // 12 hours
-    assignedAgent: masterAgents[2].id, // Backend Developer
+    assignedAgent: AGENT_IDS.BACKEND_DEV, // Backend Developer
     dependencies: [ECOM_TASK_IDS.API_DESIGN, ECOM_TASK_IDS.DATABASE_SCHEMA],
     dependents: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     createdAt: new Date('2024-01-16T09:30:00Z'),
@@ -497,7 +512,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   // Phase 3: Core Development (5 Tasks)
   {
     id: ECOM_TASK_IDS.USER_AUTH,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "User Authentication System",
     description: `## Secure Authentication Implementation
@@ -526,7 +541,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 7,
     depth: 0,
     estimate: 1200, // 20 hours
-    assignedAgent: masterAgents[2].id, // Backend Developer
+    assignedAgent: AGENT_IDS.BACKEND_DEV, // Backend Developer
     dependencies: [ECOM_TASK_IDS.FRONTEND_SETUP, ECOM_TASK_IDS.BACKEND_SETUP],
     dependents: [ECOM_TASK_IDS.PRODUCT_CATALOG, ECOM_TASK_IDS.SHOPPING_CART],
     createdAt: new Date('2024-01-17T10:00:00Z'),
@@ -536,7 +551,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.PRODUCT_CATALOG,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Product Catalog & Search",
     description: `## Product Management System
@@ -565,7 +580,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 8,
     depth: 0,
     estimate: 1800, // 30 hours
-    assignedAgent: masterAgents[1].id, // Frontend Developer
+    assignedAgent: AGENT_IDS.FRONTEND_DEV, // Frontend Developer
     dependencies: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.FRONTEND_SETUP],
     dependents: [ECOM_TASK_IDS.SHOPPING_CART],
     createdAt: new Date('2024-01-17T11:00:00Z'),
@@ -575,7 +590,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.SHOPPING_CART,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Shopping Cart & Checkout",
     description: `## E-commerce Cart System
@@ -604,7 +619,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 9,
     depth: 0,
     estimate: 2160, // 36 hours
-    assignedAgent: masterAgents[1].id, // Frontend Developer
+    assignedAgent: AGENT_IDS.FRONTEND_DEV, // Frontend Developer
     dependencies: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     dependents: [ECOM_TASK_IDS.PAYMENT_INTEGRATION],
     createdAt: new Date('2024-01-17T12:00:00Z'),
@@ -614,7 +629,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.PAYMENT_INTEGRATION,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Payment Gateway Integration",
     description: `## Secure Payment Processing
@@ -649,7 +664,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 8,
     depth: 0,
     estimate: 1440, // 24 hours
-    assignedAgent: masterAgents[2].id, // Backend Developer
+    assignedAgent: AGENT_IDS.BACKEND_DEV, // Backend Developer
     dependencies: [ECOM_TASK_IDS.SHOPPING_CART],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
     createdAt: new Date('2024-01-18T09:00:00Z'),
@@ -659,7 +674,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.ADMIN_PANEL,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Admin Dashboard & Management",
     description: `## Administrative Interface
@@ -688,7 +703,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 7,
     depth: 0,
     estimate: 1680, // 28 hours
-    assignedAgent: masterAgents[1].id, // Frontend Developer
+    assignedAgent: AGENT_IDS.FRONTEND_DEV, // Frontend Developer
     dependencies: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
     createdAt: new Date('2024-01-18T10:00:00Z'),
@@ -699,7 +714,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   // Phase 4: Testing & Deployment (3 Tasks)
   {
     id: ECOM_TASK_IDS.TESTING_SETUP,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Testing Framework Setup",
     description: `## Comprehensive Testing Strategy
@@ -728,7 +743,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 4,
     depth: 0,
     estimate: 360, // 6 hours
-    assignedAgent: masterAgents[3].id, // QA Engineer
+    assignedAgent: AGENT_IDS.QA_ENGINEER, // QA Engineer
     dependencies: [ECOM_TASK_IDS.FRONTEND_SETUP],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
     createdAt: new Date('2024-01-18T10:00:00Z'),
@@ -738,7 +753,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.E2E_TESTS,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "End-to-End Testing Implementation",
     description: `## Critical User Flow Testing
@@ -772,7 +787,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 7,
     depth: 0,
     estimate: 1440, // 24 hours
-    assignedAgent: masterAgents[3].id, // QA Engineer
+    assignedAgent: AGENT_IDS.QA_ENGINEER, // QA Engineer
     dependencies: [ECOM_TASK_IDS.TESTING_SETUP, ECOM_TASK_IDS.PAYMENT_INTEGRATION, ECOM_TASK_IDS.ADMIN_PANEL],
     dependents: [ECOM_TASK_IDS.DEPLOYMENT],
     createdAt: new Date('2024-01-18T12:00:00Z'),
@@ -782,7 +797,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 
   {
     id: ECOM_TASK_IDS.DEPLOYMENT,
-    projectId: masterProjects[0].id,
+    projectId: PROJECT_IDS.ECOMMERCE,
     parentId: undefined,
     title: "Production Deployment & CI/CD",
     description: `## Production Infrastructure
@@ -818,7 +833,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     complexity: 6,
     depth: 0,
     estimate: 960, // 16 hours
-    assignedAgent: masterAgents[4].id, // DevOps Engineer
+    assignedAgent: AGENT_IDS.DEVOPS, // DevOps Engineer
     dependencies: [ECOM_TASK_IDS.E2E_TESTS],
     dependents: [],
     createdAt: new Date('2024-01-19T09:00:00Z'),

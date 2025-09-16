@@ -4,12 +4,17 @@
  */
 
 import { Project } from '../types';
-import { generateUUID } from '../utils/uuid';
+
+// Feste Project-IDs für konsistente Referenzen (müssen mit master-dummy-data.ts übereinstimmen)
+const PROJECT_IDS = {
+  ECOMMERCE: "53fd7995-1606-4360-65ae-9b057525c12e",
+  MOBILE: "980c9337-0630-41d0-3b95-b71caca7635b"
+};
 
 export const masterProjects: Project[] = [
   // Projekt 1: E-Commerce Platform Redesign
   {
-    id: generateUUID(),
+    id: PROJECT_IDS.ECOMMERCE,
     title: "E-Commerce Platform Redesign",
     description: `# E-Commerce Platform Redesign
 
@@ -41,7 +46,7 @@ Complete redesign and modernization of the existing e-commerce platform with imp
 
   // Projekt 2: Mobile App Development
   {
-    id: generateUUID(), 
+    id: PROJECT_IDS.MOBILE, 
     title: "Mobile App Development",
     description: `# Mobile App Development
 

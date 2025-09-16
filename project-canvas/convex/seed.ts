@@ -25,7 +25,7 @@ export const seedDatabase = mutation({
     const projectIdMapping: Record<string, string> = {};
     for (const project of masterProjects) {
       const convexProject = {
-        id: project.id,
+        id: project.id, // UUID aus den Dummy-Daten
         title: project.title,
         description: project.description,
         totalTasks: project.totalTasks,
@@ -34,6 +34,7 @@ export const seedDatabase = mutation({
       };
       const projectId = await ctx.db.insert("projects", convexProject);
       projectIdMapping[project.id] = projectId;
+      console.log(`Created project: ${project.title} -> ${projectId}`);
     }
 
     // Convert and create agents from master dummy data
@@ -59,9 +60,16 @@ export const seedDatabase = mutation({
     // Convert and create tasks from master dummy data
     const taskIdMapping: Record<string, string> = {};
     for (const task of allTasks) {
+      // Ensure projectId is mapped correctly
+      const mappedProjectId = projectIdMapping[task.projectId];
+      if (!mappedProjectId) {
+        console.error(`Project ID ${task.projectId} not found in mapping for task ${task.title}`);
+        continue;
+      }
+
       const convexTask = {
-        id: task.id,
-        projectId: projectIdMapping[task.projectId],
+        id: task.id, // UUID aus den Dummy-Daten
+        projectId: mappedProjectId,
         parentId: task.parentId ? taskIdMapping[task.parentId] : undefined,
         title: task.title,
         description: task.description,
@@ -69,20 +77,16 @@ export const seedDatabase = mutation({
         complexity: task.complexity,
         depth: task.depth,
         estimate: task.estimate,
-        assignedAgent: task.assignedAgent
-          ? agentIdMapping[task.assignedAgent]
-          : undefined,
-        dependencies: task.dependencies
-          .map((depId) => taskIdMapping[depId])
-          .filter(Boolean),
-        dependents: task.dependents
-          .map((depId) => taskIdMapping[depId])
-          .filter(Boolean),
+        assignedAgent: task.assignedAgent ? agentIdMapping[task.assignedAgent] : undefined,
+        dependencies: task.dependencies.map(depId => taskIdMapping[depId]).filter(Boolean),
+        dependents: task.dependents.map(depId => taskIdMapping[depId]).filter(Boolean),
         positionX: task.position?.x,
         positionY: task.position?.y,
         updatedAt: task.updatedAt.getTime(),
         completedAt: task.completedAt ? task.completedAt.getTime() : undefined,
       };
+      
+      console.log(`Creating task: ${task.title} with projectId: ${mappedProjectId}`);
       const taskId = await ctx.db.insert("tasks", convexTask);
       taskIdMapping[task.id] = taskId;
     }
