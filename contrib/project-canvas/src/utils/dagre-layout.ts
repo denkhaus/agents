@@ -13,6 +13,7 @@ export interface LayoutOptions {
   rankSpacing: number;
   edgeSpacing: number;
   animate: boolean;
+  force: boolean; // Add force option
 }
 
 export const defaultLayoutOptions: LayoutOptions = {
@@ -21,6 +22,7 @@ export const defaultLayoutOptions: LayoutOptions = {
   rankSpacing: 100,  // Increased spacing between ranks (rows)
   edgeSpacing: 20,   // Increased spacing between edges
   animate: true,
+  force: false, // Default to not forcing layout
 };
 
 /**
@@ -75,17 +77,24 @@ export function calculateDagreLayout(
   const taskMap = new Map<string, Task>();
   tasks.forEach(task => taskMap.set(task.id, task));
 
-  // Create nodes with calculated positions
+  // Create nodes with calculated positions, respecting existing positions
   const nodes: CustomNode[] = [];
   g.nodes().forEach((nodeId: string) => {
-    const node = g.node(nodeId);
+    const dagreNode = g.node(nodeId);
     const task = taskMap.get(nodeId);
     
     if (task) {
+      // If forcing, or if the task has no position, use Dagre.
+      // Otherwise, use the existing position.
+      const useDagrePosition = options.force || !task.position;
+      const position = useDagrePosition
+        ? { x: dagreNode.x - dagreNode.width / 2, y: dagreNode.y - dagreNode.height / 2 }
+        : { x: task.position!.x, y: task.position!.y };
+
       nodes.push({
         id: nodeId,
         type: "task",
-        position: { x: node.x - node.width / 2, y: node.y - node.height / 2 },
+        position,
         data: {
           task,
           isSelected: false,

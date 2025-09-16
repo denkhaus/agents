@@ -18,18 +18,18 @@ export const useConvexProjects = () => {
   const convexProjects = useQuery(api.projects.list);
   const { setProjects, setCurrentProject, currentProject } = useProjectStore();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (convexProjects) {
       const projects = convexProjects.map(convexProjectToProject);
       setProjects(projects);
 
-      // Set first project as current if none selected
-      if (!currentProject && projects.length > 0) {
+      // Set first project as current if none selected, and only if it's not already set.
+      // This prevents a re-render loop.
+      if (!useProjectStore.getState().currentProject && projects.length > 0) {
         setCurrentProject(projects[0]);
       }
     }
-  }, [convexProjects, setProjects, setCurrentProject, currentProject]);
+  }, [convexProjects, setProjects, setCurrentProject]);
 
   return {
     projects: convexProjects?.map(convexProjectToProject) || [],

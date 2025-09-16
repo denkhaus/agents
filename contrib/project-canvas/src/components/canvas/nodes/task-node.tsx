@@ -31,19 +31,19 @@ const taskStateConfig: Record<TaskState, TaskStateConfig> = {
   },
   [TaskState.IN_PROGRESS]: {
     color: "bg-blue-50 border-blue-300 text-blue-700",
-    darkColor: "dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300",
+    darkColor: "dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300",
     icon: Play,
     badge: "default",
   },
   [TaskState.COMPLETED]: {
     color: "bg-green-50 border-green-300 text-green-700",
-    darkColor: "dark:bg-green-900/20 dark:border-green-600 dark:text-green-300",
+    darkColor: "dark:bg-green-900 dark:border-green-600 dark:text-green-300",
     icon: CheckCircle2,
     badge: "default",
   },
   [TaskState.BLOCKED]: {
     color: "bg-red-50 border-red-300 text-red-700",
-    darkColor: "dark:bg-red-900/20 dark:border-red-600 dark:text-red-300",
+    darkColor: "dark:bg-red-900 dark:border-red-600 dark:text-red-300",
     icon: AlertCircle,
     badge: "destructive",
   },

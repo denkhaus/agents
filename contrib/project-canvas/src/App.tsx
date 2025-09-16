@@ -3,15 +3,15 @@
  * Updated to use the new layout system
  */
 
-import React from 'react';
-import { AppLayout } from '@/components/layout/app-layout';
-import { CanvasContainer } from '@/components/canvas/canvas-container';
-import { ReactFlowCanvas } from '@/components/canvas/reactflow-canvas';
-import { Toaster } from '@/components/ui/toaster';
-import { useUIStore } from '@/stores';
-import { useRealTimeData } from '@/hooks/use-real-time-data';
-import { useDummyData } from '@/hooks/use-dummy-data';
-import { useSettingsSync } from '@/hooks/use-settings-sync';
+import React from "react";
+import { AppLayout } from "@/components/layout/app-layout";
+import { CanvasContainer } from "@/components/canvas/canvas-container";
+import { ReactFlowCanvas } from "@/components/canvas/reactflow-canvas";
+import { Toaster } from "@/components/ui/toaster";
+import { useUIStore } from "@/stores";
+import { useRealTimeData } from "@/hooks/use-real-time-data";
+import { useDummyData } from "@/hooks/use-dummy-data";
+import { useSettingsSync } from "@/hooks/use-settings-sync";
 
 function App() {
   const { currentWorkspace } = useUIStore();
@@ -27,7 +27,7 @@ function App() {
 
   // Show loading only for a short time, then show app even if no data
   const [showLoading, setShowLoading] = React.useState(true);
-  
+
   React.useEffect(() => {
     const timer = setTimeout(() => setShowLoading(false), 2000);
     return () => clearTimeout(timer);
@@ -46,13 +46,13 @@ function App() {
 
   return (
     <AppLayout>
-      {currentWorkspace === 'projects' && (
+      {currentWorkspace === "projects" && (
         <CanvasContainer>
           <ReactFlowCanvas />
         </CanvasContainer>
       )}
-      
-      {currentWorkspace === 'agents' && (
+
+      {currentWorkspace === "agents" && (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">Agents Dashboard</h3>
@@ -62,8 +62,8 @@ function App() {
           </div>
         </div>
       )}
-      
-      {currentWorkspace === 'settings' && (
+
+      {currentWorkspace === "settings" && (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">Settings Panel</h3>

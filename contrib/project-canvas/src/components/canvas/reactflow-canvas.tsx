@@ -3,14 +3,12 @@
  * Main visualization component for projects and tasks
  */
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect } from "react";
 import ReactFlow, {
   useNodesState,
   useEdgesState,
   useReactFlow,
-  ReactFlowProvider,
   Background,
-  Controls,
   MiniMap,
   ConnectionMode,
   OnConnect,
@@ -25,9 +23,10 @@ import "reactflow/dist/style.css";
 import { TaskNode } from "./nodes/task-node";
 import { ProjectNode } from "./nodes/project-node";
 import { DependencyEdge } from "./edges/dependency-edge";
-import { useProjectStore } from "@/stores";
+import { useProjectStore, useTaskStore } from "@/stores";
 import { calculateTaskLayout } from "@/utils/layout";
 import { TaskNodeData } from "@/types/reactflow.types";
+
 import { useRealTimeData } from "@/hooks/use-real-time-data";
 
 // Define custom node types
@@ -45,31 +44,33 @@ interface ReactFlowCanvasProps {
   className?: string;
 }
 
-const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
+export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   className,
 }) => {
   const { currentProject } = useProjectStore();
-  const { tasks, updateTaskPosition } = useRealTimeData(); // Verwendet gefilterte Tasks
+  const { tasks } = useTaskStore();
+  const { updateTaskPosition } = useRealTimeData();
   const { fitView } = useReactFlow();
 
-  // Generate nodes and edges from current project data
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Update nodes and edges when project or tasks change
+  useEffect(() => {
     if (!currentProject || tasks.length === 0) {
-      return { initialNodes: [], initialEdges: [] };
+      setNodes([]);
+      setEdges([]);
+      return;
     }
 
     // Tasks are already filtered by currentProject in useRealTimeData
     const projectTasks = tasks;
-    const { nodes, edges } = calculateTaskLayout(projectTasks);
+    const { nodes: newNodes, edges: newEdges } =
+      calculateTaskLayout(projectTasks);
 
-    return {
-      initialNodes: nodes,
-      initialEdges: edges,
-    };
-  }, [currentProject, tasks]);
-
-  const [nodes, , onNodesChange] = useNodesState(initialNodes as Node[]);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges as Edge[]);
+    setNodes(newNodes as Node[]);
+    setEdges(newEdges as Edge[]);
+  }, [currentProject, tasks.length, setNodes, setEdges]);
 
   // Handle new connections (for future dependency management)
   const onConnect: OnConnect = useCallback(
@@ -93,7 +94,7 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
   );
 
   // Auto-fit view when data changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (nodes.length > 0) {
       setTimeout(() => fitView({ padding: 0.2 }), 100);
     }
@@ -122,10 +123,7 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
           gap={16}
           className="opacity-20 dark:opacity-10"
         />
-        <Controls
-          className="bg-background border border-border rounded-md shadow-sm"
-          showInteractive={false}
-        />
+
         <MiniMap
           className="bg-background border border-border rounded-md"
           maskColor="rgba(0, 0, 0, 0.1)"
@@ -150,14 +148,5 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
         />
       </ReactFlow>
     </div>
-  );
-};
-
-// Wrapper component with ReactFlowProvider
-export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = (props) => {
-  return (
-    <ReactFlowProvider>
-      <ReactFlowCanvasInner {...props} />
-    </ReactFlowProvider>
   );
 };

@@ -62,7 +62,7 @@ export interface ConvexAgent {
  */
 export function convexProjectToProject(convexProject: ConvexProject): Project {
   return {
-    id: convexProject._id as UUID,
+    id: convexProject.id as UUID, // Use the custom UUID, not the Convex _id
     title: convexProject.title,
     description: convexProject.description,
     createdAt: new Date(convexProject.createdAt),

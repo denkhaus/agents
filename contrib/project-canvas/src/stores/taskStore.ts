@@ -16,6 +16,9 @@ import { Position } from "../types/ui.types";
 
 // Import the actual values for runtime usage
 import { TaskState as TaskStateValue } from "@/types/task.types";
+import { convex } from "@/lib/convex";
+import { api } from "../../convex/_generated/api";
+import { convexTaskToTask } from "@/utils/convex-helpers";
 
 interface TaskStore {
   // State
@@ -337,11 +340,9 @@ export const useTaskStore = create<TaskStore>()(
       fetchTasksByProject: async (projectId) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          console.log(
-            "fetchTasksByProject - to be implemented with Convex",
-            projectId
-          );
+          const tasks = await convex.query(api.tasks.listByProject, { projectId });
+          const mappedTasks = tasks.map(convexTaskToTask);
+          get().setTasks(mappedTasks);
           set({ loading: false });
         } catch (error) {
           set({
@@ -355,10 +356,15 @@ export const useTaskStore = create<TaskStore>()(
       createTask: async (input) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          console.log("createTask - to be implemented with Convex", input);
-          set({ loading: false });
-          return {} as Task; // Temporary
+          const taskId = await convex.mutation(api.tasks.create, input);
+          const newTask = await convex.query(api.tasks.get, { id: taskId });
+          if (newTask) {
+            const mappedTask = convexTaskToTask(newTask);
+            get().addTask(mappedTask);
+            set({ loading: false });
+            return mappedTask;
+          }
+          throw new Error("Failed to fetch created task");
         } catch (error) {
           set({
             error:
@@ -372,13 +378,8 @@ export const useTaskStore = create<TaskStore>()(
       updateTaskAsync: async (id, updates) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
+          await convex.mutation(api.tasks.updateEditableFields, { id, ...updates });
           get().updateTask(id, updates);
-          console.log(
-            "updateTaskAsync - to be implemented with Convex",
-            id,
-            updates
-          );
           set({ loading: false });
         } catch (error) {
           set({
@@ -393,9 +394,8 @@ export const useTaskStore = create<TaskStore>()(
       deleteTaskAsync: async (id) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
+          await convex.mutation(api.tasks.remove, { id });
           get().deleteTask(id);
-          console.log("deleteTaskAsync - to be implemented with Convex", id);
           set({ loading: false });
         } catch (error) {
           set({

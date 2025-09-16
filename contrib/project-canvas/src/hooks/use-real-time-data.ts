@@ -17,7 +17,7 @@ export const useRealTimeData = () => {
   
   // Real-time data hooks
   const { projects, loading: projectsLoading } = useConvexProjects();
-  const { tasks, loading: tasksLoading } = useConvexTasks(currentProject?.id);
+  const { loading: tasksLoading } = useConvexTasks(currentProject?.id);
   const { agents, loading: agentsLoading } = useConvexAgents();
   
   // Mutation hooks
@@ -44,7 +44,6 @@ export const useRealTimeData = () => {
   return {
     // Data
     projects,
-    tasks,
     agents,
     currentProject,
     
