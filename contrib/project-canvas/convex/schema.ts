@@ -104,4 +104,22 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_timestamp", ["timestamp"])
     .index("by_entity", ["entityId"]),
+
+  // User settings table
+  settings: defineTable({
+    userId: v.string(), // Unique identifier for the user
+    theme: v.optional(
+      v.union(
+        v.literal("light"),
+        v.literal("dark")
+      )
+    ),
+    // Add more settings fields here for future enhancements
+    notifications: v.optional(v.boolean()),
+    autoSave: v.optional(v.boolean()),
+    language: v.optional(v.string()),
+    createdAt: v.number(), // Unix timestamp
+    updatedAt: v.number(), // Unix timestamp
+  })
+    .index("by_user", ["userId"]),
 });

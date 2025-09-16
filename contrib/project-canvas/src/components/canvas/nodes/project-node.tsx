@@ -3,48 +3,30 @@
  * Custom ReactFlow node for displaying projects (root level)
  */
 
-import React from 'react';
-import { Handle } from 'reactflow';
+import React from "react";
+import { Handle, Position, NodeProps } from "reactflow";
 
-// Use Position constants directly from ReactFlow exports
-const Position = {
-  Left: 'left' as const,
-  Top: 'top' as const,
-  Right: 'right' as const,
-  Bottom: 'bottom' as const,
-};
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { ProjectNodeData } from "@/types/reactflow.types";
+import { FolderOpen, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// Define proper Node component props based on ReactFlow's signature
-interface NodeComponentProps {
-  data: any;
-  selected?: boolean;
-  id?: string;
-}
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
-// import { ProjectNodeData } from '@/types/reactflow.types'; // Removed unused import
-import { 
-  FolderOpen, 
-  Calendar, 
-  CheckCircle2, 
-  Clock
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-export const ProjectNode: React.FC<NodeComponentProps> = ({ 
-  data, 
-  selected 
+export const ProjectNode: React.FC<NodeProps<ProjectNodeData>> = ({
+  data,
+  selected,
 }) => {
   const { project, taskCount, completionRate } = data;
-  
+
   // Use completionRate in the UI
-  const displayCompletionRate = completionRate > 0 ? `(${Math.round(completionRate)}%)` : '';
+  const displayCompletionRate =
+    completionRate > 0 ? `(${Math.round(completionRate)}%)` : "";
 
   return (
     <div className="project-node">
-      <Card 
+      <Card
         className={cn(
           "w-96 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 transition-all duration-200 cursor-pointer",
           "dark:from-primary/10 dark:to-primary/20 dark:border-primary/30",
@@ -56,7 +38,7 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
               <FolderOpen className="h-5 w-5 text-primary" />
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <h2 className="font-semibold text-lg leading-tight text-foreground">
                 {project.title}
@@ -76,7 +58,7 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
         <CardContent className="space-y-4">
           {/* Description */}
           <div>
-            <MarkdownRenderer 
+            <MarkdownRenderer
               content={project.description}
               maxLength={150}
               showPreview={true}
@@ -88,12 +70,11 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{Math.round(project.progress)}%</span>
+              <span className="font-medium">
+                {Math.round(project.progress)}%
+              </span>
             </div>
-            <Progress 
-              value={project.progress} 
-              className="h-2"
-            />
+            <Progress value={project.progress} className="h-2" />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{project.completedTasks} completed</span>
               <span>{project.totalTasks} total</span>
@@ -111,7 +92,7 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
                 {project.createdAt.toLocaleDateString()}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock className="w-3 h-3" />
@@ -132,7 +113,9 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3 text-blue-500" />
-                <span>{project.totalTasks - project.completedTasks} remaining</span>
+                <span>
+                  {project.totalTasks - project.completedTasks} remaining
+                </span>
               </div>
             </div>
           </div>
@@ -144,7 +127,7 @@ export const ProjectNode: React.FC<NodeComponentProps> = ({
         type="source"
         position={Position.Bottom}
         className="w-4 h-4 border-2 border-background"
-        style={{ background: '#8b5cf6' }}
+        style={{ background: "#8b5cf6" }}
       />
     </div>
   );

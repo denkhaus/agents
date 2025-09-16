@@ -17,6 +17,8 @@ import ReactFlow, {
   OnNodesChange,
   Node,
   Edge,
+  NodeTypes,
+  EdgeTypes,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -29,13 +31,13 @@ import { TaskNodeData } from "@/types/reactflow.types";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
 
 // Define custom node types
-const nodeTypes = {
+const nodeTypes: NodeTypes = {
   task: TaskNode,
   project: ProjectNode,
 };
 
 // Define custom edge types
-const edgeTypes = {
+const edgeTypes: EdgeTypes = {
   dependency: DependencyEdge,
 };
 
@@ -95,7 +97,7 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
     if (nodes.length > 0) {
       setTimeout(() => fitView({ padding: 0.2 }), 100);
     }
-  }, [nodes.length, fitView, fitView]);
+  }, [nodes.length, fitView]);
 
   return (
     <div className={`h-full w-full ${className}`}>

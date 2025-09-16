@@ -3,31 +3,19 @@
  * Custom ReactFlow edge for task dependencies
  */
 
-import React from 'react';
+import React from "react";
 import {
   getBezierPath,
   EdgeLabelRenderer,
   BaseEdge,
-} from 'reactflow';
+  EdgeProps,
+} from "reactflow";
 
-// Define proper Edge component props based on ReactFlow's signature
-interface EdgeComponentProps {
-  id: string;
-  sourceX: number;
-  sourceY: number;
-  targetX: number;
-  targetY: number;
-  sourcePosition: string;
-  targetPosition: string;
-  style?: React.CSSProperties;
-  data?: any;
-  selected?: boolean;
-}
-import { Badge } from '@/components/ui/badge';
-import { DependencyEdgeData } from '@/types/reactflow.types';
-import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
+import { DependencyEdgeData } from "@/types/reactflow.types";
+import { cn } from "@/lib/utils";
 
-export const DependencyEdge: React.FC<EdgeComponentProps> = ({
+export const DependencyEdge: React.FC<EdgeProps<DependencyEdgeData>> = ({
   id,
   sourceX,
   sourceY,
@@ -49,14 +37,14 @@ export const DependencyEdge: React.FC<EdgeComponentProps> = ({
   });
 
   const isBlocking = data?.isBlocking || false;
-  const dependencyType = data?.dependencyType || 'finish-to-start';
+  const dependencyType = data?.dependencyType || "finish-to-start";
 
   // Edge styling based on dependency type and state
   const edgeStyle = {
     ...style,
     strokeWidth: selected ? 3 : 2,
-    stroke: isBlocking ? '#ef4444' : '#6b7280',
-    strokeDasharray: dependencyType === 'start-to-start' ? '5,5' : undefined,
+    stroke: isBlocking ? "#ef4444" : "#6b7280",
+    strokeDasharray: dependencyType === "start-to-start" ? "5,5" : undefined,
   };
 
   // Arrow marker styling
@@ -77,7 +65,7 @@ export const DependencyEdge: React.FC<EdgeComponentProps> = ({
         >
           <path
             d="M0,0 L0,6 L9,3 z"
-            fill={isBlocking ? '#ef4444' : '#6b7280'}
+            fill={isBlocking ? "#ef4444" : "#6b7280"}
           />
         </marker>
       </defs>
@@ -95,10 +83,10 @@ export const DependencyEdge: React.FC<EdgeComponentProps> = ({
       <EdgeLabelRenderer>
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             fontSize: 12,
-            pointerEvents: 'all',
+            pointerEvents: "all",
           }}
           className="nodrag nopan"
         >
@@ -110,7 +98,7 @@ export const DependencyEdge: React.FC<EdgeComponentProps> = ({
                 "bg-background border border-border"
               )}
             >
-              {isBlocking ? 'Blocked' : getDependencyTypeLabel(dependencyType)}
+              {isBlocking ? "Blocked" : getDependencyTypeLabel(dependencyType)}
             </Badge>
           )}
         </div>
@@ -122,13 +110,13 @@ export const DependencyEdge: React.FC<EdgeComponentProps> = ({
 // Helper function to get human-readable dependency type labels
 function getDependencyTypeLabel(type: string): string {
   switch (type) {
-    case 'finish-to-start':
-      return 'FS';
-    case 'start-to-start':
-      return 'SS';
-    case 'finish-to-finish':
-      return 'FF';
+    case "finish-to-start":
+      return "FS";
+    case "start-to-start":
+      return "SS";
+    case "finish-to-finish":
+      return "FF";
     default:
-      return 'DEP';
+      return "DEP";
   }
 }

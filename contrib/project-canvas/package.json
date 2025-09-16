@@ -42,7 +42,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
-    "convex": "1.27.0",
+    "convex": "^1.27.0",
+    "dagre": "^0.8.5",
     "date-fns": "^4.1.0",
     "dompurify": "3.2.6",
     "lucide-react": "0.544.0",
@@ -60,8 +61,8 @@
     "zustand": "5.0.8"
   },
   "devDependencies": {
-    "npm-run-all2": "^7.0.0",
     "@tailwindcss/typography": "^0.5.10",
+    "@types/dagre": "^0.7.53",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -73,6 +74,7 @@
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "npm-run-all2": "^7.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",

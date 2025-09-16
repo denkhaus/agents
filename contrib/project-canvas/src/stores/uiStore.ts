@@ -4,7 +4,7 @@
  */
 
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { devtools } from "zustand/middleware";
 
 import type {
   UUID,
@@ -121,159 +121,147 @@ const defaultLayout: LayoutOptions = {
 
 export const useUIStore = create<UIStore>()(
   devtools(
-    persist(
-      (set, get) => ({
-        // Initial State
-        sidebar: defaultSidebar,
-        currentWorkspace: "projects",
-        sidebarCollapsed: false,
-        theme: defaultTheme,
-        darkMode: false,
-        canvas: defaultCanvas,
-        viewport: defaultViewport,
-        selection: defaultSelection,
-        layout: defaultLayout,
-        notifications: [],
-        isLayouting: false,
-        isLoading: false,
+    (set, get) => ({
+      // Initial State
+      sidebar: defaultSidebar,
+      currentWorkspace: "projects",
+      sidebarCollapsed: false,
+      theme: defaultTheme,
+      darkMode: false,
+      canvas: defaultCanvas,
+      viewport: defaultViewport,
+      selection: defaultSelection,
+      layout: defaultLayout,
+      notifications: [],
+      isLayouting: false,
+      isLoading: false,
 
-        // Sidebar Actions
-        toggleSidebar: () =>
-          set((state) => ({
-            sidebar: { ...state.sidebar, collapsed: !state.sidebar.collapsed },
-            sidebarCollapsed: !state.sidebar.collapsed,
-          })),
+      // Sidebar Actions
+      toggleSidebar: () =>
+        set((state) => ({
+          sidebar: { ...state.sidebar, collapsed: !state.sidebar.collapsed },
+          sidebarCollapsed: !state.sidebar.collapsed,
+        })),
 
-        setSidebarCollapsed: (collapsed) =>
-          set((state) => ({
-            sidebar: { ...state.sidebar, collapsed },
-            sidebarCollapsed: collapsed,
-          })),
+      setSidebarCollapsed: (collapsed) =>
+        set((state) => ({
+          sidebar: { ...state.sidebar, collapsed },
+          sidebarCollapsed: collapsed,
+        })),
 
-        setWorkspace: (workspace) => set({ currentWorkspace: workspace }),
+      setWorkspace: (workspace) => set({ currentWorkspace: workspace }),
 
-        // Theme Actions
-        toggleDarkMode: () =>
-          set((state) => ({
-            theme: {
-              ...state.theme,
-              mode: state.theme.mode === "light" ? "dark" : "light",
-            },
-            darkMode: state.theme.mode === "light",
-          })),
+      // Theme Actions
+      toggleDarkMode: () =>
+        set((state) => ({
+          theme: {
+            ...state.theme,
+            mode: state.theme.mode === "light" ? "dark" : "light",
+          },
+          darkMode: state.theme.mode === "light",
+        })),
 
-        setTheme: (newTheme) =>
-          set((state) => ({
-            theme: { ...state.theme, ...newTheme },
-          })),
+      setTheme: (newTheme) =>
+        set((state) => ({
+          theme: { ...state.theme, ...newTheme },
+        })),
 
-        // Canvas Actions
-        setViewport: (newViewport) =>
-          set((state) => ({
-            viewport: { ...state.viewport, ...newViewport },
-          })),
+      // Canvas Actions
+      setViewport: (newViewport) =>
+        set((state) => ({
+          viewport: { ...state.viewport, ...newViewport },
+        })),
 
-        resetViewport: () => set({ viewport: defaultViewport }),
+      resetViewport: () => set({ viewport: defaultViewport }),
 
-        setCanvasConfig: (config) =>
-          set((state) => ({
-            canvas: { ...state.canvas, ...config },
-          })),
+      setCanvasConfig: (config) =>
+        set((state) => ({
+          canvas: { ...state.canvas, ...config },
+        })),
 
-        // Selection Actions
-        setSelectedNodes: (nodes) =>
-          set((state) => ({
-            selection: { ...state.selection, selectedNodes: nodes },
-          })),
+      // Selection Actions
+      setSelectedNodes: (nodes) =>
+        set((state) => ({
+          selection: { ...state.selection, selectedNodes: nodes },
+        })),
 
-        setSelectedEdges: (edges) =>
-          set((state) => ({
-            selection: { ...state.selection, selectedEdges: edges },
-          })),
+      setSelectedEdges: (edges) =>
+        set((state) => ({
+          selection: { ...state.selection, selectedEdges: edges },
+        })),
 
-        addToSelection: (nodeIds, edgeIds = []) =>
-          set((state) => ({
-            selection: {
-              ...state.selection,
-              selectedNodes: [
-                ...new Set([...state.selection.selectedNodes, ...nodeIds]),
-              ],
-              selectedEdges: [
-                ...new Set([...state.selection.selectedEdges, ...edgeIds]),
-              ],
-            },
-          })),
+      addToSelection: (nodeIds, edgeIds = []) =>
+        set((state) => ({
+          selection: {
+            ...state.selection,
+            selectedNodes: [
+              ...new Set([...state.selection.selectedNodes, ...nodeIds]),
+            ],
+            selectedEdges: [
+              ...new Set([...state.selection.selectedEdges, ...edgeIds]),
+            ],
+          },
+        })),
 
-        removeFromSelection: (nodeIds, edgeIds = []) =>
-          set((state) => ({
-            selection: {
-              ...state.selection,
-              selectedNodes: state.selection.selectedNodes.filter(
-                (id) => !nodeIds.includes(id)
-              ),
-              selectedEdges: state.selection.selectedEdges.filter(
-                (id) => !edgeIds.includes(id)
-              ),
-            },
-          })),
+      removeFromSelection: (nodeIds, edgeIds = []) =>
+        set((state) => ({
+          selection: {
+            ...state.selection,
+            selectedNodes: state.selection.selectedNodes.filter(
+              (id) => !nodeIds.includes(id)
+            ),
+            selectedEdges: state.selection.selectedEdges.filter(
+              (id) => !edgeIds.includes(id)
+            ),
+          },
+        })),
 
-        clearSelection: () => set({ selection: defaultSelection }),
+      clearSelection: () => set({ selection: defaultSelection }),
 
-        toggleMultiSelect: (enabled) =>
-          set((state) => ({
-            selection: { ...state.selection, multiSelect: enabled },
-          })),
+      toggleMultiSelect: (enabled) =>
+        set((state) => ({
+          selection: { ...state.selection, multiSelect: enabled },
+        })),
 
-        // Layout Actions
-        setLayoutOptions: (options) =>
-          set((state) => ({
-            layout: { ...state.layout, ...options },
-          })),
+      // Layout Actions
+      setLayoutOptions: (options) =>
+        set((state) => ({
+          layout: { ...state.layout, ...options },
+        })),
 
-        setIsLayouting: (isLayouting) => set({ isLayouting }),
+      setIsLayouting: (isLayouting) => set({ isLayouting }),
 
-        // Notification Actions
-        addNotification: (notification) => {
-          const id = crypto.randomUUID();
-          const newNotification: NotificationState = {
-            ...notification,
-            id,
-            timestamp: new Date(),
-          };
+      // Notification Actions
+      addNotification: (notification) => {
+        const id = crypto.randomUUID();
+        const newNotification: NotificationState = {
+          ...notification,
+          id,
+          timestamp: new Date(),
+        };
 
-          set((state) => ({
-            notifications: [...state.notifications, newNotification],
-          }));
+        set((state) => ({
+          notifications: [...state.notifications, newNotification],
+        }));
 
-          // Auto-remove notification after duration
-          if (notification.duration) {
-            setTimeout(() => {
-              get().removeNotification(id);
-            }, notification.duration);
-          }
-        },
+        // Auto-remove notification after duration
+        if (notification.duration) {
+          setTimeout(() => {
+            get().removeNotification(id);
+          }, notification.duration);
+        }
+      },
 
-        removeNotification: (id) =>
-          set((state) => ({
-            notifications: state.notifications.filter((n) => n.id !== id),
-          })),
+      removeNotification: (id) =>
+        set((state) => ({
+          notifications: state.notifications.filter((n) => n.id !== id),
+        })),
 
-        clearNotifications: () => set({ notifications: [] }),
+      clearNotifications: () => set({ notifications: [] }),
 
-        // Loading Actions
-        setIsLoading: (isLoading) => set({ isLoading }),
-      }),
-      {
-        name: "ui-store",
-        // Only persist certain UI preferences
-        partialize: (state) => ({
-          sidebar: state.sidebar,
-          theme: state.theme,
-          canvas: state.canvas,
-          layout: state.layout,
-        }),
-      }
-    ),
+      // Loading Actions
+      setIsLoading: (isLoading) => set({ isLoading }),
+    }),
     { name: "ui-store" }
   )
 );

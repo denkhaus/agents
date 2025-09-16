@@ -11,6 +11,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { useUIStore } from '@/stores';
 import { useRealTimeData } from '@/hooks/use-real-time-data';
 import { useDummyData } from '@/hooks/use-dummy-data';
+import { useSettingsSync } from '@/hooks/use-settings-sync';
 
 function App() {
   const { currentWorkspace } = useUIStore();
@@ -20,6 +21,9 @@ function App() {
   
   // Load dummy data for development (fallback when Convex is empty)
   useDummyData();
+  
+  // Sync settings with Convex
+  useSettingsSync();
 
   // Show loading only for a short time, then show app even if no data
   const [showLoading, setShowLoading] = React.useState(true);

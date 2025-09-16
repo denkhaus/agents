@@ -3,78 +3,61 @@
  * Custom ReactFlow node for displaying tasks
  */
 
-import React from 'react';
-import { Handle } from 'reactflow';
+import React from "react";
+import { Handle, Position, NodeProps } from "reactflow";
 
-// Use Position constants directly from ReactFlow exports
-const Position = {
-  Left: 'left' as const,
-  Top: 'top' as const,
-  Right: 'right' as const,
-  Bottom: 'bottom' as const,
-};
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { TaskState } from "@/types/task.types";
+import { Clock, User, AlertCircle, CheckCircle2, Play, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { TaskNodeData } from "@/types/reactflow.types";
 
-// Define proper Node component props based on ReactFlow's signature
-interface NodeComponentProps {
-  data: any;
-  selected?: boolean;
-  id?: string;
+interface TaskStateConfig {
+  color: string;
+  darkColor: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge: string;
 }
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
-// import { TaskNodeData } from '@/types/reactflow.types'; // Removed unused import
-import { TaskState } from '@/types/task.types';
-import { 
-  Clock, 
-  User, 
-  AlertCircle, 
-  CheckCircle2, 
-  Play, 
-  X
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-const taskStateConfig = {
+const taskStateConfig: Record<TaskState, TaskStateConfig> = {
   [TaskState.PENDING]: {
-    color: 'bg-slate-100 border-slate-300 text-slate-700',
-    darkColor: 'dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300',
+    color: "bg-slate-100 border-slate-300 text-slate-700",
+    darkColor: "dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
     icon: Clock,
-    badge: 'secondary'
+    badge: "secondary",
   },
   [TaskState.IN_PROGRESS]: {
-    color: 'bg-blue-50 border-blue-300 text-blue-700',
-    darkColor: 'dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300',
+    color: "bg-blue-50 border-blue-300 text-blue-700",
+    darkColor: "dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300",
     icon: Play,
-    badge: 'default'
+    badge: "default",
   },
   [TaskState.COMPLETED]: {
-    color: 'bg-green-50 border-green-300 text-green-700',
-    darkColor: 'dark:bg-green-900/20 dark:border-green-600 dark:text-green-300',
+    color: "bg-green-50 border-green-300 text-green-700",
+    darkColor: "dark:bg-green-900/20 dark:border-green-600 dark:text-green-300",
     icon: CheckCircle2,
-    badge: 'default'
+    badge: "default",
   },
   [TaskState.BLOCKED]: {
-    color: 'bg-red-50 border-red-300 text-red-700',
-    darkColor: 'dark:bg-red-900/20 dark:border-red-600 dark:text-red-300',
+    color: "bg-red-50 border-red-300 text-red-700",
+    darkColor: "dark:bg-red-900/20 dark:border-red-600 dark:text-red-300",
     icon: AlertCircle,
-    badge: 'destructive'
+    badge: "destructive",
   },
   [TaskState.CANCELLED]: {
-    color: 'bg-gray-50 border-gray-300 text-gray-700',
-    darkColor: 'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300',
+    color: "bg-gray-50 border-gray-300 text-gray-700",
+    darkColor: "dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300",
     icon: X,
-    badge: 'secondary'
-  }
-} as const;
+    badge: "secondary",
+  },
+};
 
-export const TaskNode: React.FC<NodeComponentProps> = ({ 
-  data, 
-  selected 
-}) => {
+export const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data, selected }) => {
   const { task, isHighlighted, showDetails } = data;
-  const config = taskStateConfig[task.state];
+  const config = taskStateConfig[task.state as TaskState];
   const Icon = config.icon;
 
   return (
@@ -84,10 +67,10 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
         type="target"
         position={Position.Left}
         className="w-3 h-3 border-2 border-background"
-        style={{ background: '#6b7280' }}
+        style={{ background: "#6b7280" }}
       />
 
-      <Card 
+      <Card
         className={cn(
           "w-80 transition-all duration-200 cursor-pointer",
           config.color,
@@ -103,19 +86,16 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
                 {task.title}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <Badge 
-                  variant={config.badge as any}
-                  className="text-xs"
-                >
+                <Badge variant={config.badge as any} className="text-xs">
                   <Icon className="w-3 h-3 mr-1" />
-                  {task.state.replace('-', ' ')}
+                  {task.state.replace("-", " ")}
                 </Badge>
                 <Badge variant="outline" className="text-xs">
                   C{task.complexity}
                 </Badge>
               </div>
             </div>
-            
+
             {task.assignedAgent && (
               <Avatar className="w-6 h-6">
                 <AvatarFallback className="text-xs">
@@ -129,7 +109,7 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
         <CardContent className="pt-0">
           {/* Description Preview */}
           <div className="mb-3">
-            <MarkdownRenderer 
+            <MarkdownRenderer
               content={task.description}
               maxLength={showDetails ? undefined : 100}
               showPreview={!showDetails}
@@ -146,7 +126,7 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
                   <span>{Math.round(task.estimate / 60)}h</span>
                 </div>
               )}
-              
+
               {task.dependencies.length > 0 && (
                 <div className="flex items-center gap-1">
                   <span>Deps: {task.dependencies.length}</span>
@@ -167,14 +147,14 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
                   <span className="text-muted-foreground">Created:</span>
                   <span>{task.createdAt.toLocaleDateString()}</span>
                 </div>
-                
+
                 {task.completedAt && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Completed:</span>
                     <span>{task.completedAt.toLocaleDateString()}</span>
                   </div>
                 )}
-                
+
                 {task.assignedAgent && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Assigned:</span>
@@ -195,7 +175,7 @@ export const TaskNode: React.FC<NodeComponentProps> = ({
         type="source"
         position={Position.Right}
         className="w-3 h-3 border-2 border-background"
-        style={{ background: '#6b7280' }}
+        style={{ background: "#6b7280" }}
       />
     </div>
   );
