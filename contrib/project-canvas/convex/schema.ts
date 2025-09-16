@@ -24,7 +24,7 @@ export default defineSchema({
   tasks: defineTable({
     id: v.string(),
     projectId: v.string(), // UUID string to match projects.id
-    parentId: v.optional(v.id("tasks")),
+    parentId: v.optional(v.string()), // UUID string
     title: v.string(),
     description: v.string(),
     state: v.union(
@@ -38,8 +38,8 @@ export default defineSchema({
     depth: v.number(), // 0 for root tasks
     estimate: v.optional(v.number()), // minutes
     assignedAgent: v.optional(v.string()), // UUID string
-    dependencies: v.array(v.id("tasks")), // Array of task IDs
-    dependents: v.array(v.id("tasks")), // Array of task IDs
+    dependencies: v.array(v.string()), // Array of task UUIDs
+    dependents: v.array(v.string()), // Array of task UUIDs
     // UI-specific fields
     positionX: v.optional(v.number()),
     positionY: v.optional(v.number()),
@@ -78,7 +78,7 @@ export default defineSchema({
     ),
     isStreaming: v.optional(v.boolean()),
     capabilities: v.optional(v.array(v.string())),
-    currentTasks: v.optional(v.array(v.id("tasks"))),
+    currentTasks: v.optional(v.array(v.string())), // Array of task UUIDs
     lastActiveAt: v.optional(v.number()), // Unix timestamp
     id: v.string(),
   })

@@ -12,7 +12,6 @@ import {
   convexTaskToTask,
   convexAgentToAgent,
 } from "@/utils/convex-helpers";
-import { Id } from "../../convex/_generated/dataModel";
 
 // Hook for real-time projects
 export const useConvexProjects = () => {

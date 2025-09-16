@@ -22,21 +22,27 @@ export const list = query({
 
 // Get a specific project by ID
 export const get = query({
-  args: { id: v.id("projects") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const project = await ctx.db.get(args.id);
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     return project;
   },
 });
 
 // Get project with task statistics
 export const getWithStats = query({
-  args: { id: v.id("projects") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const project = await ctx.db.get(args.id);
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     if (!project) return null;
 
-    // Get task statistics
+    // Get task statistics using UUID projectId
     const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_project", (q) => q.eq("projectId", args.id))
@@ -79,6 +85,8 @@ export const create = mutation({
       totalTasks: 0,
       completedTasks: 0,
       progress: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     // Emit real-time event
@@ -96,12 +104,19 @@ export const create = mutation({
 // Update project (limited fields for frontend)
 export const updateEditableFields = mutation({
   args: {
-    id: v.id("projects"),
+    id: v.string(), // UUID string
     title: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
+    
+    // Find project by UUID
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), id))
+      .first();
+    if (!project) throw new Error("Project not found");
     
     // Only update provided fields
     const updateData: any = {};
@@ -112,7 +127,7 @@ export const updateEditableFields = mutation({
       throw new Error("No fields to update");
     }
 
-    await ctx.db.patch(id, updateData);
+    await ctx.db.patch(project._id, updateData);
 
     // Emit real-time event
     await ctx.db.insert("events", {
@@ -129,14 +144,21 @@ export const updateEditableFields = mutation({
 // Update project statistics (internal use)
 export const updateStats = mutation({
   args: {
-    id: v.id("projects"),
+    id: v.string(), // UUID string
     totalTasks: v.number(),
     completedTasks: v.number(),
   },
   handler: async (ctx, args) => {
+    // Find project by UUID
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
+    if (!project) throw new Error("Project not found");
+    
     const progress = args.totalTasks > 0 ? (args.completedTasks / args.totalTasks) * 100 : 0;
 
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch(project._id, {
       totalTasks: args.totalTasks,
       completedTasks: args.completedTasks,
       progress: Math.round(progress * 10) / 10,
@@ -148,8 +170,15 @@ export const updateStats = mutation({
 
 // Delete project (LLM only)
 export const remove = mutation({
-  args: { id: v.id("projects") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
+    // Find project by UUID
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
+    if (!project) throw new Error("Project not found");
+    
     // First delete all tasks in the project
     const tasks = await ctx.db
       .query("tasks")
@@ -161,7 +190,7 @@ export const remove = mutation({
     }
 
     // Then delete the project
-    await ctx.db.delete(args.id);
+    await ctx.db.delete(project._id);
 
     // Emit real-time event
     await ctx.db.insert("events", {

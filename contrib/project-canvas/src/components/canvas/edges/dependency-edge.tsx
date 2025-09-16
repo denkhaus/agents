@@ -5,16 +5,29 @@
 
 import React from 'react';
 import {
-  EdgeProps,
   getBezierPath,
   EdgeLabelRenderer,
   BaseEdge,
 } from 'reactflow';
+
+// Define proper Edge component props based on ReactFlow's signature
+interface EdgeComponentProps {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: string;
+  targetPosition: string;
+  style?: React.CSSProperties;
+  data?: any;
+  selected?: boolean;
+}
 import { Badge } from '@/components/ui/badge';
 import { DependencyEdgeData } from '@/types/reactflow.types';
 import { cn } from '@/lib/utils';
 
-export const DependencyEdge: React.FC<EdgeProps<DependencyEdgeData>> = ({
+export const DependencyEdge: React.FC<EdgeComponentProps> = ({
   id,
   sourceX,
   sourceY,

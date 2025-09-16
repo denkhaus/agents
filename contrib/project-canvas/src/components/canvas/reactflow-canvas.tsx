@@ -3,7 +3,7 @@
  * Main visualization component for projects and tasks
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from "react";
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -17,15 +17,16 @@ import ReactFlow, {
   OnNodesChange,
   Node,
   Edge,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from "reactflow";
+import "reactflow/dist/style.css";
 
-import { TaskNode } from './nodes/task-node';
-import { ProjectNode } from './nodes/project-node';
-import { DependencyEdge } from './edges/dependency-edge';
-import { useProjectStore, useTaskStore } from '@/stores';
-import { calculateTaskLayout } from '@/utils/layout';
-import { TaskNodeData } from '@/types/reactflow.types';
+import { TaskNode } from "./nodes/task-node";
+import { ProjectNode } from "./nodes/project-node";
+import { DependencyEdge } from "./edges/dependency-edge";
+import { useProjectStore } from "@/stores";
+import { calculateTaskLayout } from "@/utils/layout";
+import { TaskNodeData } from "@/types/reactflow.types";
+import { useRealTimeData } from "@/hooks/use-real-time-data";
 
 // Define custom node types
 const nodeTypes = {
@@ -42,9 +43,11 @@ interface ReactFlowCanvasProps {
   className?: string;
 }
 
-const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => {
+const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({
+  className,
+}) => {
   const { currentProject } = useProjectStore();
-  const { tasks, updateTaskPosition } = useTaskStore();
+  const { tasks, updateTaskPosition } = useRealTimeData(); // Verwendet gefilterte Tasks
   const { fitView } = useReactFlow();
 
   // Generate nodes and edges from current project data
@@ -53,12 +56,13 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
       return { initialNodes: [], initialEdges: [] };
     }
 
-    const projectTasks = tasks.filter(task => task.projectId === currentProject.id);
+    // Tasks are already filtered by currentProject in useRealTimeData
+    const projectTasks = tasks;
     const { nodes, edges } = calculateTaskLayout(projectTasks);
 
     return {
       initialNodes: nodes,
-      initialEdges: edges
+      initialEdges: edges,
     };
   }, [currentProject, tasks]);
 
@@ -67,7 +71,7 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
 
   // Handle new connections (for future dependency management)
   const onConnect: OnConnect = useCallback(
-    (params) => console.log('Connection made:', params),
+    (params) => console.log("Connection made:", params),
     []
   );
 
@@ -75,10 +79,10 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
   const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
-      
+
       // Update task positions in store for persistence
       changes.forEach((change) => {
-        if (change.type === 'position' && change.position) {
+        if (change.type === "position" && change.position) {
           updateTaskPosition(change.id, change.position);
         }
       });
@@ -111,30 +115,35 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background 
-          color="#aaa" 
-          gap={16} 
-          className="opacity-20 dark:opacity-10" 
+        <Background
+          color="#aaa"
+          gap={16}
+          className="opacity-20 dark:opacity-10"
         />
-        <Controls 
+        <Controls
           className="bg-background border border-border rounded-md shadow-sm"
           showInteractive={false}
         />
-        <MiniMap 
+        <MiniMap
           className="bg-background border border-border rounded-md"
           maskColor="rgba(0, 0, 0, 0.1)"
           nodeColor={(node) => {
-            if (node.type === 'task') {
+            if (node.type === "task") {
               const taskNodeData = node.data as TaskNodeData;
               switch (taskNodeData.task.state) {
-                case 'completed': return '#22c55e';
-                case 'in-progress': return '#3b82f6';
-                case 'blocked': return '#ef4444';
-                case 'cancelled': return '#6b7280';
-                default: return '#94a3b8';
+                case "completed":
+                  return "#22c55e";
+                case "in-progress":
+                  return "#3b82f6";
+                case "blocked":
+                  return "#ef4444";
+                case "cancelled":
+                  return "#6b7280";
+                default:
+                  return "#94a3b8";
               }
             }
-            return '#8b5cf6';
+            return "#8b5cf6";
           }}
         />
       </ReactFlow>

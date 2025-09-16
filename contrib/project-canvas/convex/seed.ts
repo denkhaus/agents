@@ -5,16 +5,11 @@
  */
 
 import { mutation } from "./_generated/server";
-import { v } from "convex/values";
 import {
   masterProjects,
   masterAgents,
   allTasks,
 } from "../src/data/master-dummy-data";
-import {
-  projectToConvexProject,
-  taskToConvexTask,
-} from "../src/utils/convex-helpers";
 
 export const seedDatabase = mutation({
   args: {},
@@ -25,17 +20,23 @@ export const seedDatabase = mutation({
       return { message: "Database already seeded" };
     }
 
-    // Convert and create projects from master dummy data
-    const projectIdMapping: Record<string, string> = {};
+    // Convert and create projects from master dummy data (using UUIDs directly)
     for (const project of masterProjects) {
-      const convexProject = projectToConvexProject(project);
-      const projectId = await ctx.db.insert("projects", convexProject);
-      projectIdMapping[project.id] = projectId;
-      console.log(`Created project: ${project.title} -> ${projectId}`);
+      const convexProject = {
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        totalTasks: project.totalTasks,
+        completedTasks: project.completedTasks,
+        progress: project.progress,
+        createdAt: project.createdAt.getTime(),
+        updatedAt: project.updatedAt.getTime(),
+      };
+      await ctx.db.insert("projects", convexProject);
+      console.log(`Created project: ${project.title} with UUID: ${project.id}`);
     }
 
-    // Convert and create agents from master dummy data
-    const agentIdMapping: Record<string, string> = {};
+    // Convert and create agents from master dummy data (using UUIDs directly)
     for (const agent of masterAgents) {
       const convexAgent = {
         name: agent.name,
@@ -44,70 +45,43 @@ export const seedDatabase = mutation({
         status: agent.status,
         isStreaming: agent.isStreaming,
         capabilities: agent.capabilities,
-        currentTasks: [], // Will be updated after tasks are created
+        currentTasks: agent.currentTasks, // Keep UUIDs directly
         lastActiveAt: agent.lastActiveAt
           ? agent.lastActiveAt.getTime()
           : undefined,
-        id: agent.id, // Keep original ID for compatibility
+        id: agent.id, // Keep original UUID
       };
-      const agentId = await ctx.db.insert("agents", convexAgent);
-      agentIdMapping[agent.id] = agentId;
+      await ctx.db.insert("agents", convexAgent);
+      console.log(`Created agent: ${agent.name} with UUID: ${agent.id}`);
     }
 
-    // Convert and create tasks from master dummy data
-    const taskIdMapping: Record<string, string> = {};
+    // Convert and create tasks from master dummy data (using UUIDs directly)
     for (const task of allTasks) {
-      // Ensure projectId is mapped correctly
-      const mappedProjectId = projectIdMapping[task.projectId];
-      if (!mappedProjectId) {
-        console.error(`Project ID ${task.projectId} not found in mapping for task ${task.title}`);
-        continue;
-      }
-
       const convexTask = {
-        ...taskToConvexTask(task),
-        projectId: mappedProjectId,
-        parentId: task.parentId ? taskIdMapping[task.parentId] : undefined,
-        assignedAgent: task.assignedAgent ? agentIdMapping[task.assignedAgent] : undefined,
-        dependencies: task.dependencies.map(depId => taskIdMapping[depId]).filter(Boolean),
-        dependents: task.dependents.map(depId => taskIdMapping[depId]).filter(Boolean),
+        id: task.id,
+        projectId: task.projectId,
+        parentId: task.parentId,
+        title: task.title,
+        description: task.description,
+        state: task.state,
+        complexity: task.complexity,
+        depth: task.depth,
+        estimate: task.estimate,
+        assignedAgent: task.assignedAgent,
+        dependencies: task.dependencies,
+        dependents: task.dependents,
+        positionX: task.position?.x,
+        positionY: task.position?.y,
+        createdAt: task.createdAt.getTime(),
+        completedAt: task.completedAt?.getTime(),
+        updatedAt: task.updatedAt.getTime(),
       };
       
-      console.log(`Creating task: ${task.title} with projectId: ${mappedProjectId}`);
-      const taskId = await ctx.db.insert("tasks", convexTask);
-      taskIdMapping[task.id] = taskId;
+      console.log(`Creating task: ${task.title} with UUID: ${task.id}`);
+      await ctx.db.insert("tasks", convexTask);
     }
 
-    // Update task dependencies and dependents with correct Convex IDs
-    for (const task of allTasks) {
-      const convexTaskId = taskIdMapping[task.id];
-      if (convexTaskId) {
-        const dependencies = task.dependencies
-          .map((depId) => taskIdMapping[depId])
-          .filter(Boolean);
-        const dependents = task.dependents
-          .map((depId) => taskIdMapping[depId])
-          .filter(Boolean);
-
-        if (dependencies.length > 0 || dependents.length > 0) {
-          await ctx.db.patch(convexTaskId, {
-            dependencies,
-            dependents,
-          });
-        }
-      }
-    }
-
-    // Update agent current tasks with correct Convex task IDs
-    for (const agent of masterAgents) {
-      const convexAgentId = agentIdMapping[agent.id];
-      if (convexAgentId && agent.currentTasks.length > 0) {
-        const currentTasks = agent.currentTasks
-          .map((taskId) => taskIdMapping[taskId])
-          .filter(Boolean);
-        await ctx.db.patch(convexAgentId, { currentTasks });
-      }
-    }
+    // No need for ID mapping updates since we use UUIDs directly
 
     return {
       message: "Database seeded with master dummy data (Go-Model konform)",

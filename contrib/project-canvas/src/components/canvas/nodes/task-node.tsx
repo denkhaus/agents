@@ -4,12 +4,27 @@
  */
 
 import React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle } from 'reactflow';
+
+// Use Position constants directly from ReactFlow exports
+const Position = {
+  Left: 'left' as const,
+  Top: 'top' as const,
+  Right: 'right' as const,
+  Bottom: 'bottom' as const,
+};
+
+// Define proper Node component props based on ReactFlow's signature
+interface NodeComponentProps {
+  data: any;
+  selected?: boolean;
+  id?: string;
+}
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
-import { TaskNodeData } from '@/types/reactflow.types';
+// import { TaskNodeData } from '@/types/reactflow.types'; // Removed unused import
 import { TaskState } from '@/types/task.types';
 import { 
   Clock, 
@@ -54,7 +69,7 @@ const taskStateConfig = {
   }
 } as const;
 
-export const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ 
+export const TaskNode: React.FC<NodeComponentProps> = ({ 
   data, 
   selected 
 }) => {

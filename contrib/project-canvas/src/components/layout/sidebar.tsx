@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { useUIStore } from '@/stores';
+import { useUIStore, useProjectStore } from '@/stores';
 import { WorkspaceType } from '@/types';
+import { useRealTimeData } from '@/hooks/use-real-time-data';
+import { Project } from '@/types/project.types';
 import { 
   FolderOpen,
   Users,
@@ -19,26 +21,26 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const workspaces: Array<{
+const getWorkspaces = (projectCount: number, agentCount: number): Array<{
   id: WorkspaceType;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   count?: number;
-}> = [
+}> => [
   {
     id: 'projects',
     label: 'Projects',
     icon: FolderOpen,
     description: 'Manage and visualize projects',
-    count: 3
+    count: projectCount
   },
   {
     id: 'agents',
     label: 'Agents',
     icon: Users,
     description: 'View agent status and assignments',
-    count: 5
+    count: agentCount
   },
   {
     id: 'settings',
@@ -54,6 +56,19 @@ export const Sidebar: React.FC = () => {
     currentWorkspace, 
     setWorkspace 
   } = useUIStore();
+  
+  const { setCurrentProject } = useProjectStore();
+  const { projects, agents } = useRealTimeData();
+  
+  const workspaces = getWorkspaces(projects.length, agents.length);
+  
+  // Auto-select first project when clicking Projects workspace
+  const handleProjectsClick = () => {
+    setWorkspace('projects');
+    if (projects.length > 0) {
+      setCurrentProject(projects[0]);
+    }
+  };
 
   return (
     <aside 
@@ -78,7 +93,7 @@ export const Sidebar: React.FC = () => {
                     "w-full justify-start h-10",
                     sidebarCollapsed ? "px-2" : "px-3"
                   )}
-                  onClick={() => setWorkspace(workspace.id)}
+                  onClick={() => workspace.id === 'projects' ? handleProjectsClick() : setWorkspace(workspace.id)}
                 >
                   <Icon className={cn(
                     "h-4 w-4 shrink-0",
@@ -135,9 +150,12 @@ export const Sidebar: React.FC = () => {
 
 // Workspace-specific content
 const WorkspaceContent: React.FC<{ workspace: WorkspaceType }> = ({ workspace }) => {
+  const { projects } = useRealTimeData();
+  const { setCurrentProject, currentProject } = useProjectStore();
+  
   switch (workspace) {
     case 'projects':
-      return <ProjectsWorkspace />;
+      return <ProjectsWorkspace projects={projects} setCurrentProject={setCurrentProject} currentProject={currentProject} />;
     case 'agents':
       return <AgentsWorkspace />;
     case 'settings':
@@ -147,7 +165,13 @@ const WorkspaceContent: React.FC<{ workspace: WorkspaceType }> = ({ workspace })
   }
 };
 
-const ProjectsWorkspace: React.FC = () => (
+interface ProjectsWorkspaceProps {
+  projects: Project[];
+  setCurrentProject: (project: Project) => void;
+  currentProject: Project | null;
+}
+
+const ProjectsWorkspace: React.FC<ProjectsWorkspaceProps> = ({ projects, setCurrentProject, currentProject }) => (
   <div className="space-y-2">
     <div className="flex items-center justify-between">
       <h3 className="text-sm font-medium">Recent Projects</h3>
@@ -156,16 +180,23 @@ const ProjectsWorkspace: React.FC = () => (
       </Button>
     </div>
     <div className="space-y-1">
-      {['E-Commerce Redesign', 'Mobile App', 'API Migration'].map((project) => (
+      {projects.map((project) => (
         <Button
-          key={project}
-          variant="ghost"
+          key={project.id}
+          variant={currentProject?.id === project.id ? "secondary" : "ghost"}
           className="w-full justify-between h-8 px-2"
+          onClick={() => setCurrentProject(project)}
         >
-          <span className="text-xs truncate">{project}</span>
+          <span className="text-xs truncate">{project.title}</span>
           <ChevronRight className="h-3 w-3 shrink-0" />
         </Button>
       ))}
+      
+      {projects.length === 0 && (
+        <div className="text-xs text-muted-foreground p-2">
+          No projects found
+        </div>
+      )}
     </div>
   </div>
 );

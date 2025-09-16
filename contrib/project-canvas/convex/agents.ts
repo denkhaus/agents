@@ -65,23 +65,34 @@ export const listByStatus = query({
 
 // Get a specific agent by ID
 export const get = query({
-  args: { id: v.id("agents") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const agent = await ctx.db.get(args.id);
+    const agent = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     return agent;
   },
 });
 
 // Get agent with current tasks
 export const getWithTasks = query({
-  args: { id: v.id("agents") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const agent = await ctx.db.get(args.id);
+    const agent = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     if (!agent) return null;
 
-    // Get current tasks
+    // Get current tasks by UUID
     const tasks = agent.currentTasks ? await Promise.all(
-      agent.currentTasks.map(taskId => ctx.db.get(taskId))
+      agent.currentTasks.map(async (taskUuid) => {
+        return await ctx.db
+          .query("tasks")
+          .filter((q) => q.eq(q.field("id"), taskUuid))
+          .first();
+      })
     ) : [];
 
     const validTasks = tasks.filter(task => task !== null);
@@ -140,7 +151,7 @@ export const create = mutation({
 // Update agent status (system only)
 export const updateStatus = mutation({
   args: {
-    id: v.id("agents"),
+    id: v.string(), // UUID string
     status: v.union(
       v.literal("online"),
       v.literal("offline"),
@@ -159,7 +170,14 @@ export const updateStatus = mutation({
       updateData.isStreaming = args.isStreaming;
     }
 
-    await ctx.db.patch(args.id, updateData);
+    // Find agent by UUID
+    const agent = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
+    if (!agent) throw new Error("Agent not found");
+    
+    await ctx.db.patch(agent._id, updateData);
 
     // Emit real-time event
     await ctx.db.insert("events", {
@@ -180,25 +198,32 @@ export const updateStatus = mutation({
 // Assign task to agent (system only)
 export const assignTask = mutation({
   args: {
-    agentId: v.id("agents"),
-    taskId: v.id("tasks"),
+    agentId: v.string(), // UUID string
+    taskId: v.string(), // UUID string
   },
   handler: async (ctx, args) => {
-    const agent = await ctx.db.get(args.agentId);
-    const task = await ctx.db.get(args.taskId);
+    // Find agent and task by UUID
+    const agent = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("id"), args.agentId))
+      .first();
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.taskId))
+      .first();
 
     if (!agent || !task) {
       throw new Error("Agent or task not found");
     }
 
     // Add task to agent's current tasks
-    await ctx.db.patch(args.agentId, {
+    await ctx.db.patch(agent._id, {
       currentTasks: agent.currentTasks ? [...agent.currentTasks, args.taskId] : [args.taskId],
       lastActiveAt: Date.now(),
     });
 
     // Update task assignment
-    await ctx.db.patch(args.taskId, {
+    await ctx.db.patch(task._id, {
       assignedAgent: args.agentId,
       updatedAt: Date.now(),
     });
@@ -222,25 +247,32 @@ export const assignTask = mutation({
 // Unassign task from agent (system only)
 export const unassignTask = mutation({
   args: {
-    agentId: v.id("agents"),
-    taskId: v.id("tasks"),
+    agentId: v.string(), // UUID string
+    taskId: v.string(), // UUID string
   },
   handler: async (ctx, args) => {
-    const agent = await ctx.db.get(args.agentId);
-    const task = await ctx.db.get(args.taskId);
+    // Find agent and task by UUID
+    const agent = await ctx.db
+      .query("agents")
+      .filter((q) => q.eq(q.field("id"), args.agentId))
+      .first();
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.taskId))
+      .first();
 
     if (!agent || !task) {
       throw new Error("Agent or task not found");
     }
 
     // Remove task from agent's current tasks
-    await ctx.db.patch(args.agentId, {
+    await ctx.db.patch(agent._id, {
       currentTasks: agent.currentTasks ? agent.currentTasks.filter(id => id !== args.taskId) : [],
       lastActiveAt: Date.now(),
     });
 
     // Remove assignment from task
-    await ctx.db.patch(args.taskId, {
+    await ctx.db.patch(task._id, {
       assignedAgent: undefined,
       updatedAt: Date.now(),
     });

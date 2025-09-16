@@ -31,9 +31,12 @@ export const listByProject = query({
 
 // Get a specific task by ID
 export const get = query({
-  args: { id: v.id("tasks") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const task = await ctx.db.get(args.id);
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     return task;
   },
 });
@@ -70,14 +73,14 @@ export const listRootTasks = query({
 export const create = mutation({
   args: {
     projectId: v.string(), // UUID string instead of v.id("projects")
-    parentId: v.optional(v.id("tasks")),
+    parentId: v.optional(v.string()), // UUID string
     title: v.string(),
     description: v.string(),
     complexity: v.number(),
     depth: v.number(),
     estimate: v.optional(v.number()),
     assignedAgent: v.optional(v.string()),
-    dependencies: v.optional(v.array(v.id("tasks"))),
+    dependencies: v.optional(v.array(v.string())), // Array of task UUIDs
   },
   handler: async (ctx, args) => {
     // Generate a unique ID for the task
@@ -96,16 +99,20 @@ export const create = mutation({
       assignedAgent: args.assignedAgent,
       dependencies: args.dependencies || [],
       dependents: [],
+      createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
     // Update dependent tasks
     if (args.dependencies && args.dependencies.length > 0) {
-      for (const depId of args.dependencies) {
-        const depTask = await ctx.db.get(depId);
+      for (const depUuid of args.dependencies) {
+        const depTask = await ctx.db
+          .query("tasks")
+          .filter((q) => q.eq(q.field("id"), depUuid))
+          .first();
         if (depTask) {
-          await ctx.db.patch(depId, {
-            dependents: [...depTask.dependents, taskId],
+          await ctx.db.patch(depTask._id, {
+            dependents: [...depTask.dependents, id],
             updatedAt: Date.now(),
           });
         }
@@ -134,18 +141,25 @@ export const create = mutation({
 // Update task editable fields (frontend)
 export const updateEditableFields = mutation({
   args: {
-    id: v.id("tasks"),
+    id: v.string(), // UUID string
     title: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
     
+    // Find task by UUID
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), id))
+      .first();
+    if (!task) throw new Error("Task not found");
+    
     const updateData: any = { updatedAt: Date.now() };
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
 
-    await ctx.db.patch(id, updateData);
+    await ctx.db.patch(task._id, updateData);
 
     // Emit real-time event
     await ctx.db.insert("events", {
@@ -162,12 +176,19 @@ export const updateEditableFields = mutation({
 // Update task position (UI only)
 export const updatePosition = mutation({
   args: {
-    id: v.id("tasks"),
+    id: v.string(), // UUID string
     positionX: v.number(),
     positionY: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
+    // Find task by UUID
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
+    if (!task) throw new Error("Task not found");
+    
+    await ctx.db.patch(task._id, {
       positionX: args.positionX,
       positionY: args.positionY,
       updatedAt: Date.now(),
@@ -191,7 +212,7 @@ export const updatePosition = mutation({
 // Update task state (LLM only)
 export const updateState = mutation({
   args: {
-    id: v.id("tasks"),
+    id: v.string(), // UUID string
     state: v.union(
       v.literal("pending"),
       v.literal("in-progress"),
@@ -201,7 +222,11 @@ export const updateState = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const task = await ctx.db.get(args.id);
+    // Find task by UUID
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     if (!task) throw new Error("Task not found");
 
     const updateData: any = {
@@ -216,7 +241,7 @@ export const updateState = mutation({
       updateData.completedAt = undefined;
     }
 
-    await ctx.db.patch(args.id, updateData);
+    await ctx.db.patch(task._id, updateData);
 
     // Update project statistics
     await updateProjectStats(ctx, task.projectId);
@@ -239,34 +264,44 @@ export const updateState = mutation({
 
 // Delete task (LLM only)
 export const remove = mutation({
-  args: { id: v.id("tasks") },
+  args: { id: v.string() }, // UUID string
   handler: async (ctx, args) => {
-    const task = await ctx.db.get(args.id);
+    // Find task by UUID
+    const task = await ctx.db
+      .query("tasks")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
     if (!task) throw new Error("Task not found");
 
     // Remove from dependent tasks
-    for (const depId of task.dependents) {
-      const depTask = await ctx.db.get(depId);
+    for (const depUuid of task.dependents) {
+      const depTask = await ctx.db
+        .query("tasks")
+        .filter((q) => q.eq(q.field("id"), depUuid))
+        .first();
       if (depTask) {
-        await ctx.db.patch(depId, {
-          dependencies: depTask.dependencies.filter(id => id !== args.id),
+        await ctx.db.patch(depTask._id, {
+          dependencies: depTask.dependencies.filter(uuid => uuid !== args.id),
           updatedAt: Date.now(),
         });
       }
     }
 
     // Remove from dependency tasks
-    for (const depId of task.dependencies) {
-      const depTask = await ctx.db.get(depId);
+    for (const depUuid of task.dependencies) {
+      const depTask = await ctx.db
+        .query("tasks")
+        .filter((q) => q.eq(q.field("id"), depUuid))
+        .first();
       if (depTask) {
-        await ctx.db.patch(depId, {
-          dependents: depTask.dependents.filter(id => id !== args.id),
+        await ctx.db.patch(depTask._id, {
+          dependents: depTask.dependents.filter(uuid => uuid !== args.id),
           updatedAt: Date.now(),
         });
       }
     }
 
-    await ctx.db.delete(args.id);
+    await ctx.db.delete(task._id);
 
     // Update project statistics
     await updateProjectStats(ctx, task.projectId);
