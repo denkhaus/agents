@@ -11,6 +11,10 @@ import {
   masterAgents,
   allTasks,
 } from "../src/data/master-dummy-data";
+import {
+  projectToConvexProject,
+  taskToConvexTask,
+} from "../src/utils/convex-helpers";
 
 export const seedDatabase = mutation({
   args: {},
@@ -24,14 +28,7 @@ export const seedDatabase = mutation({
     // Convert and create projects from master dummy data
     const projectIdMapping: Record<string, string> = {};
     for (const project of masterProjects) {
-      const convexProject = {
-        id: project.id, // UUID aus den Dummy-Daten
-        title: project.title,
-        description: project.description,
-        totalTasks: project.totalTasks,
-        completedTasks: project.completedTasks,
-        progress: project.progress,
-      };
+      const convexProject = projectToConvexProject(project);
       const projectId = await ctx.db.insert("projects", convexProject);
       projectIdMapping[project.id] = projectId;
       console.log(`Created project: ${project.title} -> ${projectId}`);
@@ -68,22 +65,12 @@ export const seedDatabase = mutation({
       }
 
       const convexTask = {
-        id: task.id, // UUID aus den Dummy-Daten
+        ...taskToConvexTask(task),
         projectId: mappedProjectId,
         parentId: task.parentId ? taskIdMapping[task.parentId] : undefined,
-        title: task.title,
-        description: task.description,
-        state: task.state,
-        complexity: task.complexity,
-        depth: task.depth,
-        estimate: task.estimate,
         assignedAgent: task.assignedAgent ? agentIdMapping[task.assignedAgent] : undefined,
         dependencies: task.dependencies.map(depId => taskIdMapping[depId]).filter(Boolean),
         dependents: task.dependents.map(depId => taskIdMapping[depId]).filter(Boolean),
-        positionX: task.position?.x,
-        positionY: task.position?.y,
-        updatedAt: task.updatedAt.getTime(),
-        completedAt: task.completedAt ? task.completedAt.getTime() : undefined,
       };
       
       console.log(`Creating task: ${task.title} with projectId: ${mappedProjectId}`);

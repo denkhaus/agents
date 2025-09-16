@@ -11,13 +11,17 @@ import (
 )
 
 func changeToConfigDirWithCleanup() (func(), error) {
+	return changeToDirWithCleanup(configDir)
+}
+
+func changeToDirWithCleanup(directoryPath string) (func(), error) {
 
 	// Change to the config directory to run cue commands
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current directory: %w", err)
 	}
-	if err := os.Chdir(configDir); err != nil {
+	if err := os.Chdir(directoryPath); err != nil {
 		return nil, fmt.Errorf("failed to change directory to %s: %w", configDir, err)
 	}
 
@@ -271,6 +275,16 @@ func getLastConfigTag() (string, error) {
 	}
 
 	return strings.TrimSpace(string(output)), nil
+}
+
+// checkFileExists checks if a file exists
+func checkFileExists(filePath string) error {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("file does not exist: %s", filePath)
+	} else if err != nil {
+		return fmt.Errorf("error checking file: %w", err)
+	}
+	return nil
 }
 
 // restructureDirectories moves versioned directories to flattened structure

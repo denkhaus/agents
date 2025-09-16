@@ -187,6 +187,120 @@ func (Convex) Reset() error {
 	return nil
 }
 
+// ClearData clears all data from the Convex database
+func (Convex) ClearData() error {
+	printStatus("Clearing Convex database...")
+	
+	projectCanvasDir := filepath.Join("contrib", "project-canvas")
+	
+	// Check if package.json exists
+	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
+		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
+	}
+	
+	// Change to project-canvas directory
+	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
+	if err != nil {
+		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
+	}
+	defer cleanup()
+	
+	// Ensure dependencies are installed
+	printStatus("Checking npm dependencies...")
+	if err := sh.RunV("npm", "install"); err != nil {
+		return fmt.Errorf("failed to install npm dependencies: %w", err)
+	}
+	
+	// Run the clear command
+	err = sh.RunV("npx", "convex", "dev", "--once", "--run", "clearDatabase:clearDatabase")
+	if err != nil {
+		return fmt.Errorf("failed to clear database: %w", err)
+	}
+
+	printSuccess("✅ Convex database cleared successfully!")
+	return nil
+}
+
+// SeedData seeds the Convex database with dummy data
+func (Convex) SeedData() error {
+	printStatus("Seeding Convex database with dummy data...")
+	
+	projectCanvasDir := filepath.Join("contrib", "project-canvas")
+	
+	// Check if package.json exists
+	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
+		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
+	}
+	
+	// Change to project-canvas directory
+	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
+	if err != nil {
+		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
+	}
+	defer cleanup()
+	
+	// Ensure dependencies are installed
+	printStatus("Checking npm dependencies...")
+	if err := sh.RunV("npm", "install"); err != nil {
+		return fmt.Errorf("failed to install npm dependencies: %w", err)
+	}
+	
+	// Run the seed command
+	err = sh.RunV("npx", "convex", "dev", "--once", "--run", "seed:seedDatabase")
+	if err != nil {
+		return fmt.Errorf("failed to seed database: %w", err)
+	}
+
+	printSuccess("✅ Convex database seeded successfully!")
+	return nil
+}
+
+// ResetData clears and re-seeds the Convex database
+func (Convex) ResetData() error {
+	printStatus("Resetting Convex database (clear + seed)...")
+	
+	// Clear first
+	if err := (Convex{}).ClearData(); err != nil {
+		return err
+	}
+	
+	// Then seed
+	if err := (Convex{}).SeedData(); err != nil {
+		return err
+	}
+	
+	printSuccess("✅ Convex database reset completed!")
+	return nil
+}
+
+// Dev starts Convex development server
+func (Convex) Dev() error {
+	printStatus("Starting Convex development server...")
+	
+	projectCanvasDir := filepath.Join("contrib", "project-canvas")
+	
+	// Check if package.json exists
+	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
+		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
+	}
+	
+	// Change to project-canvas directory
+	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
+	if err != nil {
+		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
+	}
+	defer cleanup()
+	
+	// Ensure dependencies are installed
+	printStatus("Checking npm dependencies...")
+	if err := sh.RunV("npm", "install"); err != nil {
+		return fmt.Errorf("failed to install npm dependencies: %w", err)
+	}
+	
+	// Start development server
+	return sh.RunV("npx", "convex", "dev")
+}
+
 // Help shows available Convex commands and usage examples
 func (Convex) Help() {
 	fmt.Println("Convex Backend Management Commands")
@@ -199,6 +313,10 @@ func (Convex) Help() {
 	fmt.Println("  mage convex:logs                Show backend logs (follow mode)")
 	fmt.Println("  mage convex:restart             Restart backend service")
 	fmt.Println("  mage convex:reset               Reset all backend data (WARNING: destructive)")
+	fmt.Println("  mage convex:cleardata           Clear Convex database")
+	fmt.Println("  mage convex:seeddata            Seed database with dummy data")
+	fmt.Println("  mage convex:resetdata           Clear and re-seed database")
+	fmt.Println("  mage convex:dev                 Start Convex development server")
 	fmt.Println("  mage convex:help                Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
@@ -206,6 +324,12 @@ func (Convex) Help() {
 	fmt.Println("  mage convex:status              # Check if backend is healthy")
 	fmt.Println("  mage convex:logs                # View real-time logs")
 	fmt.Println("  mage convex:showcredentials     # View instance name and partial secret")
+	fmt.Println("  mage convex:resetdata           # Quick database reset with fresh data")
+	fmt.Println()
+	fmt.Println("Database Management:")
+	fmt.Println("  mage convex:cleardata           # Remove all data from database")
+	fmt.Println("  mage convex:seeddata            # Add dummy projects, tasks, agents")
+	fmt.Println("  mage convex:resetdata           # Clear + seed in one command")
 	fmt.Println()
 	fmt.Println("Service URLs:")
 	fmt.Println("  - Backend API: http://localhost:3210")

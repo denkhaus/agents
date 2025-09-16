@@ -15,6 +15,8 @@ export default defineSchema({
     totalTasks: v.number(),
     completedTasks: v.number(),
     progress: v.number(), // 0-100 percentage
+    createdAt: v.number(), // Unix timestamp
+    updatedAt: v.number(), // Unix timestamp
     // Convex automatically adds _id and _creationTime
   }).index("by_title", ["title"]),
 
@@ -42,6 +44,7 @@ export default defineSchema({
     positionX: v.optional(v.number()),
     positionY: v.optional(v.number()),
     // Timestamps
+    createdAt: v.number(), // Unix timestamp
     completedAt: v.optional(v.number()), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
   })

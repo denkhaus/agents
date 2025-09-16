@@ -17,6 +17,8 @@ export interface ConvexProject {
   totalTasks: number;
   completedTasks: number;
   progress: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ConvexTask {
@@ -36,7 +38,9 @@ export interface ConvexTask {
   dependents: string[];
   positionX?: number;
   positionY?: number;
+  createdAt: number;
   completedAt?: number;
+  updatedAt: number;
 }
 
 export interface ConvexAgent {
@@ -61,8 +65,8 @@ export function convexProjectToProject(convexProject: ConvexProject): Project {
     id: convexProject._id as UUID,
     title: convexProject.title,
     description: convexProject.description,
-    createdAt: new Date(convexProject._creationTime),
-    updatedAt: new Date(convexProject._creationTime), // Convex doesn't track updates separately
+    createdAt: new Date(convexProject.createdAt),
+    updatedAt: new Date(convexProject.updatedAt),
     totalTasks: convexProject.totalTasks,
     completedTasks: convexProject.completedTasks,
     progress: convexProject.progress,
@@ -86,8 +90,8 @@ export function convexTaskToTask(convexTask: ConvexTask): Task {
     assignedAgent: convexTask.assignedAgent as UUID | undefined,
     dependencies: convexTask.dependencies as UUID[],
     dependents: convexTask.dependents as UUID[],
-    createdAt: new Date(convexTask._creationTime),
-    updatedAt: new Date(convexTask._creationTime),
+    createdAt: new Date(convexTask.createdAt),
+    updatedAt: new Date(convexTask.updatedAt),
     completedAt: convexTask.completedAt
       ? new Date(convexTask.completedAt)
       : undefined,
@@ -140,6 +144,8 @@ export function projectToConvexProject(
     totalTasks: project.totalTasks,
     completedTasks: project.completedTasks,
     progress: project.progress,
+    createdAt: project.createdAt.getTime(),
+    updatedAt: project.updatedAt.getTime(),
   };
 }
 
@@ -162,7 +168,9 @@ export function taskToConvexTask(task: Task): Partial<ConvexTask> {
     dependents: task.dependents,
     positionX: task.position?.x,
     positionY: task.position?.y,
+    createdAt: task.createdAt.getTime(),
     completedAt: task.completedAt?.getTime(),
+    updatedAt: task.updatedAt.getTime(),
   };
 }
 
