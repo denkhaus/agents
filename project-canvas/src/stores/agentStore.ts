@@ -14,6 +14,9 @@ import type {
   UUID,
 } from "@/types";
 
+// Import the actual values for runtime usage
+import { AgentStatus as AgentStatusValue } from "@/types/agent.types";
+
 interface AgentState {
   // State
   agents: Agent[];
@@ -93,7 +96,7 @@ export const useAgentStore = create<AgentState>()(
 
       updateAgentStatus: (id, status) => {
         const updates: AgentUpdateInput = { status };
-        if (status === AgentStatus.ONLINE) {
+        if (status === AgentStatusValue.ONLINE) {
           // Update lastActiveAt when going online
           (updates as any).lastActiveAt = new Date();
         }
@@ -158,8 +161,8 @@ export const useAgentStore = create<AgentState>()(
       getAvailableAgents: () => {
         return get().agents.filter(
           (agent) =>
-            agent.status === AgentStatus.ONLINE ||
-            agent.status === AgentStatus.IDLE
+            agent.status === AgentStatusValue.ONLINE ||
+            agent.status === AgentStatusValue.IDLE
         );
       },
 

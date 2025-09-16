@@ -3,14 +3,15 @@
  * Utilities for working with Convex real-time data
  */
 
-import { Task, TaskState } from '../types/task.types';
-import { Project, UUID } from '../types/project.types';
-import { Agent } from '../types/agent.types';
+import { Task, TaskState } from "../types/task.types";
+import { Project, UUID } from "../types/project.types";
+import { Agent, AgentRole, AgentStatus } from "../types/agent.types";
 
 // Convex document types (will match Convex schema)
 export interface ConvexProject {
   _id: string;
   _creationTime: number;
+  id: string;
   title: string;
   description: string;
   totalTasks: number;
@@ -21,6 +22,7 @@ export interface ConvexProject {
 export interface ConvexTask {
   _id: string;
   _creationTime: number;
+  id: string;
   projectId: string;
   parentId?: string;
   title: string;
@@ -41,13 +43,14 @@ export interface ConvexAgent {
   _id: string;
   _creationTime: number;
   name: string;
-  role: string;
-  description: string;
-  status: string;
-  isStreaming: boolean;
-  capabilities: string[];
-  currentTasks: string[];
+  role?: string;
+  description?: string;
+  status?: string;
+  isStreaming?: boolean;
+  capabilities?: string[];
+  currentTasks?: string[];
   lastActiveAt?: number;
+  id: string;
 }
 
 /**
@@ -62,7 +65,7 @@ export function convexProjectToProject(convexProject: ConvexProject): Project {
     updatedAt: new Date(convexProject._creationTime), // Convex doesn't track updates separately
     totalTasks: convexProject.totalTasks,
     completedTasks: convexProject.completedTasks,
-    progress: convexProject.progress
+    progress: convexProject.progress,
   };
 }
 
@@ -71,7 +74,7 @@ export function convexProjectToProject(convexProject: ConvexProject): Project {
  */
 export function convexTaskToTask(convexTask: ConvexTask): Task {
   return {
-    id: convexTask._id as UUID,
+    id: convexTask.id as UUID,
     projectId: convexTask.projectId as UUID,
     parentId: convexTask.parentId as UUID | undefined,
     title: convexTask.title,
@@ -85,10 +88,13 @@ export function convexTaskToTask(convexTask: ConvexTask): Task {
     dependents: convexTask.dependents as UUID[],
     createdAt: new Date(convexTask._creationTime),
     updatedAt: new Date(convexTask._creationTime),
-    completedAt: convexTask.completedAt ? new Date(convexTask.completedAt) : undefined,
-    position: convexTask.positionX !== undefined && convexTask.positionY !== undefined 
-      ? { x: convexTask.positionX, y: convexTask.positionY }
-      : undefined
+    completedAt: convexTask.completedAt
+      ? new Date(convexTask.completedAt)
+      : undefined,
+    position:
+      convexTask.positionX !== undefined && convexTask.positionY !== undefined
+        ? { x: convexTask.positionX, y: convexTask.positionY }
+        : undefined,
   };
 }
 
@@ -96,31 +102,44 @@ export function convexTaskToTask(convexTask: ConvexTask): Task {
  * Convert Convex agent to frontend Agent type
  */
 export function convexAgentToAgent(convexAgent: ConvexAgent): Agent {
+  // Provide defaults for required fields that might be missing
+  const role = convexAgent.role || "coder"; // Default role
+  const description = convexAgent.description || ""; // Default empty description
+  const status = convexAgent.status || "offline"; // Default status
+  const isStreaming = convexAgent.isStreaming || false; // Default streaming status
+  const capabilities = convexAgent.capabilities || []; // Default empty capabilities
+  const currentTasks = convexAgent.currentTasks || []; // Default empty tasks
+
   return {
-    id: convexAgent._id as UUID,
+    id: convexAgent.id as UUID,
     name: convexAgent.name,
-    role: convexAgent.role as any, // Will be properly typed with enum
-    description: convexAgent.description,
-    status: convexAgent.status as any, // Will be properly typed with enum
-    isStreaming: convexAgent.isStreaming,
-    capabilities: convexAgent.capabilities,
-    currentTasks: convexAgent.currentTasks as UUID[],
+    role: role as AgentRole,
+    description: description,
+    status: status as AgentStatus,
+    isStreaming: isStreaming,
+    capabilities: capabilities,
+    currentTasks: currentTasks as UUID[],
     createdAt: new Date(convexAgent._creationTime),
     updatedAt: new Date(convexAgent._creationTime),
-    lastActiveAt: convexAgent.lastActiveAt ? new Date(convexAgent.lastActiveAt) : undefined
+    lastActiveAt: convexAgent.lastActiveAt
+      ? new Date(convexAgent.lastActiveAt)
+      : undefined,
   };
 }
 
 /**
  * Convert frontend Project to Convex format (for updates)
  */
-export function projectToConvexProject(project: Project): Partial<ConvexProject> {
+export function projectToConvexProject(
+  project: Project
+): Partial<ConvexProject> {
   return {
+    id: project.id,
     title: project.title,
     description: project.description,
     totalTasks: project.totalTasks,
     completedTasks: project.completedTasks,
-    progress: project.progress
+    progress: project.progress,
   };
 }
 
@@ -129,6 +148,7 @@ export function projectToConvexProject(project: Project): Partial<ConvexProject>
  */
 export function taskToConvexTask(task: Task): Partial<ConvexTask> {
   return {
+    id: task.id,
     projectId: task.projectId,
     parentId: task.parentId,
     title: task.title,
@@ -142,7 +162,7 @@ export function taskToConvexTask(task: Task): Partial<ConvexTask> {
     dependents: task.dependents,
     positionX: task.position?.x,
     positionY: task.position?.y,
-    completedAt: task.completedAt?.getTime()
+    completedAt: task.completedAt?.getTime(),
   };
 }
 
@@ -162,7 +182,7 @@ export function getTaskQueryArgs(options: SubscriptionOptions = {}) {
   return {
     projectId: options.projectId,
     includeCompleted: options.includeCompleted ?? true,
-    maxDepth: options.maxDepth ?? 10
+    maxDepth: options.maxDepth ?? 10,
   };
 }
 
@@ -182,7 +202,7 @@ export class OptimisticUpdateManager<T> {
     this.updates.set(id, {
       id,
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
@@ -191,7 +211,7 @@ export class OptimisticUpdateManager<T> {
   }
 
   applyUpdates(items: T[]): T[] {
-    return items.map(item => {
+    return items.map((item) => {
       const update = this.updates.get((item as any).id);
       return update ? { ...item, ...update.data } : item;
     });

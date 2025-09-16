@@ -19,8 +19,8 @@ export const getRecentEvents = query({
       .withIndex("by_timestamp");
 
     // Filter by timestamp if provided
-    if (args.since) {
-      query = query.filter((q) => q.gte(q.field("timestamp"), args.since));
+    if (args.since !== undefined) {
+      query = query.filter((q) => q.gte(q.field("timestamp"), args.since!));
     }
 
     let events = await query

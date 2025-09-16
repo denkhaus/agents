@@ -3,28 +3,28 @@
  * For future workspace extension
  */
 
-import { UUID } from './project.types';
+import { UUID } from "./project.types";
 
 export const AgentRole = {
   SUPERVISOR: "supervisor",
-  PROJECT_MANAGER: "project-manager", 
+  PROJECT_MANAGER: "project-manager",
   CODER: "coder",
   RESEARCHER: "researcher",
   QA_ENGINEER: "qa-engineer",
   DEVOPS: "devops",
-  DESIGNER: "designer"
+  DESIGNER: "designer",
 } as const;
 
-export type AgentRole = typeof AgentRole[keyof typeof AgentRole];
+export type AgentRole = (typeof AgentRole)[keyof typeof AgentRole];
 
 export const AgentStatus = {
   ONLINE: "online",
   OFFLINE: "offline",
   BUSY: "busy",
-  IDLE: "idle"
+  IDLE: "idle",
 } as const;
 
-export type AgentStatus = typeof AgentStatus[keyof typeof AgentStatus];
+export type AgentStatus = (typeof AgentStatus)[keyof typeof AgentStatus];
 
 export interface Agent {
   id: UUID;

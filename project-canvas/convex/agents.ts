@@ -5,6 +5,7 @@
 
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { generateUUID } from "../src/utils/uuid";
 
 // Get all agents
 export const list = query({
@@ -79,9 +80,9 @@ export const getWithTasks = query({
     if (!agent) return null;
 
     // Get current tasks
-    const tasks = await Promise.all(
+    const tasks = agent.currentTasks ? await Promise.all(
       agent.currentTasks.map(taskId => ctx.db.get(taskId))
-    );
+    ) : [];
 
     const validTasks = tasks.filter(task => task !== null);
 
@@ -109,7 +110,11 @@ export const create = mutation({
     capabilities: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    // Generate a unique ID for the agent
+    const id = generateUUID();
+    
     const agentId = await ctx.db.insert("agents", {
+      id: id,
       name: args.name,
       role: args.role,
       description: args.description,
@@ -188,7 +193,7 @@ export const assignTask = mutation({
 
     // Add task to agent's current tasks
     await ctx.db.patch(args.agentId, {
-      currentTasks: [...agent.currentTasks, args.taskId],
+      currentTasks: agent.currentTasks ? [...agent.currentTasks, args.taskId] : [args.taskId],
       lastActiveAt: Date.now(),
     });
 
@@ -230,7 +235,7 @@ export const unassignTask = mutation({
 
     // Remove task from agent's current tasks
     await ctx.db.patch(args.agentId, {
-      currentTasks: agent.currentTasks.filter(id => id !== args.taskId),
+      currentTasks: agent.currentTasks ? agent.currentTasks.filter(id => id !== args.taskId) : [],
       lastActiveAt: Date.now(),
     });
 

@@ -20,6 +20,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   maxLength,
   showPreview = false
 }) => {
+  const [htmlContent, setHtmlContent] = React.useState<string>('');
+  
+  React.useEffect(() => {
+    if (content && !showPreview && hasMarkdown(content)) {
+      parseMarkdown(content).then(setHtmlContent);
+    }
+  }, [content, showPreview]);
+
   if (!content) {
     return <span className={`text-muted-foreground ${className}`}>No description</span>;
   }
@@ -39,8 +47,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }
 
   // Render full markdown
-  const htmlContent = parseMarkdown(content);
-  
   return (
     <div 
       className={cn(

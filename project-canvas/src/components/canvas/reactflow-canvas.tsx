@@ -5,9 +5,6 @@
 
 import React, { useCallback, useMemo } from 'react';
 import ReactFlow, {
-  Node,
-  Edge,
-  addEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -18,7 +15,8 @@ import ReactFlow, {
   ConnectionMode,
   OnConnect,
   OnNodesChange,
-  OnEdgesChange,
+  Node,
+  Edge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -27,7 +25,7 @@ import { ProjectNode } from './nodes/project-node';
 import { DependencyEdge } from './edges/dependency-edge';
 import { useProjectStore, useTaskStore } from '@/stores';
 import { calculateTaskLayout } from '@/utils/layout';
-import { CustomNode, CustomEdge } from '@/types/reactflow.types';
+import { TaskNodeData } from '@/types/reactflow.types';
 
 // Define custom node types
 const nodeTypes = {
@@ -64,13 +62,13 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
     };
   }, [currentProject, tasks]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes as Node[]);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges as Edge[]);
 
   // Handle new connections (for future dependency management)
   const onConnect: OnConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params) => console.log('Connection made:', params),
+    []
   );
 
   // Handle node position changes
@@ -93,7 +91,7 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
     if (nodes.length > 0) {
       setTimeout(() => fitView({ padding: 0.2 }), 100);
     }
-  }, [nodes.length, fitView]);
+  }, [nodes.length, fitView, fitView]);
 
   return (
     <div className={`h-full w-full ${className}`}>
@@ -127,8 +125,8 @@ const ReactFlowCanvasInner: React.FC<ReactFlowCanvasProps> = ({ className }) => 
           maskColor="rgba(0, 0, 0, 0.1)"
           nodeColor={(node) => {
             if (node.type === 'task') {
-              const task = (node as CustomNode).data.task;
-              switch (task.state) {
+              const taskNodeData = node.data as TaskNodeData;
+              switch (taskNodeData.task.state) {
                 case 'completed': return '#22c55e';
                 case 'in-progress': return '#3b82f6';
                 case 'blocked': return '#ef4444';

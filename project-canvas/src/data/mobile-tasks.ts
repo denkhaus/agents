@@ -1,190 +1,181 @@
 /**
- * Mobile App Project Tasks (10 Tasks)
+ * Mobile App Project Tasks (15 Tasks)
  * Go-Model konform: pkg/tools/project/shared/shared.go
  * Max 500 Zeilen pro Datei!
  */
 
-import { Task, TaskState } from '../types';
+import type { Task } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { mobileProject } from './projects';
-import { designerAgent, frontendAgent, backendAgent, qaAgent, devopsAgent } from './agents';
+import { designerAgent, frontendAgent } from './agents';
 
-// Task IDs für Mobile App Dependencies
+// Import the actual values for runtime usage
+import { TaskState as TaskStateValue } from '../types/task.types';
+
+// Task IDs für Dependencies
 export const MOBILE_TASK_IDS = {
-  // Phase 1: Planning (2 Tasks)
-  REQUIREMENTS: generateUUID(),
-  UI_DESIGN: generateUUID(),
+  // Phase 1: Research & Planning (3 Tasks)
+  RESEARCH: generateUUID(),
+  WIREFRAMES: generateUUID(),
+  DESIGN_SYSTEM: generateUUID(),
   
-  // Phase 2: Development (5 Tasks)
-  PROJECT_SETUP: generateUUID(),
-  AUTHENTICATION: generateUUID(),
-  CORE_FEATURES: generateUUID(),
-  OFFLINE_SYNC: generateUUID(),
-  PUSH_NOTIFICATIONS: generateUUID(),
+  // Phase 2: Architecture (4 Tasks)
+  TECH_STACK: generateUUID(),
+  API_INTEGRATION: generateUUID(),
+  STATE_MANAGEMENT: generateUUID(),
+  NAVIGATION: generateUUID(),
   
-  // Phase 3: Testing & Deployment (3 Tasks)
+  // Phase 3: Core Development (5 Tasks)
+  AUTH_MODULE: generateUUID(),
+  HOME_SCREEN: generateUUID(),
+  PROFILE_SCREEN: generateUUID(),
+  NOTIFICATIONS: generateUUID(),
+  SETTINGS: generateUUID(),
+  
+  // Phase 4: Testing & Deployment (3 Tasks)
   TESTING: generateUUID(),
-  APP_STORE_PREP: generateUUID(),
-  DEPLOYMENT: generateUUID()
+  APP_STORE: generateUUID(),
+  LAUNCH: generateUUID()
 };
 
 export const mobileTasks: Task[] = [
-  // Phase 1: Planning
+  // Phase 1: Research & Planning
   {
-    id: MOBILE_TASK_IDS.REQUIREMENTS,
+    id: MOBILE_TASK_IDS.RESEARCH,
     projectId: mobileProject.id,
     parentId: undefined,
-    title: "Mobile App Requirements Analysis",
-    description: `## Mobile App Requirements Analysis
+    title: "Market Research & User Analysis",
+    description: `## Mobile App Market Research
 
-### Platform Requirements
-- **iOS**: Minimum iOS 14.0 support
-- **Android**: Minimum API level 21 (Android 5.0)
-- **Cross-Platform**: React Native 0.72+
-- **Performance**: 60fps animations, <3s startup time
+**Objective**: Understand mobile app market trends and user behavior patterns.
 
-### Feature Requirements
-- Offline-first architecture
-- Real-time data synchronization
-- Push notifications
-- Biometric authentication
-- Dark mode support
-- Accessibility compliance
+### Activities
+- **Competitor Analysis**: Study 10+ mobile apps in similar domains
+- **User Surveys**: Conduct 20+ user interviews with target demographics
+- **Platform Analysis**: iOS vs Android market share and user preferences
+- **Feature Prioritization**: Identify must-have vs nice-to-have features
 
-### Technical Constraints
-- App size under 50MB
-- Battery optimization
-- Network efficiency
-- Security compliance`,
-    state: TaskState.COMPLETED,
-    complexity: 5,
+### Deliverables
+- Market research report
+- User persona documentation
+- Competitive analysis matrix
+- Feature prioritization matrix`,
+    state: TaskStateValue.COMPLETED,
+    complexity: 6,
     depth: 0,
-    estimate: 960, // 16 hours
+    estimate: 1800, // 30 hours
     assignedAgent: designerAgent.id,
     dependencies: [],
-    dependents: [MOBILE_TASK_IDS.UI_DESIGN, MOBILE_TASK_IDS.PROJECT_SETUP],
-    createdAt: new Date('2024-01-10T10:00:00Z'),
-    updatedAt: new Date('2024-01-12T16:00:00Z'),
-    completedAt: new Date('2024-01-12T16:00:00Z'),
-    position: { x: 100, y: 700 }
+    dependents: [MOBILE_TASK_IDS.WIREFRAMES, MOBILE_TASK_IDS.DESIGN_SYSTEM],
+    createdAt: new Date('2024-01-15T09:00:00Z'),
+    updatedAt: new Date('2024-01-17T16:30:00Z'),
+    completedAt: new Date('2024-01-17T16:30:00Z'),
+    position: { x: 100, y: 100 }
   },
 
   {
-    id: MOBILE_TASK_IDS.UI_DESIGN,
+    id: MOBILE_TASK_IDS.WIREFRAMES,
     projectId: mobileProject.id,
     parentId: undefined,
-    title: "Mobile UI/UX Design",
-    description: `## Mobile UI/UX Design
+    title: "Create Wireframes & Prototypes",
+    description: `## Mobile App Wireframes & Prototypes
 
-### Design System
-- **Typography**: Mobile-optimized font scales
-- **Colors**: Dark/light mode palettes
-- **Components**: Native-feeling UI components
-- **Icons**: Consistent iconography
-- **Spacing**: Touch-friendly spacing system
+### Scope
+Design low-fidelity wireframes and interactive prototypes for all major user flows.
 
-### Screen Designs
-- Onboarding flow
-- Authentication screens
-- Main navigation
-- Core feature screens
-- Settings and profile
-- Error and loading states
+### User Flows to Cover
+- **Onboarding Process**: First-time user experience
+- **Authentication Flow**: Login, registration, password reset
+- **Main Navigation**: Tab-based navigation structure
+- **Core Features**: Key functionality screens
+- **Settings & Profile**: User configuration screens
 
-### Interaction Design
-- Gesture navigation
-- Haptic feedback
-- Micro-animations
-- Accessibility features`,
-    state: TaskState.COMPLETED,
+### Deliverables
+- Figma wireframes (mobile-specific)
+- Interactive prototypes
+- User flow diagrams
+- Responsive design guidelines`,
+    state: TaskStateValue.COMPLETED,
+    complexity: 7,
+    depth: 0,
+    estimate: 1800, // 30 hours
+    assignedAgent: designerAgent.id,
+    dependencies: [MOBILE_TASK_IDS.RESEARCH],
+    dependents: [MOBILE_TASK_IDS.DESIGN_SYSTEM, MOBILE_TASK_IDS.TECH_STACK],
+    createdAt: new Date('2024-01-15T09:15:00Z'),
+    updatedAt: new Date('2024-01-18T14:20:00Z'),
+    completedAt: new Date('2024-01-18T14:20:00Z'),
+    position: { x: 400, y: 100 }
+  },
+
+  {
+    id: MOBILE_TASK_IDS.DESIGN_SYSTEM,
+    projectId: mobileProject.id,
+    parentId: undefined,
+    title: "Design System & Component Library",
+    description: `## Mobile Design System
+
+### Components to Create
+- **Typography Scale**: Mobile-optimized text hierarchy
+- **Color Palette**: Dark mode compatible colors
+- **Spacing System**: Platform-specific spacing guidelines
+- **Component Library**: Buttons, forms, cards, navigation
+- **Icon System**: Platform-consistent iconography
+- **Gesture System**: Touch interaction patterns
+
+### Deliverables
+- Complete Figma design system
+- Design token specifications
+- Component documentation
+- Platform guidelines (iOS/Android)`,
+    state: TaskStateValue.COMPLETED,
+    complexity: 8,
+    depth: 0,
+    estimate: 2160, // 36 hours
+    assignedAgent: designerAgent.id,
+    dependencies: [MOBILE_TASK_IDS.RESEARCH, MOBILE_TASK_IDS.WIREFRAMES],
+    dependents: [MOBILE_TASK_IDS.TECH_STACK],
+    createdAt: new Date('2024-01-15T09:30:00Z'),
+    updatedAt: new Date('2024-01-19T10:15:00Z'),
+    completedAt: new Date('2024-01-19T10:15:00Z'),
+    position: { x: 700, y: 100 }
+  },
+
+  // Phase 2: Architecture
+  {
+    id: MOBILE_TASK_IDS.TECH_STACK,
+    projectId: mobileProject.id,
+    parentId: undefined,
+    title: "Technology Stack Selection",
+    description: `## Mobile App Technology Stack
+
+### Framework Selection
+- **Cross-platform**: React Native vs Flutter vs Native
+- **UI Library**: React Navigation vs React Native Navigation
+- **State Management**: Redux vs Context API vs Zustand
+- **Backend Integration**: REST vs GraphQL
+- **Testing Framework**: Jest vs Detox
+
+### Infrastructure
+- **Development Environment**: IDE setup and tooling
+- **CI/CD Pipeline**: Fastlane and GitHub Actions
+- **Analytics**: Firebase Analytics integration
+- **Push Notifications**: Firebase Cloud Messaging
+
+### Deliverables
+- Tech stack documentation
+- Development environment setup guide
+- CI/CD pipeline configuration
+- Performance benchmarks`,
+    state: TaskStateValue.IN_PROGRESS,
     complexity: 7,
     depth: 0,
     estimate: 1440, // 24 hours
-    assignedAgent: designerAgent.id,
-    dependencies: [MOBILE_TASK_IDS.REQUIREMENTS],
-    dependents: [MOBILE_TASK_IDS.PROJECT_SETUP, MOBILE_TASK_IDS.CORE_FEATURES],
-    createdAt: new Date('2024-01-10T11:00:00Z'),
-    updatedAt: new Date('2024-01-15T17:00:00Z'),
-    completedAt: new Date('2024-01-15T17:00:00Z'),
-    position: { x: 400, y: 700 }
-  },
-
-  // Phase 2: Development
-  {
-    id: MOBILE_TASK_IDS.PROJECT_SETUP,
-    projectId: mobileProject.id,
-    parentId: undefined,
-    title: "React Native Project Setup",
-    description: `## React Native Project Setup
-
-### Development Environment
-- **React Native CLI**: Latest stable version
-- **TypeScript**: Strict configuration
-- **Metro**: Bundler optimization
-- **Flipper**: Debugging and profiling
-- **Detox**: E2E testing framework
-
-### Project Structure
-- Feature-based folder structure
-- Shared components library
-- Navigation setup (React Navigation)
-- State management (Redux Toolkit)
-- API client configuration
-
-### Build Configuration
-- iOS: Xcode project setup
-- Android: Gradle configuration
-- Code signing setup
-- Environment variables
-- CI/CD pipeline foundation`,
-    state: TaskState.COMPLETED,
-    complexity: 6,
-    depth: 0,
-    estimate: 720, // 12 hours
     assignedAgent: frontendAgent.id,
-    dependencies: [MOBILE_TASK_IDS.REQUIREMENTS, MOBILE_TASK_IDS.UI_DESIGN],
-    dependents: [MOBILE_TASK_IDS.AUTHENTICATION, MOBILE_TASK_IDS.CORE_FEATURES],
-    createdAt: new Date('2024-01-11T09:00:00Z'),
-    updatedAt: new Date('2024-01-13T18:00:00Z'),
-    completedAt: new Date('2024-01-13T18:00:00Z'),
-    position: { x: 700, y: 700 }
-  },
-
-  {
-    id: MOBILE_TASK_IDS.AUTHENTICATION,
-    projectId: mobileProject.id,
-    parentId: undefined,
-    title: "Mobile Authentication System",
-    description: `## Mobile Authentication System
-
-### Authentication Methods
-- **Email/Password**: Traditional login
-- **Biometric**: Face ID, Touch ID, Fingerprint
-- **Social Login**: Google, Apple, Facebook
-- **Phone Number**: SMS verification
-- **Guest Mode**: Limited functionality without account
-
-### Security Features
-- Secure token storage (Keychain/Keystore)
-- Certificate pinning
-- Jailbreak/root detection
-- Session management
-- Auto-logout on inactivity
-
-### User Experience
-- Smooth onboarding flow
-- Remember login preferences
-- Quick re-authentication
-- Error handling and recovery`,
-    state: TaskState.IN_PROGRESS,
-    complexity: 8,
-    depth: 0,
-    estimate: 1200, // 20 hours
-    assignedAgent: frontendAgent.id,
-    dependencies: [MOBILE_TASK_IDS.PROJECT_SETUP],
-    dependents: [MOBILE_TASK_IDS.CORE_FEATURES, MOBILE_TASK_IDS.OFFLINE_SYNC],
-    createdAt: new Date('2024-01-12T10:00:00Z'),
-    updatedAt: new Date('2024-01-20T15:00:00Z'),
-    position: { x: 1000, y: 700 }
+    dependencies: [MOBILE_TASK_IDS.WIREFRAMES, MOBILE_TASK_IDS.DESIGN_SYSTEM],
+    dependents: [MOBILE_TASK_IDS.API_INTEGRATION, MOBILE_TASK_IDS.STATE_MANAGEMENT],
+    createdAt: new Date('2024-01-16T09:00:00Z'),
+    updatedAt: new Date('2024-01-20T10:15:00Z'),
+    position: { x: 1000, y: 100 }
   }
 ];

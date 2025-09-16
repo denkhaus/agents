@@ -9,17 +9,18 @@ import { v } from "convex/values";
 export default defineSchema({
   // Projects table
   projects: defineTable({
+    id: v.string(),
     title: v.string(),
     description: v.string(),
     totalTasks: v.number(),
     completedTasks: v.number(),
     progress: v.number(), // 0-100 percentage
     // Convex automatically adds _id and _creationTime
-  })
-    .index("by_title", ["title"]),
+  }).index("by_title", ["title"]),
 
   // Tasks table
   tasks: defineTable({
+    id: v.string(),
     projectId: v.id("projects"),
     parentId: v.optional(v.id("tasks")),
     title: v.string(),
@@ -53,7 +54,7 @@ export default defineSchema({
   // Agents table
   agents: defineTable({
     name: v.string(),
-    role: v.optional(v.union(
+    role: v.union(
       v.literal("supervisor"),
       v.literal("project-manager"),
       v.literal("coder"),
@@ -62,20 +63,21 @@ export default defineSchema({
       v.literal("devops"),
       v.literal("designer"),
       v.literal("human") // Add human role for existing data
-    )),
-    description: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("online"),
-      v.literal("offline"),
-      v.literal("busy"),
-      v.literal("idle")
-    )),
+    ),
+    description: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("online"),
+        v.literal("offline"),
+        v.literal("busy"),
+        v.literal("idle")
+      )
+    ),
     isStreaming: v.optional(v.boolean()),
     capabilities: v.optional(v.array(v.string())),
     currentTasks: v.optional(v.array(v.id("tasks"))),
     lastActiveAt: v.optional(v.number()), // Unix timestamp
-    // Legacy fields for compatibility
-    id: v.optional(v.string()), // For existing human agent
+    id: v.string(),
   })
     .index("by_role", ["role"])
     .index("by_status", ["status"])

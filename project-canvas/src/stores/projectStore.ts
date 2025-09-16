@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
-import { Project, ProjectFilter, ProjectEditableFields, UUID } from "@/types";
+import type { Project, ProjectFilter, ProjectEditableFields, UUID } from "@/types";
 
 interface ProjectStore {
   // State
@@ -30,6 +30,11 @@ interface ProjectStore {
   setError: (error: string | null) => void;
   setFilter: (filter: Partial<ProjectFilter>) => void;
   clearFilter: () => void;
+
+  // Sync Actions (internal)
+  addProject: (project: Project) => void;
+  updateProject: (id: UUID, updates: any) => void;
+  deleteProject: (id: UUID) => void;
 
   // Async Actions
   fetchProjects: () => Promise<void>;
@@ -115,6 +120,23 @@ export const useProjectStore = create<ProjectStore>()(
           currentProject:
             state.currentProject?.id === id ? null : state.currentProject,
         })),
+
+      updateProjectEditableFields: (
+        id: UUID,
+        updates: ProjectEditableFields
+      ) => {
+        get().updateProject(id, updates);
+      },
+
+      reset: () => {
+        set({
+          projects: [],
+          currentProject: null,
+          loading: false,
+          error: null,
+          filter: defaultFilter,
+        });
+      },
 
       setLoading: (loading) => set({ loading }),
 

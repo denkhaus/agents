@@ -7,7 +7,6 @@ import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import { TaskNodeData } from '@/types/reactflow.types';
@@ -18,7 +17,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Play, 
-  Pause,
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -3,7 +3,6 @@
  * Implements intelligent positioning to avoid overlaps
  */
 
-import { Node, Edge, Position } from 'reactflow';
 import { Task } from '../types/task.types';
 import { CustomNode, CustomEdge } from '../types/reactflow.types';
 

@@ -6,7 +6,11 @@
 
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { masterProjects, masterAgents, allTasks } from '../src/data/master-dummy-data';
+import {
+  masterProjects,
+  masterAgents,
+  allTasks,
+} from "../src/data/master-dummy-data";
 
 export const seedDatabase = mutation({
   args: {},
@@ -21,6 +25,7 @@ export const seedDatabase = mutation({
     const projectIdMapping: Record<string, string> = {};
     for (const project of masterProjects) {
       const convexProject = {
+        id: project.id,
         title: project.title,
         description: project.description,
         totalTasks: project.totalTasks,
@@ -42,7 +47,9 @@ export const seedDatabase = mutation({
         isStreaming: agent.isStreaming,
         capabilities: agent.capabilities,
         currentTasks: [], // Will be updated after tasks are created
-        lastActiveAt: agent.lastActiveAt ? agent.lastActiveAt.getTime() : undefined,
+        lastActiveAt: agent.lastActiveAt
+          ? agent.lastActiveAt.getTime()
+          : undefined,
         id: agent.id, // Keep original ID for compatibility
       };
       const agentId = await ctx.db.insert("agents", convexAgent);
@@ -53,6 +60,7 @@ export const seedDatabase = mutation({
     const taskIdMapping: Record<string, string> = {};
     for (const task of allTasks) {
       const convexTask = {
+        id: task.id,
         projectId: projectIdMapping[task.projectId],
         parentId: task.parentId ? taskIdMapping[task.parentId] : undefined,
         title: task.title,
@@ -61,9 +69,15 @@ export const seedDatabase = mutation({
         complexity: task.complexity,
         depth: task.depth,
         estimate: task.estimate,
-        assignedAgent: task.assignedAgent ? agentIdMapping[task.assignedAgent] : undefined,
-        dependencies: task.dependencies.map(depId => taskIdMapping[depId]).filter(Boolean),
-        dependents: task.dependents.map(depId => taskIdMapping[depId]).filter(Boolean),
+        assignedAgent: task.assignedAgent
+          ? agentIdMapping[task.assignedAgent]
+          : undefined,
+        dependencies: task.dependencies
+          .map((depId) => taskIdMapping[depId])
+          .filter(Boolean),
+        dependents: task.dependents
+          .map((depId) => taskIdMapping[depId])
+          .filter(Boolean),
         positionX: task.position?.x,
         positionY: task.position?.y,
         updatedAt: task.updatedAt.getTime(),
@@ -77,9 +91,13 @@ export const seedDatabase = mutation({
     for (const task of allTasks) {
       const convexTaskId = taskIdMapping[task.id];
       if (convexTaskId) {
-        const dependencies = task.dependencies.map(depId => taskIdMapping[depId]).filter(Boolean);
-        const dependents = task.dependents.map(depId => taskIdMapping[depId]).filter(Boolean);
-        
+        const dependencies = task.dependencies
+          .map((depId) => taskIdMapping[depId])
+          .filter(Boolean);
+        const dependents = task.dependents
+          .map((depId) => taskIdMapping[depId])
+          .filter(Boolean);
+
         if (dependencies.length > 0 || dependents.length > 0) {
           await ctx.db.patch(convexTaskId, {
             dependencies,
@@ -93,7 +111,9 @@ export const seedDatabase = mutation({
     for (const agent of masterAgents) {
       const convexAgentId = agentIdMapping[agent.id];
       if (convexAgentId && agent.currentTasks.length > 0) {
-        const currentTasks = agent.currentTasks.map(taskId => taskIdMapping[taskId]).filter(Boolean);
+        const currentTasks = agent.currentTasks
+          .map((taskId) => taskIdMapping[taskId])
+          .filter(Boolean);
         await ctx.db.patch(convexAgentId, { currentTasks });
       }
     }

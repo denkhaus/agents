@@ -3,7 +3,6 @@
  * Combines Convex real-time data with local stores
  */
 
-import { useEffect } from 'react';
 import { useProjectStore, useTaskStore } from '@/stores';
 import { 
   useConvexProjects, 

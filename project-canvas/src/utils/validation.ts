@@ -126,6 +126,19 @@ export function validateNoCycles(
   const visited = new Set<UUID>();
   const visiting = new Set<UUID>();
   
+  // Create a temporary task with the new dependencies to check for cycles
+  const tempTask = {
+    id: taskId,
+    dependencies: dependencies
+  };
+  
+  // Create a map of tasks for quick lookup
+  const taskMap = new Map<UUID, Task | { id: UUID; dependencies: UUID[] }>();
+  for (const task of allTasks) {
+    taskMap.set(task.id, task);
+  }
+  taskMap.set(taskId, tempTask);
+  
   function hasCycle(currentId: UUID): boolean {
     if (visiting.has(currentId)) {
       return true; // Cycle detected
@@ -137,7 +150,7 @@ export function validateNoCycles(
     
     visiting.add(currentId);
     
-    const task = allTasks.find(t => t.id === currentId);
+    const task = taskMap.get(currentId);
     if (task) {
       for (const depId of task.dependencies) {
         if (hasCycle(depId)) {
@@ -152,12 +165,6 @@ export function validateNoCycles(
   }
   
   // Check if adding these dependencies would create a cycle
-  const tempTask: Task = {
-    id: taskId,
-    dependencies,
-    // ... other required fields with dummy values for validation
-  } as Task;
-  
   if (hasCycle(taskId)) {
     errors.push('Adding these dependencies would create a circular dependency');
   }

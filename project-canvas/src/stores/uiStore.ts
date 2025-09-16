@@ -22,9 +22,11 @@ interface UIStore {
   // Sidebar State
   sidebar: SidebarConfig;
   currentWorkspace: WorkspaceType;
+  sidebarCollapsed: boolean;
 
   // Theme State
   theme: ThemeConfig;
+  darkMode: boolean;
 
   // Canvas State
   canvas: CanvasConfig;
@@ -124,7 +126,9 @@ export const useUIStore = create<UIStore>()(
         // Initial State
         sidebar: defaultSidebar,
         currentWorkspace: "projects",
+        sidebarCollapsed: false,
         theme: defaultTheme,
+        darkMode: false,
         canvas: defaultCanvas,
         viewport: defaultViewport,
         selection: defaultSelection,
@@ -137,11 +141,13 @@ export const useUIStore = create<UIStore>()(
         toggleSidebar: () =>
           set((state) => ({
             sidebar: { ...state.sidebar, collapsed: !state.sidebar.collapsed },
+            sidebarCollapsed: !state.sidebar.collapsed,
           })),
 
         setSidebarCollapsed: (collapsed) =>
           set((state) => ({
             sidebar: { ...state.sidebar, collapsed },
+            sidebarCollapsed: collapsed,
           })),
 
         setWorkspace: (workspace) => set({ currentWorkspace: workspace }),
@@ -153,6 +159,7 @@ export const useUIStore = create<UIStore>()(
               ...state.theme,
               mode: state.theme.mode === "light" ? "dark" : "light",
             },
+            darkMode: state.theme.mode === "light",
           })),
 
         setTheme: (newTheme) =>

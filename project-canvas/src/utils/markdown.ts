@@ -9,19 +9,17 @@ import DOMPurify from 'dompurify';
 // Configure marked for security and consistency
 marked.setOptions({
   breaks: true,
-  gfm: true,
-  headerIds: false,
-  mangle: false
+  gfm: true
 });
 
 /**
  * Parse markdown to HTML using marked library
  */
-export function parseMarkdown(markdown: string): string {
+export async function parseMarkdown(markdown: string): Promise<string> {
   if (!markdown) return '';
   
   try {
-    const html = marked.parse(markdown);
+    const html = await marked.parse(markdown);
     return sanitizeHTML(html);
   } catch (error) {
     console.error('Markdown parsing error:', error);

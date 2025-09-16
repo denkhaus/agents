@@ -5,8 +5,17 @@
 
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
-import { Task, TaskFilter, TaskEditableFields, TaskState, UUID } from "@/types";
+import type {
+  Task,
+  TaskFilter,
+  TaskEditableFields,
+  TaskState,
+  UUID,
+} from "@/types";
 import { Position } from "../types/ui.types";
+
+// Import the actual values for runtime usage
+import { TaskState as TaskStateValue } from "@/types/task.types";
 
 interface TaskStore {
   // State
@@ -43,10 +52,15 @@ interface TaskStore {
   getParentTask: (taskId: UUID) => Task | null;
   getTaskDepth: (taskId: UUID) => number;
 
+  // Sync Actions (internal)
+  addTask: (task: Task) => void;
+  updateTask: (id: UUID, updates: Partial<Task>) => void;
+  deleteTask: (id: UUID) => void;
+
   // Async Actions
   fetchTasksByProject: (projectId: UUID) => Promise<void>;
-  createTask: (input: TaskCreateInput) => Promise<Task>;
-  updateTaskAsync: (id: UUID, updates: TaskUpdates) => Promise<void>;
+  createTask: (input: any) => Promise<Task>;
+  updateTaskAsync: (id: UUID, updates: any) => Promise<void>;
   deleteTaskAsync: (id: UUID) => Promise<void>;
 }
 
@@ -210,13 +224,27 @@ export const useTaskStore = create<TaskStore>()(
           return { tasks: filteredTasks, tasksByProject };
         }),
 
+      updateTaskEditableFields: (id, updates) => {
+        get().updateTask(id, updates);
+      },
+
+      reset: () => {
+        set({
+          tasks: [],
+          tasksByProject: {},
+          loading: false,
+          error: null,
+          filter: defaultFilter,
+        });
+      },
+
       updateTaskPosition: (id, position) => {
         get().updateTask(id, { position });
       },
 
       updateTaskState: (id, state) => {
-        const updates: TaskUpdates = { state };
-        if (state === TaskState.COMPLETED) {
+        const updates: any = { state };
+        if (state === TaskStateValue.COMPLETED) {
           updates.completedAt = new Date();
         }
         get().updateTask(id, updates);

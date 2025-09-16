@@ -3,14 +3,14 @@
  * Custom hooks for real-time data fetching with Convex
  */
 
+import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useProjectStore, useTaskStore, useAgentStore } from "@/stores";
-import { useEffect } from "react";
-import { 
-  convexProjectToProject, 
-  convexTaskToTask, 
-  convexAgentToAgent 
+import {
+  convexProjectToProject,
+  convexTaskToTask,
+  convexAgentToAgent,
 } from "@/utils/convex-helpers";
 import { Id } from "../../convex/_generated/dataModel";
 
@@ -19,11 +19,12 @@ export const useConvexProjects = () => {
   const convexProjects = useQuery(api.projects.list);
   const { setProjects, setCurrentProject, currentProject } = useProjectStore();
 
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
     if (convexProjects) {
       const projects = convexProjects.map(convexProjectToProject);
       setProjects(projects);
-      
+
       // Set first project as current if none selected
       if (!currentProject && projects.length > 0) {
         setCurrentProject(projects[0]);
@@ -40,12 +41,13 @@ export const useConvexProjects = () => {
 // Hook for real-time tasks
 export const useConvexTasks = (projectId?: string) => {
   const convexTasks = useQuery(
-    api.tasks.listByProject, 
+    api.tasks.listByProject,
     projectId ? { projectId: projectId as Id<"projects"> } : "skip"
   );
   const { setTasks } = useTaskStore();
 
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
     if (convexTasks) {
       const tasks = convexTasks.map(convexTaskToTask);
       setTasks(tasks);
@@ -63,7 +65,8 @@ export const useConvexAgents = () => {
   const convexAgents = useQuery(api.agents.list);
   const { setAgents } = useAgentStore();
 
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
     if (convexAgents) {
       const agents = convexAgents.map(convexAgentToAgent);
       setAgents(agents);
@@ -80,10 +83,12 @@ export const useConvexAgents = () => {
 export const useConvexEvents = (projectId?: string, since?: number) => {
   const events = useQuery(
     api.events.subscribeToProject,
-    projectId ? { 
-      projectId, 
-      since: since || Date.now() - 24 * 60 * 60 * 1000 // Last 24 hours
-    } : "skip"
+    projectId
+      ? {
+          projectId,
+          since: since || Date.now() - 24 * 60 * 60 * 1000, // Last 24 hours
+        }
+      : "skip"
   );
 
   return {

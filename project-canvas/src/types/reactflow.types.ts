@@ -3,7 +3,7 @@
  * For nodes, edges, and flow diagram components
  */
 
-import { Node, Edge, NodeTypes, EdgeTypes } from 'reactflow';
+import { Node, Edge } from 'reactflow';
 import { Task, TaskState } from './task.types';
 import { Project, UUID } from './project.types';
 
@@ -24,39 +24,36 @@ export interface ProjectNodeData {
   isSelected: boolean;
   taskCount: number;
   completionRate: number;
+  completedTaskCount: number;
 }
 
 // Milestone Node Data
 export interface MilestoneNodeData {
-  id: UUID;
   title: string;
-  description: string;
-  dueDate: Date;
-  isCompleted: boolean;
-  dependentTasks: UUID[];
+  date: Date;
+  description?: string;
+  isSelected: boolean;
 }
 
 // Custom Node Types
-export interface TaskNode extends Node {
+export interface TaskNode extends Node<TaskNodeData, 'task'> {
   type: 'task';
-  data: TaskNodeData;
 }
 
-export interface ProjectNode extends Node {
+export interface ProjectNode extends Node<ProjectNodeData, 'project'> {
   type: 'project';
-  data: ProjectNodeData;
 }
 
-export interface MilestoneNode extends Node {
+export interface MilestoneNode extends Node<MilestoneNodeData, 'milestone'> {
   type: 'milestone';
-  data: MilestoneNodeData;
 }
 
 export type CustomNode = TaskNode | ProjectNode | MilestoneNode;
 
 // Custom Edge Types
-export type CustomEdgeType = 'dependency' | 'hierarchy' | 'milestone';
+export type CustomEdgeType = 'dependency' | 'hierarchy';
 
+// Dependency Edge Data
 export interface DependencyEdgeData {
   sourceTaskId: UUID;
   targetTaskId: UUID;
@@ -64,16 +61,17 @@ export interface DependencyEdgeData {
   dependencyType: 'finish-to-start' | 'start-to-start' | 'finish-to-finish';
 }
 
+// Hierarchy Edge Data
 export interface HierarchyEdgeData {
   parentTaskId: UUID;
   childTaskId: UUID;
   depth: number;
 }
 
-export interface CustomEdge extends Edge {
-  type: CustomEdgeType;
-  data: DependencyEdgeData | HierarchyEdgeData;
-}
+// Custom Edge Interface
+export type CustomEdge = 
+  | Edge<DependencyEdgeData>
+  | Edge<HierarchyEdgeData>;
 
 // Flow State
 export interface FlowState {
@@ -84,30 +82,10 @@ export interface FlowState {
 }
 
 // Node Style Configurations
-export interface NodeStyleConfig {
-  [TaskState.PENDING]: {
+export type NodeStyleConfig = {
+  [key in TaskState]: {
     backgroundColor: string;
     borderColor: string;
     textColor: string;
   };
-  [TaskState.IN_PROGRESS]: {
-    backgroundColor: string;
-    borderColor: string;
-    textColor: string;
-  };
-  [TaskState.COMPLETED]: {
-    backgroundColor: string;
-    borderColor: string;
-    textColor: string;
-  };
-  [TaskState.BLOCKED]: {
-    backgroundColor: string;
-    borderColor: string;
-    textColor: string;
-  };
-  [TaskState.CANCELLED]: {
-    backgroundColor: string;
-    borderColor: string;
-    textColor: string;
-  };
-}
+};

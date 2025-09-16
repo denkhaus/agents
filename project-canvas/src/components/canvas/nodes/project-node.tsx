@@ -14,8 +14,7 @@ import {
   FolderOpen, 
   Calendar, 
   CheckCircle2, 
-  Clock,
-  Users
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +23,9 @@ export const ProjectNode: React.FC<NodeProps<ProjectNodeData>> = ({
   selected 
 }) => {
   const { project, taskCount, completionRate } = data;
+  
+  // Use completionRate in the UI
+  const displayCompletionRate = completionRate > 0 ? `(${Math.round(completionRate)}%)` : '';
 
   return (
     <div className="project-node">
@@ -49,7 +51,7 @@ export const ProjectNode: React.FC<NodeProps<ProjectNodeData>> = ({
                   Project
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  {taskCount} Tasks
+                  {taskCount} Tasks {displayCompletionRate}
                 </Badge>
               </div>
             </div>
@@ -117,11 +119,6 @@ export const ProjectNode: React.FC<NodeProps<ProjectNodeData>> = ({
                 <Clock className="w-3 h-3 text-blue-500" />
                 <span>{project.totalTasks - project.completedTasks} remaining</span>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Users className="w-3 h-3" />
-              <span>Team</span>
             </div>
           </div>
         </CardContent>

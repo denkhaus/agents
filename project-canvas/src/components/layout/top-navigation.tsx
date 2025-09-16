@@ -14,7 +14,6 @@ import {
   Settings,
   HelpCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export const TopNavigation: React.FC = () => {
   const { sidebarCollapsed, toggleSidebar } = useUIStore();

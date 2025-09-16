@@ -4,10 +4,13 @@
  * Max 500 Zeilen pro Datei!
  */
 
-import { Task, TaskState } from '../types';
-import { ecommerceProject } from './projects';
-import { frontendAgent, backendAgent, qaAgent, devopsAgent } from './agents';
-import { ECOM_TASK_IDS } from './ecommerce-tasks';
+import type { Task } from "../types";
+import { ecommerceProject } from "./projects";
+import { frontendAgent, backendAgent, qaAgent, devopsAgent } from "./agents";
+import { ECOM_TASK_IDS } from "./ecommerce-tasks";
+
+// Import the actual values for runtime usage
+import { TaskState as TaskStateValue } from "../types/task.types";
 
 export const ecommerceTasksPart3: Task[] = [
   {
@@ -30,16 +33,16 @@ export const ecommerceTasksPart3: Task[] = [
 - Shipping options
 - Order summary and confirmation
 - Email notifications`,
-    state: TaskState.PENDING,
+    state: TaskStateValue.PENDING,
     complexity: 9,
     depth: 0,
     estimate: 2160, // 36 hours
     assignedAgent: frontendAgent.id,
     dependencies: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     dependents: [ECOM_TASK_IDS.PAYMENT_INTEGRATION],
-    createdAt: new Date('2024-01-17T12:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 1900, y: 200 }
+    createdAt: new Date("2024-01-17T12:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 1900, y: 200 },
   },
 
   {
@@ -62,16 +65,16 @@ export const ecommerceTasksPart3: Task[] = [
 - Fraud detection
 - Secure tokenization
 - Refund processing`,
-    state: TaskState.BLOCKED,
+    state: TaskStateValue.BLOCKED,
     complexity: 8,
     depth: 0,
     estimate: 1440, // 24 hours
     assignedAgent: backendAgent.id,
     dependencies: [ECOM_TASK_IDS.SHOPPING_CART],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
-    createdAt: new Date('2024-01-18T09:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 2200, y: 300 }
+    createdAt: new Date("2024-01-18T09:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 2200, y: 300 },
   },
 
   {
@@ -94,16 +97,16 @@ export const ecommerceTasksPart3: Task[] = [
 - Bulk operations
 - Export/import functionality
 - Audit logging`,
-    state: TaskState.PENDING,
+    state: TaskStateValue.PENDING,
     complexity: 8,
     depth: 0,
     estimate: 1920, // 32 hours
     assignedAgent: frontendAgent.id,
     dependencies: [ECOM_TASK_IDS.USER_AUTH, ECOM_TASK_IDS.PRODUCT_CATALOG],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
-    createdAt: new Date('2024-01-18T10:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 1600, y: 400 }
+    createdAt: new Date("2024-01-18T10:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 1600, y: 400 },
   },
 
   // Phase 4: Testing & Deployment
@@ -127,16 +130,16 @@ export const ecommerceTasksPart3: Task[] = [
 - Visual regression testing
 - Cross-browser testing
 - Mobile device testing`,
-    state: TaskState.PENDING,
+    state: TaskStateValue.PENDING,
     complexity: 4,
     depth: 0,
     estimate: 360, // 6 hours
     assignedAgent: qaAgent.id,
     dependencies: [ECOM_TASK_IDS.FRONTEND_SETUP],
     dependents: [ECOM_TASK_IDS.E2E_TESTS],
-    createdAt: new Date('2024-01-18T11:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 1300, y: 500 }
+    createdAt: new Date("2024-01-18T11:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 1300, y: 500 },
   },
 
   {
@@ -159,16 +162,20 @@ export const ecommerceTasksPart3: Task[] = [
 - Edge cases and boundary conditions
 - Performance benchmarks
 - Accessibility compliance`,
-    state: TaskState.PENDING,
+    state: TaskStateValue.PENDING,
     complexity: 7,
     depth: 0,
     estimate: 1440, // 24 hours
     assignedAgent: qaAgent.id,
-    dependencies: [ECOM_TASK_IDS.TESTING_SETUP, ECOM_TASK_IDS.PAYMENT_INTEGRATION, ECOM_TASK_IDS.ADMIN_PANEL],
+    dependencies: [
+      ECOM_TASK_IDS.TESTING_SETUP,
+      ECOM_TASK_IDS.PAYMENT_INTEGRATION,
+      ECOM_TASK_IDS.ADMIN_PANEL,
+    ],
     dependents: [ECOM_TASK_IDS.DEPLOYMENT],
-    createdAt: new Date('2024-01-18T12:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 1900, y: 500 }
+    createdAt: new Date("2024-01-18T12:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 1900, y: 500 },
   },
 
   {
@@ -191,15 +198,15 @@ export const ecommerceTasksPart3: Task[] = [
 - Database migration automation
 - Monitoring and alerting setup
 - Backup and disaster recovery`,
-    state: TaskState.PENDING,
+    state: TaskStateValue.PENDING,
     complexity: 6,
     depth: 0,
     estimate: 960, // 16 hours
     assignedAgent: devopsAgent.id,
     dependencies: [ECOM_TASK_IDS.E2E_TESTS],
     dependents: [],
-    createdAt: new Date('2024-01-19T09:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
-    position: { x: 2200, y: 600 }
-  }
+    createdAt: new Date("2024-01-19T09:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
+    position: { x: 2200, y: 600 },
+  },
 ];

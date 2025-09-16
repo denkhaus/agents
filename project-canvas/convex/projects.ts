@@ -5,6 +5,7 @@
 
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { generateUUID } from "../src/utils/uuid";
 
 // Get all projects
 export const list = query({
@@ -68,7 +69,11 @@ export const create = mutation({
     description: v.string(),
   },
   handler: async (ctx, args) => {
+    // Generate a unique ID for the project
+    const id = generateUUID();
+    
     const projectId = await ctx.db.insert("projects", {
+      id: id,
       title: args.title,
       description: args.description,
       totalTasks: 0,

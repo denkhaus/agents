@@ -4,10 +4,13 @@
  * Max 500 Zeilen pro Datei!
  */
 
-import { Task, TaskState } from '../types';
+import type { Task } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { ecommerceProject } from './projects';
-import { designerAgent, frontendAgent, backendAgent, qaAgent, devopsAgent } from './agents';
+import { designerAgent } from './agents';
+
+// Import the actual values for runtime usage
+import { TaskState as TaskStateValue } from '../types/task.types';
 
 // Task IDs für Dependencies (Go-Model: uuid.UUID)
 export const ECOM_TASK_IDS = {
@@ -57,7 +60,7 @@ export const ecommerceTasks: Task[] = [
 - User persona documentation  
 - Competitive analysis matrix
 - Recommendations summary`,
-    state: TaskState.COMPLETED,
+    state: TaskStateValue.COMPLETED,
     complexity: 6,
     depth: 0,
     estimate: 2400, // 40 hours in minutes
@@ -93,7 +96,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 - Interactive prototypes
 - User flow diagrams
 - Mobile breakpoint designs`,
-    state: TaskState.COMPLETED,
+    state: TaskStateValue.COMPLETED,
     complexity: 7,
     depth: 0,
     estimate: 1800, // 30 hours
@@ -126,7 +129,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 - Design token specifications
 - Component documentation
 - Usage guidelines`,
-    state: TaskState.IN_PROGRESS,
+    state: TaskStateValue.IN_PROGRESS,
     complexity: 8,
     depth: 0,
     estimate: 2160, // 36 hours
