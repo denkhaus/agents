@@ -5,17 +5,14 @@
 
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
-import type {
-  Agent,
-  AgentRole,
-  AgentStatus,
-  AgentFilter,
-  AgentUpdateInput,
-  UUID,
-} from "@/types";
+import type { Agent, AgentFilter, AgentUpdateInput, UUID } from "@/types";
 
 // Import the actual values for runtime usage
-import { AgentStatus as AgentStatusValue } from "@/types/agent.types";
+import {
+  AgentRoleType,
+  AgentStatusType,
+  AgentStatus as AgentStatusValue,
+} from "@/types/agent.types";
 
 interface AgentState {
   // State
@@ -29,7 +26,7 @@ interface AgentState {
   addAgent: (agent: Agent) => void;
   updateAgent: (id: UUID, updates: AgentUpdateInput) => void;
   deleteAgent: (id: UUID) => void;
-  updateAgentStatus: (id: UUID, status: AgentStatus) => void;
+  updateAgentStatus: (id: UUID, status: AgentStatusType) => void;
   assignTaskToAgent: (agentId: UUID, taskId: UUID) => void;
   unassignTaskFromAgent: (agentId: UUID, taskId: UUID) => void;
   setLoading: (loading: boolean) => void;
@@ -39,8 +36,8 @@ interface AgentState {
 
   // Computed
   getAgentById: (id: UUID) => Agent | undefined;
-  getAgentsByRole: (role: AgentRole) => Agent[];
-  getAgentsByStatus: (status: AgentStatus) => Agent[];
+  getAgentsByRole: (role: AgentRoleType) => Agent[];
+  getAgentsByStatus: (status: AgentStatusType) => Agent[];
   getAvailableAgents: () => Agent[];
   getFilteredAgents: () => Agent[];
   getAgentWorkload: (id: UUID) => number;
@@ -98,7 +95,7 @@ export const useAgentStore = create<AgentState>()(
         const updates: AgentUpdateInput = { status };
         if (status === AgentStatusValue.ONLINE) {
           // Update lastActiveAt when going online
-          (updates as any).lastActiveAt = new Date();
+          updates.lastActiveAt = new Date();
         }
         get().updateAgent(id, updates);
       },

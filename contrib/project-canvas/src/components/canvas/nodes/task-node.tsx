@@ -11,62 +11,24 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { TaskState } from "@/types/task.types";
-import { Clock, User, AlertCircle, CheckCircle2, Play, X } from "lucide-react";
+import { Clock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskNodeData } from "@/types/reactflow.types";
 import { TaskPropertyPanel } from "@/components/property-panels";
+import { taskStateConfig } from "@/config/task-state-config";
 import type {
   PropertyPanelNode,
   PropertyInfo,
   PropertyUpdateCallback,
+  Task,
 } from "@/types";
-
-interface TaskStateConfig {
-  color: string;
-  darkColor: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge: string;
-}
-
-const taskStateConfig: Record<TaskState, TaskStateConfig> = {
-  [TaskState.PENDING]: {
-    color: "bg-slate-100 border-slate-300 text-slate-700",
-    darkColor: "dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300",
-    icon: Clock,
-    badge: "secondary",
-  },
-  [TaskState.IN_PROGRESS]: {
-    color: "bg-blue-50 border-blue-300 text-blue-700",
-    darkColor: "dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300",
-    icon: Play,
-    badge: "default",
-  },
-  [TaskState.COMPLETED]: {
-    color: "bg-green-50 border-green-300 text-green-700",
-    darkColor: "dark:bg-green-900 dark:border-green-600 dark:text-green-300",
-    icon: CheckCircle2,
-    badge: "default",
-  },
-  [TaskState.BLOCKED]: {
-    color: "bg-red-50 border-red-300 text-red-700",
-    darkColor: "dark:bg-red-900 dark:border-red-600 dark:text-red-300",
-    icon: AlertCircle,
-    badge: "destructive",
-  },
-  [TaskState.CANCELLED]: {
-    color: "bg-gray-50 border-gray-300 text-gray-700",
-    darkColor: "dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300",
-    icon: X,
-    badge: "secondary",
-  },
-};
 
 // Create a class that implements the PropertyPanelNode interface
 class TaskNodeClass implements PropertyPanelNode {
   constructor(
     public id: string,
     public type: string,
-    private task: any,
+    private task: Task,
     private onUpdate: PropertyUpdateCallback
   ) {}
 
@@ -77,11 +39,8 @@ class TaskNodeClass implements PropertyPanelNode {
       title: this.task.title,
       description: this.task.description,
       component: (
-        <TaskPropertyPanel
-          task={this.task}
-          onUpdate={this.onUpdate}
-        />
-      )
+        <TaskPropertyPanel task={this.task} onUpdate={this.onUpdate} />
+      ),
     };
   }
 }
@@ -92,7 +51,9 @@ export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
   const Icon = config.icon;
 
   // Create a property panel node instance - this will be used by the sidebar
-  const createPropertyPanelNode = (onUpdate: PropertyUpdateCallback): PropertyPanelNode => {
+  const createPropertyPanelNode = (
+    onUpdate: PropertyUpdateCallback
+  ): PropertyPanelNode => {
     return new TaskNodeClass(task.id, "Task", task, onUpdate);
   };
 
@@ -120,7 +81,19 @@ export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
           isHighlighted && "shadow-lg scale-105"
         )}
       >
-        <CardHeader className="pb-2 border-x border-t border-b border-border/20 bg-background/80 dark:bg-background/80 rounded-t-lg">
+        <CardHeader
+          className={cn(
+            "pb-6 border-x border-t border-b bg-background/80 dark:bg-background/80 rounded-t-lg",
+            config.color
+              .split(" ")
+              .filter((c) => c.startsWith("border-"))
+              .join(" "),
+            config.darkColor
+              .split(" ")
+              .filter((c) => c.startsWith("dark:border-"))
+              .join(" ")
+          )}
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm leading-tight truncate">
@@ -147,7 +120,7 @@ export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 border-x border-b border-border/20 rounded-b-lg">
+        <CardContent className="pt-6 border-x border-b border-border/20 rounded-b-lg">
           {/* Description Preview */}
           <div className="mb-3">
             <MarkdownRenderer

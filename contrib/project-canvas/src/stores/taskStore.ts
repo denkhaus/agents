@@ -62,8 +62,11 @@ interface TaskStore {
 
   // Async Actions
   fetchTasksByProject: (projectId: UUID) => Promise<void>;
-  createTask: (input: any) => Promise<Task>;
-  updateTaskAsync: (id: UUID, updates: any) => Promise<void>;
+  createTask: (input: Partial<Task>) => Promise<Task>;
+  updateTaskAsync: (
+    id: UUID,
+    updates: Partial<TaskEditableFields>
+  ) => Promise<void>;
   deleteTaskAsync: (id: UUID) => Promise<void>;
 }
 
@@ -246,7 +249,7 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       updateTaskState: (id, state) => {
-        const updates: any = { state };
+        const updates: Partial<Task> = { state };
         if (state === TaskStateValue.COMPLETED) {
           updates.completedAt = new Date();
         }
@@ -340,7 +343,9 @@ export const useTaskStore = create<TaskStore>()(
       fetchTasksByProject: async (projectId) => {
         set({ loading: true, error: null });
         try {
-          const tasks = await convex.query(api.tasks.listByProject, { projectId });
+          const tasks = await convex.query(api.tasks.listByProject, {
+            projectId,
+          });
           const mappedTasks = tasks.map(convexTaskToTask);
           get().setTasks(mappedTasks);
           set({ loading: false });
@@ -356,7 +361,17 @@ export const useTaskStore = create<TaskStore>()(
       createTask: async (input) => {
         set({ loading: true, error: null });
         try {
-          const taskId = await convex.mutation(api.tasks.create, input);
+          const taskId = await convex.mutation(api.tasks.create, {
+            projectId: input.projectId as string,
+            title: input.title as string,
+            description: input.description || "",
+            parentId: input.parentId,
+            assignedAgent: input.assignedAgent,
+            complexity: input.complexity || 1,
+            depth: input.depth || 0,
+            estimate: input.estimate,
+            dependencies: input.dependencies || [],
+          });
           const newTask = await convex.query(api.tasks.get, { id: taskId });
           if (newTask) {
             const mappedTask = convexTaskToTask(newTask);
@@ -378,7 +393,10 @@ export const useTaskStore = create<TaskStore>()(
       updateTaskAsync: async (id, updates) => {
         set({ loading: true, error: null });
         try {
-          await convex.mutation(api.tasks.updateEditableFields, { id, ...updates });
+          await convex.mutation(api.tasks.updateEditableFields, {
+            id,
+            ...updates,
+          });
           get().updateTask(id, updates);
           set({ loading: false });
         } catch (error) {

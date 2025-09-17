@@ -1,17 +1,22 @@
 /**
  * Auto-layout utilities for ReactFlow
  * Implements intelligent positioning to avoid overlaps
- * 
+ *
  * NOTE: This implementation has been replaced with Dagre-based layout.
  * The function signature is maintained for backward compatibility.
  */
 
 import { Task } from "../types/task.types";
 import { CustomNode, CustomEdge } from "../types/reactflow.types";
-import { calculateDagreLayout, calculateProjectLayout, LayoutOptions, defaultLayoutOptions } from "./dagre-layout";
+import {
+  calculateDagreLayout,
+  calculateLayout,
+  LayoutOptions,
+  defaultLayoutOptions,
+} from "./dagre-layout";
 
 export type { LayoutOptions };
-export { defaultLayoutOptions, calculateProjectLayout };
+export { defaultLayoutOptions, calculateLayout };
 
 /**
  * Calculate optimal layout for tasks with dependencies using Dagre
@@ -27,7 +32,7 @@ export function calculateTaskLayout(
 
 /**
  * Detect and resolve node overlaps
- * 
+ *
  * NOTE: This function is now deprecated as Dagre handles positioning automatically.
  * It is kept for backward compatibility but returns nodes unchanged.
  */

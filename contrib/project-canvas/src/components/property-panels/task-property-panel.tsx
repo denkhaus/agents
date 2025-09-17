@@ -3,25 +3,22 @@
  * Displays and allows editing of task properties
  */
 
-import React from 'react';
-import { BasePropertyPanel } from './base-property-panel';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { 
-  Clock, 
-  User, 
-  Calendar, 
-  BarChart3, 
-  GitBranch, 
+import React from "react";
+import { BasePropertyPanel } from "./base-property-panel";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Clock,
+  User,
+  Calendar,
+  BarChart3,
+  GitBranch,
   Target,
   CheckCircle2,
-  Play,
-  AlertCircle,
-  X as XIcon
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { Task, TaskState, PropertyUpdateCallback } from '@/types';
+} from "lucide-react";
+import { taskStateConfig } from "@/config/task-state-config";
+import type { Task, TaskState, PropertyUpdateCallback } from "@/types";
 
 interface TaskPropertyPanelProps {
   task: Task;
@@ -29,52 +26,24 @@ interface TaskPropertyPanelProps {
   className?: string;
 }
 
-const taskStateConfig = {
-  pending: {
-    icon: Clock,
-    color: 'bg-slate-100 text-slate-700 border-slate-300',
-    darkColor: 'dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600'
-  },
-  'in-progress': {
-    icon: Play,
-    color: 'bg-blue-100 text-blue-700 border-blue-300',
-    darkColor: 'dark:bg-blue-900 dark:text-blue-300 dark:border-blue-600'
-  },
-  completed: {
-    icon: CheckCircle2,
-    color: 'bg-green-100 text-green-700 border-green-300',
-    darkColor: 'dark:bg-green-900 dark:text-green-300 dark:border-green-600'
-  },
-  blocked: {
-    icon: AlertCircle,
-    color: 'bg-red-100 text-red-700 border-red-300',
-    darkColor: 'dark:bg-red-900 dark:text-red-300 dark:border-red-600'
-  },
-  cancelled: {
-    icon: XIcon,
-    color: 'bg-gray-100 text-gray-700 border-gray-300',
-    darkColor: 'dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600'
-  }
-};
-
 export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
   task,
   onUpdate,
-  className
+  className,
 }) => {
   const config = taskStateConfig[task.state as TaskState];
   const StateIcon = config?.icon || Clock;
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatEstimate = (minutes?: number) => {
-    if (!minutes) return 'Not estimated';
+    if (!minutes) return "Not estimated";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours === 0) return `${mins}m`;
@@ -98,16 +67,14 @@ export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
             <BarChart3 className="w-3 h-3" />
             <span>Status</span>
           </div>
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "text-xs border",
-              config?.color,
-              config?.darkColor
-            )}
+          <Badge
+            variant={(config?.badge as any) || "secondary"}
+            className="text-xs"
           >
             <StateIcon className="w-3 h-3 mr-1" />
-            {task.state.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            {task.state
+              .replace("-", " ")
+              .replace(/\b\w/g, (l) => l.toUpperCase())}
           </Badge>
         </div>
 
@@ -121,10 +88,7 @@ export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
             <Badge variant="secondary" className="text-xs">
               Level {task.complexity}
             </Badge>
-            <Progress 
-              value={task.complexity * 10} 
-              className="h-1 flex-1" 
-            />
+            <Progress value={task.complexity * 10} className="h-1 flex-1" />
           </div>
         </div>
 
@@ -167,7 +131,8 @@ export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
               <span>Dependencies</span>
             </div>
             <Badge variant="outline" className="text-xs">
-              {task.dependencies.length} task{task.dependencies.length !== 1 ? 's' : ''}
+              {task.dependencies.length} task
+              {task.dependencies.length !== 1 ? "s" : ""}
             </Badge>
           </div>
         )}
@@ -180,7 +145,8 @@ export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
               <span>Dependents</span>
             </div>
             <Badge variant="outline" className="text-xs">
-              {task.dependents.length} task{task.dependents.length !== 1 ? 's' : ''}
+              {task.dependents.length} task
+              {task.dependents.length !== 1 ? "s" : ""}
             </Badge>
           </div>
         )}
@@ -192,9 +158,7 @@ export const TaskPropertyPanel: React.FC<TaskPropertyPanelProps> = ({
               <Calendar className="w-3 h-3" />
               <span>Created</span>
             </div>
-            <p className="text-xs font-medium">
-              {formatDate(task.createdAt)}
-            </p>
+            <p className="text-xs font-medium">{formatDate(task.createdAt)}</p>
           </div>
 
           {task.completedAt && (

@@ -4,7 +4,7 @@
  */
 
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { devtools, subscribeWithSelector } from "zustand/middleware";
 
 import type {
   UUID,
@@ -17,8 +17,9 @@ import type {
   CanvasConfig,
   NotificationState,
 } from "@/types";
+import type { Node } from "@xyflow/react";
 
-interface UIStore {
+export interface UIStore {
   // Sidebar State
   sidebar: SidebarConfig;
   currentWorkspace: WorkspaceType;
@@ -41,6 +42,9 @@ interface UIStore {
   // Loading States
   isLayouting: boolean;
   isLoading: boolean;
+
+  // ReactFlow Nodes (for property panel access)
+  reactFlowNodes: Node[];
 
   // Sidebar Actions
   toggleLeftSidebar: () => void;
@@ -79,6 +83,9 @@ interface UIStore {
 
   // Loading Actions
   setIsLoading: (isLoading: boolean) => void;
+
+  // ReactFlow Actions
+  setReactFlowNodes: (nodes: Node[]) => void;
 }
 
 const defaultSidebar: SidebarConfig = {
@@ -124,7 +131,7 @@ const defaultLayout: LayoutOptions = {
 
 export const useUIStore = create<UIStore>()(
   devtools(
-    (set, get) => ({
+    subscribeWithSelector((set, get) => ({
       // Initial State
       sidebar: defaultSidebar,
       currentWorkspace: "projects",
@@ -139,6 +146,7 @@ export const useUIStore = create<UIStore>()(
       notifications: [],
       isLayouting: false,
       isLoading: false,
+      reactFlowNodes: [],
 
       // Sidebar Actions
       toggleLeftSidebar: () =>
@@ -273,7 +281,10 @@ export const useUIStore = create<UIStore>()(
 
       // Loading Actions
       setIsLoading: (isLoading) => set({ isLoading }),
-    }),
+
+      // ReactFlow Actions
+      setReactFlowNodes: (nodes) => set({ reactFlowNodes: nodes }),
+    })),
     { name: "ui-store" }
   )
 );

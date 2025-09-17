@@ -4,44 +4,43 @@
  * Max 500 Zeilen pro Datei!
  */
 
-import type { Task } from '../types';
-import { generateUUID } from '../utils/uuid';
-import { ecommerceProject } from './projects';
-import { designerAgent } from './agents';
+import type { Task } from "../types";
+import { ecommerceProject } from "./projects";
+import { designerAgent } from "./agents";
 
 // Import the actual values for runtime usage
-import { TaskState as TaskStateValue } from '../types/task.types';
+import { TaskState as TaskStateValue } from "../types/task.types";
 
 // Task IDs für Dependencies (Go-Model: uuid.UUID)
 export const ECOM_TASK_IDS = {
   // Root Phase Tasks
-  PHASE_1_PLANNING: generateUUID(),
-  PHASE_2_ARCHITECTURE: generateUUID(),
-  PHASE_3_DEVELOPMENT: generateUUID(),
-  PHASE_4_TESTING: generateUUID(),
-  
+  PHASE_1_PLANNING: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  PHASE_2_ARCHITECTURE: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+  PHASE_3_DEVELOPMENT: "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+  PHASE_4_TESTING: "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+
   // Phase 1: Research & Planning (3 Tasks)
-  RESEARCH: generateUUID(),
-  WIREFRAMES: generateUUID(), 
-  DESIGN_SYSTEM: generateUUID(),
-  
+  RESEARCH: "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b",
+  WIREFRAMES: "f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c",
+  DESIGN_SYSTEM: "a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d",
+
   // Phase 2: Architecture (4 Tasks)
-  API_DESIGN: generateUUID(),
-  DATABASE_SCHEMA: generateUUID(),
-  FRONTEND_SETUP: generateUUID(),
-  BACKEND_SETUP: generateUUID(),
-  
+  API_DESIGN: "b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e",
+  DATABASE_SCHEMA: "c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f",
+  FRONTEND_SETUP: "d0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a",
+  BACKEND_SETUP: "e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b",
+
   // Phase 3: Core Development (5 Tasks)
-  USER_AUTH: generateUUID(),
-  PRODUCT_CATALOG: generateUUID(),
-  SHOPPING_CART: generateUUID(),
-  PAYMENT_INTEGRATION: generateUUID(),
-  ADMIN_PANEL: generateUUID(),
-  
+  USER_AUTH: "f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c",
+  PRODUCT_CATALOG: "a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7d",
+  SHOPPING_CART: "b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8e",
+  PAYMENT_INTEGRATION: "c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9f",
+  ADMIN_PANEL: "d6e7f8a9-b0c1-4d2e-3f4a-5b6c7d8e9f0a",
+
   // Phase 4: Testing & Deployment (3 Tasks)
-  TESTING_SETUP: generateUUID(),
-  E2E_TESTS: generateUUID(),
-  DEPLOYMENT: generateUUID()
+  TESTING_SETUP: "e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1b",
+  E2E_TESTS: "f8a9b0c1-d2e3-4f4a-5b6c-7d8e9f0a1b2c",
+  DEPLOYMENT: "a9b0c1d2-e3f4-4a5b-6c7d-8e9f0a1b2c3d",
 };
 
 export const ecommerceTasks: Task[] = [
@@ -52,12 +51,12 @@ export const ecommerceTasks: Task[] = [
     parentId: undefined,
     title: "Phase 1: Research & Planning",
     description: `## Phase 1: Research & Planning
-    
+
 This phase covers all initial research, wireframing, and design system work.
 
 ### Sub-Tasks
 - Market Research & User Analysis
-- Create Wireframes & Prototypes  
+- Create Wireframes & Prototypes
 - Design System & Component Library`,
     state: TaskStateValue.IN_PROGRESS,
     complexity: 5,
@@ -66,9 +65,9 @@ This phase covers all initial research, wireframing, and design system work.
     assignedAgent: designerAgent.id,
     dependencies: [],
     dependents: [ECOM_TASK_IDS.PHASE_2_ARCHITECTURE],
-    createdAt: new Date('2024-01-15T08:00:00Z'),
-    updatedAt: new Date('2024-01-20T10:15:00Z'),
-    position: { x: 100, y: 50 }
+    createdAt: new Date("2024-01-15T08:00:00Z"),
+    updatedAt: new Date("2024-01-20T10:15:00Z"),
+    position: { x: 100, y: 50 },
   },
 
   // Phase 1 Sub-Tasks
@@ -83,13 +82,13 @@ This phase covers all initial research, wireframing, and design system work.
 
 ### Key Activities
 - **Competitor Analysis**: Research 5-10 major e-commerce platforms
-- **User Interviews**: Conduct 15-20 user interviews with target demographics  
+- **User Interviews**: Conduct 15-20 user interviews with target demographics
 - **Analytics Review**: Analyze current platform usage data
 - **Trend Analysis**: Identify emerging UX/UI trends in e-commerce
 
 ### Deliverables
 - Market research report (PDF)
-- User persona documentation  
+- User persona documentation
 - Competitive analysis matrix
 - Recommendations summary`,
     state: TaskStateValue.COMPLETED,
@@ -99,10 +98,10 @@ This phase covers all initial research, wireframing, and design system work.
     assignedAgent: designerAgent.id,
     dependencies: [],
     dependents: [ECOM_TASK_IDS.WIREFRAMES, ECOM_TASK_IDS.DESIGN_SYSTEM],
-    createdAt: new Date('2024-01-15T09:00:00Z'),
-    updatedAt: new Date('2024-01-17T16:30:00Z'),
-    completedAt: new Date('2024-01-17T16:30:00Z'),
-    position: { x: 100, y: 100 }
+    createdAt: new Date("2024-01-15T09:00:00Z"),
+    updatedAt: new Date("2024-01-17T16:30:00Z"),
+    completedAt: new Date("2024-01-17T16:30:00Z"),
+    position: { x: 100, y: 100 },
   },
 
   {
@@ -135,10 +134,10 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     assignedAgent: designerAgent.id,
     dependencies: [ECOM_TASK_IDS.RESEARCH],
     dependents: [ECOM_TASK_IDS.DESIGN_SYSTEM, ECOM_TASK_IDS.FRONTEND_SETUP],
-    createdAt: new Date('2024-01-15T09:15:00Z'),
-    updatedAt: new Date('2024-01-19T14:20:00Z'),
-    completedAt: new Date('2024-01-19T14:20:00Z'),
-    position: { x: 400, y: 100 }
+    createdAt: new Date("2024-01-15T09:15:00Z"),
+    updatedAt: new Date("2024-01-19T14:20:00Z"),
+    completedAt: new Date("2024-01-19T14:20:00Z"),
+    position: { x: 400, y: 100 },
   },
 
   {
@@ -168,10 +167,10 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     assignedAgent: designerAgent.id,
     dependencies: [ECOM_TASK_IDS.RESEARCH, ECOM_TASK_IDS.WIREFRAMES],
     dependents: [ECOM_TASK_IDS.FRONTEND_SETUP],
-    createdAt: new Date('2024-01-15T09:30:00Z'),
-    updatedAt: new Date('2024-01-20T10:15:00Z'),
-    position: { x: 700, y: 100 }
-  }
+    createdAt: new Date("2024-01-15T09:30:00Z"),
+    updatedAt: new Date("2024-01-20T10:15:00Z"),
+    position: { x: 700, y: 100 },
+  },
 
   // Weitere Tasks werden in ecommerce-tasks-part2.ts fortgesetzt
 ];

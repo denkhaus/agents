@@ -5,7 +5,11 @@
 
 import { Task } from "../types/task.types";
 import { Project, UUID } from "../types/project.types";
-import { Agent, AgentRole, AgentStatus } from "../types/agent.types";
+import type {
+  Agent,
+  AgentRoleType,
+  AgentStatusType,
+} from "../types/agent.types";
 import { Doc } from "../../convex/_generated/dataModel";
 
 // Use Convex-generated types for type safety
@@ -77,9 +81,9 @@ export function convexAgentToAgent(convexAgent: ConvexAgent): Agent {
   return {
     id: convexAgent.id as UUID,
     name: convexAgent.name,
-    role: role as AgentRole,
+    role: role as AgentRoleType,
     description: description,
-    status: status as AgentStatus,
+    status: status as AgentStatusType,
     isStreaming: isStreaming,
     capabilities: capabilities,
     currentTasks: currentTasks as UUID[],
@@ -182,7 +186,7 @@ export class OptimisticUpdateManager<T> {
 
   applyUpdates(items: T[]): T[] {
     return items.map((item) => {
-      const update = this.updates.get((item as any).id);
+      const update = this.updates.get((item as T & { id: string }).id);
       return update ? { ...item, ...update.data } : item;
     });
   }

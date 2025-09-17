@@ -12,7 +12,14 @@ import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { cn } from "@/lib/utils";
 import { X, Info, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { PropertyPanelNode, PropertyUpdateCallback } from "@/types";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import type {
+  PropertyPanelNode,
+  PropertyUpdateCallback,
+  PropertyInfo,
+  Project,
+  Agent,
+} from "@/types";
 
 interface PropertyItem {
   label: string;
@@ -22,23 +29,25 @@ interface PropertyItem {
 }
 
 export const SidebarRight: React.FC = () => {
-  const { 
-    rightSidebarCollapsed, 
-    currentWorkspace, 
+  const {
+    rightSidebarCollapsed,
+    currentWorkspace,
     toggleRightSidebar,
-    selection 
+    selection,
+    reactFlowNodes,
   } = useUIStore();
   const { currentProject, updateProject } = useProjectStore();
   const { tasks, updateTask } = useTaskStore();
-  const { agents, nodes } = useRealTimeData();
+  const { agents } = useRealTimeData();
 
   // Property update callback
   const handlePropertyUpdate: PropertyUpdateCallback = React.useCallback(
     (nodeId, updates) => {
       // Find the node type and update accordingly
-      const task = tasks.find(t => t.id === nodeId);
-      const project = currentProject && currentProject.id === nodeId ? currentProject : null;
-      
+      const task = tasks.find((t) => t.id === nodeId);
+      const project =
+        currentProject && currentProject.id === nodeId ? currentProject : null;
+
       if (task) {
         updateTask(nodeId, updates);
       } else if (project) {
@@ -53,49 +62,28 @@ export const SidebarRight: React.FC = () => {
     const selectedNodeId = selection.selectedNodes[0];
     if (!selectedNodeId) return null;
 
-    // Find the node in the ReactFlow nodes (this would come from the canvas)
-    // For now, we'll reconstruct the property panel from our data
-    const task = tasks.find(t => t.id === selectedNodeId);
-    const project = currentProject && currentProject.id === selectedNodeId ? currentProject : null;
-
-    if (task) {
-      return {
-        id: task.id,
-        type: "Task",
-        getPropertyInfo: () => ({
-          id: task.id,
-          type: "Task",
-          title: task.title,
-          description: task.description,
-          component: React.createElement(
-            require("@/components/property-panels").TaskPropertyPanel,
-            { task, onUpdate: handlePropertyUpdate }
-          )
-        })
-      };
-    }
-
-    if (project) {
-      return {
-        id: project.id,
-        type: "Project", 
-        getPropertyInfo: () => ({
-          id: project.id,
-          type: "Project",
-          title: project.title,
-          description: project.description,
-          component: React.createElement(
-            require("@/components/property-panels").ProjectPropertyPanel,
-            { project, onUpdate: handlePropertyUpdate }
-          )
-        })
-      };
+    // Try to get the actual ReactFlow node which should have the getPropertyPanelNode function
+    const reactFlowNode = reactFlowNodes.find(
+      (node) => node.id === selectedNodeId
+    );
+    if (
+      reactFlowNode &&
+      reactFlowNode.data &&
+      (reactFlowNode.data as any).getPropertyPanelNode
+    ) {
+      // Use the unified property panel system from the node
+      return (reactFlowNode.data as any).getPropertyPanelNode(
+        handlePropertyUpdate
+      );
     }
 
     return null;
   };
 
-  const getSelectedItemProperties = () => {
+  const getSelectedItemProperties = ():
+    | PropertyInfo
+    | { title: string; type: string; properties: PropertyItem[] }
+    | null => {
     // If we're in projects workspace and have a selected node, show its property panel
     if (currentWorkspace === "projects") {
       const propertyPanelNode = getSelectedNodePropertyPanel();
@@ -117,30 +105,69 @@ export const SidebarRight: React.FC = () => {
     }
   };
 
-  const getProjectProperties = (project: any): { title: string; type: string; properties: PropertyItem[] } => ({
-    title: project.title,
-    type: "Project",
-    properties: [
-      { label: "Description", value: project.description || "No description" },
-      { label: "Status", value: project.status || "Active", type: "badge" },
-      { label: "Created", value: new Date(project.createdAt).toLocaleDateString(), icon: Calendar },
-      { label: "Tasks", value: `${project.tasks?.length || 0} tasks`, icon: Tag },
-      { label: "Priority", value: project.priority || "Medium", type: "badge" },
-    ]
-  });
+  const getProjectProperties = (
+    project: Project
+  ): { title: string; type: string; properties: PropertyItem[] } => {
+    // Calculate project progress percentage
+    const progress =
+      project.totalTasks > 0
+        ? Math.round((project.completedTasks / project.totalTasks) * 100)
+        : 0;
 
-  const getAgentProperties = (agent: any): { title: string; type: string; properties: PropertyItem[] } => ({
+    return {
+      title: project.title,
+      type: "Project",
+      properties: [
+        {
+          label: "Description",
+          value: project.description || "No description",
+        },
+        {
+          label: "Progress",
+          value: `${progress}% (${project.completedTasks}/${project.totalTasks} tasks)`,
+          type: "progress",
+        },
+        {
+          label: "Created",
+          value: new Date(project.createdAt).toLocaleDateString(),
+          icon: Calendar,
+        },
+        {
+          label: "Last Updated",
+          value: new Date(project.updatedAt).toLocaleDateString(),
+          icon: Calendar,
+        },
+        {
+          label: "Tasks",
+          value: `${project.totalTasks} tasks`,
+          icon: Tag,
+        },
+      ],
+    };
+  };
+
+  const getAgentProperties = (
+    agent: Agent
+  ): { title: string; type: string; properties: PropertyItem[] } => ({
     title: agent.name || "Agent",
     type: "Agent",
     properties: [
       { label: "Status", value: agent.status || "online", type: "status" },
       { label: "Role", value: agent.role || "Developer", icon: User },
       { label: "Current Task", value: agent.currentTask || "Idle" },
-      { label: "Efficiency", value: `${agent.efficiency || 85}%`, type: "progress" },
-    ]
+      {
+        label: "Efficiency",
+        value: `${agent.efficiency || 85}%`,
+        type: "progress",
+      },
+    ],
   });
 
-  const getSettingsProperties = (): { title: string; type: string; properties: PropertyItem[] } => ({
+  const getSettingsProperties = (): {
+    title: string;
+    type: string;
+    properties: PropertyItem[];
+  } => ({
     title: "Application Settings",
     type: "Settings",
     properties: [
@@ -148,7 +175,7 @@ export const SidebarRight: React.FC = () => {
       { label: "Language", value: "English" },
       { label: "Auto-save", value: "Enabled", type: "badge" },
       { label: "Notifications", value: "All enabled" },
-    ]
+    ],
   });
 
   const selectedItem = getSelectedItemProperties();
@@ -180,11 +207,11 @@ export const SidebarRight: React.FC = () => {
 
           {/* Content */}
           <ScrollArea className="flex-1">
-            <div className="p-4">
+            <div className="p-2">
               {selectedItem ? (
                 <div>
                   {/* Check if this is a new property panel component */}
-                  {selectedItem.component ? (
+                  {"component" in selectedItem ? (
                     // Render the unified property panel component
                     selectedItem.component
                   ) : (
@@ -192,7 +219,9 @@ export const SidebarRight: React.FC = () => {
                     <div className="space-y-4">
                       {/* Item Header */}
                       <div>
-                        <h3 className="font-medium text-sm mb-1">{selectedItem.title}</h3>
+                        <h3 className="font-medium text-sm mb-1">
+                          {selectedItem.title}
+                        </h3>
                         <Badge variant="outline" className="text-xs">
                           {selectedItem.type}
                         </Badge>
@@ -202,52 +231,69 @@ export const SidebarRight: React.FC = () => {
 
                       {/* Properties List */}
                       <div className="space-y-3">
-                        {selectedItem.properties?.map((property, index) => {
-                          const IconComponent = property.icon;
-                          return (
-                            <div key={index} className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                {IconComponent && (
-                                  <IconComponent className="h-3 w-3 text-muted-foreground" />
-                                )}
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  {property.label}
-                                </span>
-                              </div>
-                            <div className="ml-5">
-                              {property.type === "badge" ? (
-                                <Badge variant="secondary" className="text-xs">
-                                  {property.value}
-                                </Badge>
-                              ) : property.type === "status" ? (
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={cn(
-                                      "h-2 w-2 rounded-full",
-                                      property.value === "online" && "bg-green-500",
-                                      property.value === "busy" && "bg-yellow-500",
-                                      property.value === "idle" && "bg-gray-400"
+                        {"properties" in selectedItem &&
+                          selectedItem.properties?.map(
+                            (property: PropertyItem, index: number) => {
+                              const IconComponent = property.icon;
+                              return (
+                                <div key={index} className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    {IconComponent && (
+                                      <IconComponent className="h-3 w-3 text-muted-foreground" />
                                     )}
-                                  />
-                                  <span className="text-xs capitalize">{property.value}</span>
-                                </div>
-                              ) : property.type === "progress" ? (
-                                <div className="space-y-1">
-                                  <span className="text-xs">{property.value}</span>
-                                  <div className="w-full bg-muted rounded-full h-1">
-                                    <div
-                                      className="bg-primary h-1 rounded-full"
-                                      style={{ width: property.value }}
-                                    />
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {property.label}
+                                    </span>
+                                  </div>
+                                  <div className="ml-5">
+                                    {property.type === "badge" ? (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-xs"
+                                      >
+                                        {property.value}
+                                      </Badge>
+                                    ) : property.type === "status" ? (
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className={cn(
+                                            "h-2 w-2 rounded-full",
+                                            property.value === "online" &&
+                                              "bg-green-500",
+                                            property.value === "busy" &&
+                                              "bg-yellow-500",
+                                            property.value === "idle" &&
+                                              "bg-gray-400"
+                                          )}
+                                        />
+                                        <span className="text-xs capitalize">
+                                          {property.value}
+                                        </span>
+                                      </div>
+                                    ) : property.type === "progress" ? (
+                                      <div className="space-y-1">
+                                        <span className="text-xs">
+                                          {property.value}
+                                        </span>
+                                        <div className="w-full bg-muted rounded-full h-1">
+                                          <div
+                                            className="bg-primary h-1 rounded-full"
+                                            style={{ width: property.value }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <MarkdownRenderer
+                                        content={property.value}
+                                        className="text-xs"
+                                        showPreview={true}
+                                      />
+                                    )}
                                   </div>
                                 </div>
-                              ) : (
-                                <span className="text-xs">{property.value}</span>
-                              )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                              );
+                            }
+                          )}
                       </div>
                     </div>
                   )}

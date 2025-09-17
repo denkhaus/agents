@@ -3,12 +3,12 @@
  * Go-Model konform: pkg/tools/project/shared/shared.go
  */
 
-import { Project } from '../types';
+import { Project } from "../types";
 
 // Feste Project-IDs für konsistente Referenzen (müssen mit master-dummy-data.ts übereinstimmen)
-const PROJECT_IDS = {
+export const PROJECT_IDS = {
   ECOMMERCE: "53fd7995-1606-4360-65ae-9b057525c12e",
-  MOBILE: "980c9337-0630-41d0-3b95-b71caca7635b"
+  MOBILE: "980c9337-0630-41d0-3b95-b71caca7635b",
 };
 
 export const masterProjects: Project[] = [
@@ -23,7 +23,7 @@ Complete redesign and modernization of the existing e-commerce platform with imp
 
 ### Key Objectives
 - **User Experience**: Streamlined checkout process and intuitive navigation
-- **Performance**: 50% improvement in page load times  
+- **Performance**: 50% improvement in page load times
 - **Mobile**: Responsive design for all screen sizes
 - **Accessibility**: WCAG 2.1 AA compliance
 
@@ -37,16 +37,16 @@ Complete redesign and modernization of the existing e-commerce platform with imp
 - Backend: Node.js + Express
 - Database: PostgreSQL
 - Deployment: Docker + Kubernetes`,
-    createdAt: new Date('2024-01-15T09:00:00Z'),
-    updatedAt: new Date('2024-01-20T14:30:00Z'),
+    createdAt: new Date("2024-01-15T09:00:00Z"),
+    updatedAt: new Date("2024-01-20T14:30:00Z"),
     totalTasks: 15,
     completedTasks: 4,
-    progress: 26.7
+    progress: 26.7,
   },
 
   // Projekt 2: Mobile App Development
   {
-    id: PROJECT_IDS.MOBILE, 
+    id: PROJECT_IDS.MOBILE,
     title: "Mobile App Development",
     description: `# Mobile App Development
 
@@ -70,12 +70,12 @@ Native mobile application for iOS and Android platforms with offline capabilitie
 - Phase 1: Core features (8 weeks)
 - Phase 2: Advanced features (4 weeks)
 - Phase 3: Testing & deployment (2 weeks)`,
-    createdAt: new Date('2024-01-10T10:00:00Z'),
-    updatedAt: new Date('2024-01-18T16:45:00Z'),
+    createdAt: new Date("2024-01-10T10:00:00Z"),
+    updatedAt: new Date("2024-01-18T16:45:00Z"),
     totalTasks: 10,
     completedTasks: 3,
-    progress: 30.0
-  }
+    progress: 30.0,
+  },
 ];
 
 // Export individual projects for easy access

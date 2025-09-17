@@ -24,8 +24,9 @@ import "@xyflow/react/dist/style.css";
 import { TaskNode } from "./nodes/task-node";
 import { ProjectNode } from "./nodes/project-node";
 import { DependencyEdge } from "./edges/dependency-edge";
+import { HierarchyEdge } from "./edges/hierarchy-edge";
 import { useProjectStore, useTaskStore, useUIStore } from "@/stores";
-import { calculateProjectLayout } from "@/utils/layout";
+import { calculateLayout } from "@/utils/layout";
 import { TaskNodeData } from "@/types/reactflow.types";
 
 import { useRealTimeData } from "@/hooks/use-real-time-data";
@@ -39,6 +40,7 @@ const nodeTypes: NodeTypes = {
 // Define custom edge types
 const edgeTypes: EdgeTypes = {
   dependency: DependencyEdge,
+  hierarchy: HierarchyEdge,
 };
 
 interface ReactFlowCanvasProps {
@@ -51,7 +53,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const { currentProject } = useProjectStore();
   const { tasks } = useTaskStore();
   const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
-  const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
+  const { setSelectedNodes, setRightSidebarCollapsed, setReactFlowNodes } =
+    useUIStore();
   const { fitView } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -67,13 +70,18 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
     // Tasks are already filtered by currentProject in useRealTimeData
     const projectTasks = tasks;
-    
+
     // Always use project layout when a project is selected
-    const { nodes: newNodes, edges: newEdges } = 
-      calculateProjectLayout(currentProject, projectTasks);
+    const { nodes: newNodes, edges: newEdges } = calculateLayout(
+      currentProject,
+      projectTasks
+    );
 
     setNodes(newNodes as Node[]);
     setEdges(newEdges as Edge[]);
+
+    // Store nodes in UI store for property panel access
+    setReactFlowNodes(newNodes as Node[]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProject, tasks.length, setNodes, setEdges]);
@@ -94,7 +102,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
       changes.forEach((change) => {
         if (change.type === "position" && change.position) {
           // Find the node to determine its type
-          const node = nodes.find(n => n.id === change.id);
+          const node = nodes.find((n) => n.id === change.id);
           if (node) {
             if (node.type === "task") {
               updateTaskPosition(change.id, change.position);
@@ -111,9 +119,9 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   // Handle node selection changes
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
-      const selectedNodeIds = selectedNodes.map(node => node.id);
+      const selectedNodeIds = selectedNodes.map((node) => node.id);
       setSelectedNodes(selectedNodeIds);
-      
+
       // Open the right sidebar when a node is selected
       if (selectedNodeIds.length > 0) {
         setRightSidebarCollapsed(false);

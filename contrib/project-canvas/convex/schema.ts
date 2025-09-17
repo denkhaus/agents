@@ -118,10 +118,20 @@ export default defineSchema({
         v.literal("dark")
       )
     ),
-    // Add more settings fields here for future enhancements
+    // Application settings
     notifications: v.optional(v.boolean()),
     autoSave: v.optional(v.boolean()),
     language: v.optional(v.string()),
+    // UI state persistence
+    leftSidebarCollapsed: v.optional(v.boolean()),
+    rightSidebarCollapsed: v.optional(v.boolean()),
+    currentWorkspace: v.optional(v.string()),
+    selectedProjectId: v.optional(v.string()),
+    selectedNodeIds: v.optional(v.array(v.string())),
+    // Canvas settings
+    showMiniMap: v.optional(v.boolean()),
+    showBackground: v.optional(v.boolean()),
+    autoLayout: v.optional(v.boolean()),
     createdAt: v.number(), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
   })

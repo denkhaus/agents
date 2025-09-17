@@ -17,10 +17,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReactFlow, ReactFlowProvider } from "@xyflow/react";
-import { useProjectStore, useUIStore, useTaskStore } from "@/stores";
+import {
+  useProjectStore,
+  useUIStore,
+  useTaskStore,
+  useSettingsStore,
+} from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
-import { calculateProjectLayout, defaultLayoutOptions } from "@/utils/layout";
+import { calculateLayout, defaultLayoutOptions } from "@/utils/layout";
 import { Project } from "@/types/project.types";
+import { CustomNode } from "@/types/reactflow.types";
 import { WorkspaceType } from "@/types";
 
 interface CanvasContainerProps {
@@ -80,16 +86,42 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
   tasksByProject,
 }) => {
   const reactFlowInstance = useReactFlow();
+  const { canvasZoom, updateCanvasSettings } = useSettingsStore();
 
-  // Zustand für Zoomstufe
-  const [zoomLevel, setZoomLevel] = useState(100);
+  // Zustand für Zoomstufe aus Settings Store
+  const [zoomLevel, setZoomLevel] = useState(canvasZoom);
 
-  // Update zoom level when reactFlowInstance changes
+  // Update zoom level when reactFlowInstance changes or when zoom changes
   React.useEffect(() => {
     if (reactFlowInstance) {
-      setZoomLevel(Math.round(reactFlowInstance.getZoom() * 100));
+      const currentZoom = Math.round(reactFlowInstance.getZoom() * 100);
+      setZoomLevel(currentZoom);
+
+      // Save to settings store if different
+      if (currentZoom !== canvasZoom) {
+        updateCanvasSettings({ canvasZoom: currentZoom });
+      }
     }
-  }, [reactFlowInstance]);
+  }, [reactFlowInstance, canvasZoom, updateCanvasSettings]);
+
+  // Add event listener for zoom changes
+  React.useEffect(() => {
+    if (!reactFlowInstance) return;
+
+    // Use a timer to periodically check for zoom changes
+    // This is a workaround since onViewportChange might not be available
+    const interval = setInterval(() => {
+      const currentZoom = Math.round(reactFlowInstance.getZoom() * 100);
+      if (currentZoom !== zoomLevel) {
+        setZoomLevel(currentZoom);
+        updateCanvasSettings({ canvasZoom: currentZoom });
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [reactFlowInstance, updateCanvasSettings, zoomLevel]);
 
   // Zoom-In Funktion
   const handleZoomIn = () => {
@@ -157,7 +189,7 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
       return;
     }
 
-    const { nodes: newNodes } = calculateProjectLayout(currentProject, tasks, {
+    const { nodes: newNodes } = calculateLayout(currentProject, tasks, {
       ...defaultLayoutOptions,
       force: true,
     });
@@ -166,7 +198,9 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
     if (reactFlowInstance) {
       reactFlowInstance.setNodes((prevNodes) => {
         return prevNodes.map((node) => {
-          const updatedNode = newNodes.find((n) => n.id === node.id);
+          const updatedNode = newNodes.find(
+            (n: CustomNode) => n.id === node.id
+          );
           if (updatedNode) {
             return {
               ...node,
@@ -179,7 +213,7 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
     }
 
     // Persist the new positions for all nodes
-    newNodes.forEach((node) => {
+    newNodes.forEach((node: CustomNode) => {
       if (node.position) {
         if (node.type === "task") {
           updateTaskPosition(node.id, node.position);

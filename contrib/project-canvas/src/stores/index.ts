@@ -7,6 +7,10 @@ export { useProjectStore } from './projectStore';
 export { useTaskStore } from './taskStore';
 export { useUIStore } from './uiStore';
 export { useAgentStore } from './agentStore';
+export { useSettingsStore } from './settingsStore';
+
+// Export types
+export type { UserSettings } from './settingsStore';
 
 // Store types are exported from individual store files
 

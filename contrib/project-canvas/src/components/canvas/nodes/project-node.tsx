@@ -14,14 +14,19 @@ import { ProjectNodeData } from "@/types/reactflow.types";
 import { FolderOpen, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProjectPropertyPanel } from "@/components/property-panels";
-import type { PropertyPanelNode, PropertyInfo, PropertyUpdateCallback } from "@/types";
+import type {
+  PropertyPanelNode,
+  PropertyInfo,
+  PropertyUpdateCallback,
+  Project,
+} from "@/types";
 
 // Create a class that implements the PropertyPanelNode interface
 class ProjectNodeClass implements PropertyPanelNode {
   constructor(
     public id: string,
     public type: string,
-    private project: any,
+    private project: Project,
     private onUpdate: PropertyUpdateCallback
   ) {}
 
@@ -32,11 +37,8 @@ class ProjectNodeClass implements PropertyPanelNode {
       title: this.project.title,
       description: this.project.description,
       component: (
-        <ProjectPropertyPanel
-          project={this.project}
-          onUpdate={this.onUpdate}
-        />
-      )
+        <ProjectPropertyPanel project={this.project} onUpdate={this.onUpdate} />
+      ),
     };
   }
 }
@@ -45,7 +47,9 @@ export const ProjectNode: React.FC<NodeProps> = ({ data, selected }) => {
   const { project, taskCount, completionRate } = data as ProjectNodeData;
 
   // Create a property panel node instance - this will be used by the sidebar
-  const createPropertyPanelNode = (onUpdate: PropertyUpdateCallback): PropertyPanelNode => {
+  const createPropertyPanelNode = (
+    onUpdate: PropertyUpdateCallback
+  ): PropertyPanelNode => {
     return new ProjectNodeClass(project.id, "Project", project, onUpdate);
   };
 
@@ -67,7 +71,7 @@ export const ProjectNode: React.FC<NodeProps> = ({ data, selected }) => {
           selected && "ring-2 ring-primary ring-offset-2 shadow-lg"
         )}
       >
-        <CardHeader className="pb-3 border-x border-t border-b border-border/20 bg-background/80 dark:bg-background/80 rounded-t-lg">
+        <CardHeader className="pb-6 border-x border-t border-b border-primary/20 bg-background/80 dark:bg-background/80 rounded-t-lg">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
               <FolderOpen className="h-5 w-5 text-primary" />
@@ -89,7 +93,7 @@ export const ProjectNode: React.FC<NodeProps> = ({ data, selected }) => {
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 border-x border-b border-border/40 rounded-b-lg">
+        <CardContent className="p-6 space-y-4 border-x border-b border-border/40 rounded-b-lg">
           {/* Description */}
           <div>
             <MarkdownRenderer

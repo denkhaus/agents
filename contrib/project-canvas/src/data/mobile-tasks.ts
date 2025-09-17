@@ -4,38 +4,37 @@
  * Max 500 Zeilen pro Datei!
  */
 
-import type { Task } from '../types';
-import { generateUUID } from '../utils/uuid';
-import { mobileProject } from './projects';
-import { designerAgent, frontendAgent } from './agents';
+import type { Task } from "../types";
+import { mobileProject } from "./projects";
+import { designerAgent, frontendAgent } from "./agents";
 
 // Import the actual values for runtime usage
-import { TaskState as TaskStateValue } from '../types/task.types';
+import { TaskState as TaskStateValue } from "../types/task.types";
 
 // Task IDs für Dependencies
 export const MOBILE_TASK_IDS = {
   // Phase 1: Research & Planning (3 Tasks)
-  RESEARCH: generateUUID(),
-  WIREFRAMES: generateUUID(),
-  DESIGN_SYSTEM: generateUUID(),
-  
+  RESEARCH: "1a2b3c4d-5e6f-4789-abcd-ef1234567890",
+  WIREFRAMES: "2b3c4d5e-6f7a-4890-bcde-f12345678901",
+  DESIGN_SYSTEM: "3c4d5e6f-7a8b-4901-cdef-123456789012",
+
   // Phase 2: Architecture (4 Tasks)
-  TECH_STACK: generateUUID(),
-  API_INTEGRATION: generateUUID(),
-  STATE_MANAGEMENT: generateUUID(),
-  NAVIGATION: generateUUID(),
-  
+  TECH_STACK: "4d5e6f7a-8b9c-4012-def1-234567890123",
+  API_INTEGRATION: "5e6f7a8b-9c0d-4123-ef12-345678901234",
+  STATE_MANAGEMENT: "6f7a8b9c-0d1e-4234-f123-456789012345",
+  NAVIGATION: "7a8b9c0d-1e2f-4345-1234-567890123456",
+
   // Phase 3: Core Development (5 Tasks)
-  AUTH_MODULE: generateUUID(),
-  HOME_SCREEN: generateUUID(),
-  PROFILE_SCREEN: generateUUID(),
-  NOTIFICATIONS: generateUUID(),
-  SETTINGS: generateUUID(),
-  
+  AUTH_MODULE: "8b9c0d1e-2f3a-4456-2345-678901234567",
+  HOME_SCREEN: "9c0d1e2f-3a4b-4567-3456-789012345678",
+  PROFILE_SCREEN: "0d1e2f3a-4b5c-4678-4567-890123456789",
+  NOTIFICATIONS: "1e2f3a4b-5c6d-4789-5678-901234567890",
+  SETTINGS: "2f3a4b5c-6d7e-4890-6789-012345678901",
+
   // Phase 4: Testing & Deployment (3 Tasks)
-  TESTING: generateUUID(),
-  APP_STORE: generateUUID(),
-  LAUNCH: generateUUID()
+  TESTING: "3a4b5c6d-7e8f-4901-7890-123456789012",
+  APP_STORE: "4b5c6d7e-8f9a-4012-8901-234567890123",
+  LAUNCH: "5c6d7e8f-9a0b-4123-9012-345678901234",
 };
 
 export const mobileTasks: Task[] = [
@@ -67,10 +66,10 @@ export const mobileTasks: Task[] = [
     assignedAgent: designerAgent.id,
     dependencies: [],
     dependents: [MOBILE_TASK_IDS.WIREFRAMES, MOBILE_TASK_IDS.DESIGN_SYSTEM],
-    createdAt: new Date('2024-01-15T09:00:00Z'),
-    updatedAt: new Date('2024-01-17T16:30:00Z'),
-    completedAt: new Date('2024-01-17T16:30:00Z'),
-    position: { x: 100, y: 100 }
+    createdAt: new Date("2024-01-15T09:00:00Z"),
+    updatedAt: new Date("2024-01-17T16:30:00Z"),
+    completedAt: new Date("2024-01-17T16:30:00Z"),
+    position: { x: 100, y: 100 },
   },
 
   {
@@ -102,10 +101,10 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     assignedAgent: designerAgent.id,
     dependencies: [MOBILE_TASK_IDS.RESEARCH],
     dependents: [MOBILE_TASK_IDS.DESIGN_SYSTEM, MOBILE_TASK_IDS.TECH_STACK],
-    createdAt: new Date('2024-01-15T09:15:00Z'),
-    updatedAt: new Date('2024-01-18T14:20:00Z'),
-    completedAt: new Date('2024-01-18T14:20:00Z'),
-    position: { x: 400, y: 100 }
+    createdAt: new Date("2024-01-15T09:15:00Z"),
+    updatedAt: new Date("2024-01-18T14:20:00Z"),
+    completedAt: new Date("2024-01-18T14:20:00Z"),
+    position: { x: 400, y: 100 },
   },
 
   {
@@ -135,10 +134,10 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     assignedAgent: designerAgent.id,
     dependencies: [MOBILE_TASK_IDS.RESEARCH, MOBILE_TASK_IDS.WIREFRAMES],
     dependents: [MOBILE_TASK_IDS.TECH_STACK],
-    createdAt: new Date('2024-01-15T09:30:00Z'),
-    updatedAt: new Date('2024-01-19T10:15:00Z'),
-    completedAt: new Date('2024-01-19T10:15:00Z'),
-    position: { x: 700, y: 100 }
+    createdAt: new Date("2024-01-15T09:30:00Z"),
+    updatedAt: new Date("2024-01-19T10:15:00Z"),
+    completedAt: new Date("2024-01-19T10:15:00Z"),
+    position: { x: 700, y: 100 },
   },
 
   // Phase 2: Architecture
@@ -173,9 +172,12 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
     estimate: 1440, // 24 hours
     assignedAgent: frontendAgent.id,
     dependencies: [MOBILE_TASK_IDS.WIREFRAMES, MOBILE_TASK_IDS.DESIGN_SYSTEM],
-    dependents: [MOBILE_TASK_IDS.API_INTEGRATION, MOBILE_TASK_IDS.STATE_MANAGEMENT],
-    createdAt: new Date('2024-01-16T09:00:00Z'),
-    updatedAt: new Date('2024-01-20T10:15:00Z'),
-    position: { x: 1000, y: 100 }
-  }
+    dependents: [
+      MOBILE_TASK_IDS.API_INTEGRATION,
+      MOBILE_TASK_IDS.STATE_MANAGEMENT,
+    ],
+    createdAt: new Date("2024-01-16T09:00:00Z"),
+    updatedAt: new Date("2024-01-20T10:15:00Z"),
+    position: { x: 1000, y: 100 },
+  },
 ];

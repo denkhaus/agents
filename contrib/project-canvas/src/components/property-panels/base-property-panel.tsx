@@ -11,9 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, Edit3, X, Check } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { Edit3, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { EditableNodeProperties, PropertyUpdateCallback, UUID } from '@/types';
+import type { PropertyUpdateCallback, UUID } from '@/types';
 
 interface BasePropertyPanelProps {
   nodeId: UUID;
@@ -154,9 +155,13 @@ export const BasePropertyPanel: React.FC<BasePropertyPanelProps> = ({
               placeholder="Enter description..."
             />
           ) : (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {description || "No description provided"}
-            </p>
+            <div className="mt-1">
+              <MarkdownRenderer
+                content={description}
+                className="text-xs leading-relaxed text-muted-foreground"
+                showPreview={false}
+              />
+            </div>
           )}
         </div>
 

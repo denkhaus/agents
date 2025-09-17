@@ -15,7 +15,7 @@ export const AgentRole = {
   DESIGNER: "designer",
 } as const;
 
-export type AgentRole = (typeof AgentRole)[keyof typeof AgentRole];
+export type AgentRoleType = (typeof AgentRole)[keyof typeof AgentRole];
 
 export const AgentStatus = {
   ONLINE: "online",
@@ -24,25 +24,27 @@ export const AgentStatus = {
   IDLE: "idle",
 } as const;
 
-export type AgentStatus = (typeof AgentStatus)[keyof typeof AgentStatus];
+export type AgentStatusType = (typeof AgentStatus)[keyof typeof AgentStatus];
 
 export interface Agent {
   id: UUID;
   name: string;
-  role: AgentRole;
+  role: AgentRoleType;
   description: string;
-  status: AgentStatus;
+  status: AgentStatusType;
   isStreaming: boolean;
   capabilities: string[];
   currentTasks: UUID[];
+  currentTask?: string;
+  efficiency?: number;
   createdAt: Date;
   updatedAt: Date;
   lastActiveAt?: Date;
 }
 
 export interface AgentFilter {
-  role?: AgentRole;
-  status?: AgentStatus;
+  role?: AgentRoleType;
+  status?: AgentStatusType;
   searchTerm?: string;
   hasActiveTasks?: boolean;
 }
@@ -50,6 +52,7 @@ export interface AgentFilter {
 export interface AgentUpdateInput {
   name?: string;
   description?: string;
-  status?: AgentStatus;
+  status?: AgentStatusType;
   capabilities?: string[];
+  lastActiveAt?: Date;
 }

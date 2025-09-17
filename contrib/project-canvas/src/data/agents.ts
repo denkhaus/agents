@@ -4,7 +4,6 @@
  */
 
 import type { Agent } from "../types";
-import { generateUUID } from "../utils/uuid";
 
 // Import the actual values for runtime usage
 import {
@@ -12,9 +11,18 @@ import {
   AgentStatus as AgentStatusValue,
 } from "../types/agent.types";
 
+// Feste Agent-IDs für konsistente Referenzen
+export const AGENT_IDS = {
+  DESIGNER: "agent-designer-001",
+  FRONTEND_DEV: "agent-frontend-002",
+  BACKEND_DEV: "agent-backend-003",
+  QA_ENGINEER: "agent-qa-004",
+  DEVOPS: "agent-devops-005",
+};
+
 export const masterAgents: Agent[] = [
   {
-    id: generateUUID(),
+    id: AGENT_IDS.DESIGNER,
     name: "Design Lead",
     role: AgentRoleValue.DESIGNER,
     description:
@@ -35,7 +43,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date("2024-01-20T14:30:00Z"),
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.FRONTEND_DEV,
     name: "Frontend Developer",
     role: AgentRoleValue.CODER,
     description:
@@ -56,7 +64,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date("2024-01-20T14:25:00Z"),
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.BACKEND_DEV,
     name: "Backend Developer",
     role: AgentRoleValue.CODER,
     description:
@@ -77,7 +85,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date("2024-01-20T14:20:00Z"),
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.QA_ENGINEER,
     name: "QA Engineer",
     role: AgentRoleValue.QA_ENGINEER,
     description:
@@ -98,7 +106,7 @@ export const masterAgents: Agent[] = [
     lastActiveAt: new Date("2024-01-20T13:45:00Z"),
   },
   {
-    id: generateUUID(),
+    id: AGENT_IDS.DEVOPS,
     name: "DevOps Engineer",
     role: AgentRoleValue.DEVOPS,
     description:
