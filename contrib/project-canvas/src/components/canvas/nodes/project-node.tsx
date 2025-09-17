@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Handle, Position, NodeProps } from "reactflow";
+import { Handle, Position, NodeProps } from "@xyflow/react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,11 @@ import { ProjectNodeData } from "@/types/reactflow.types";
 import { FolderOpen, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const ProjectNode: React.FC<NodeProps<ProjectNodeData>> = ({
+export const ProjectNode: React.FC<NodeProps> = ({
   data,
   selected,
 }) => {
-  const { project, taskCount, completionRate } = data;
+  const { project, taskCount, completionRate } = data as ProjectNodeData;
 
   // Use completionRate in the UI
   const displayCompletionRate =

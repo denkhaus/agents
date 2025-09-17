@@ -16,7 +16,7 @@ import {
   Layout,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useReactFlow, ReactFlowProvider } from "reactflow";
+import { useReactFlow, ReactFlowProvider } from "@xyflow/react";
 import { useProjectStore, useUIStore } from "@/stores";
 import { useTaskStore } from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";

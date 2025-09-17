@@ -3,7 +3,7 @@
  * For nodes, edges, and flow diagram components
  */
 
-import { Node, Edge } from 'reactflow';
+import { Node, Edge } from '@xyflow/react';
 import { Task, TaskState } from './task.types';
 import { Project, UUID } from './project.types';
 
@@ -11,7 +11,7 @@ import { Project, UUID } from './project.types';
 export type CustomNodeType = 'task' | 'project' | 'milestone';
 
 // Task Node Data
-export interface TaskNodeData {
+export interface TaskNodeData extends Record<string, unknown> {
   task: Task;
   isSelected: boolean;
   isHighlighted: boolean;
@@ -19,7 +19,7 @@ export interface TaskNodeData {
 }
 
 // Project Node Data  
-export interface ProjectNodeData {
+export interface ProjectNodeData extends Record<string, unknown> {
   project: Project;
   isSelected: boolean;
   taskCount: number;
@@ -28,7 +28,7 @@ export interface ProjectNodeData {
 }
 
 // Milestone Node Data
-export interface MilestoneNodeData {
+export interface MilestoneNodeData extends Record<string, unknown> {
   title: string;
   date: Date;
   description?: string;
@@ -54,7 +54,7 @@ export type CustomNode = TaskNode | ProjectNode | MilestoneNode;
 export type CustomEdgeType = 'dependency' | 'hierarchy';
 
 // Dependency Edge Data
-export interface DependencyEdgeData {
+export interface DependencyEdgeData extends Record<string, unknown> {
   sourceTaskId: UUID;
   targetTaskId: UUID;
   isBlocking: boolean;
@@ -62,7 +62,7 @@ export interface DependencyEdgeData {
 }
 
 // Hierarchy Edge Data
-export interface HierarchyEdgeData {
+export interface HierarchyEdgeData extends Record<string, unknown> {
   parentTaskId: UUID;
   childTaskId: UUID;
   depth: number;

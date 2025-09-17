@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useEffect } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -17,8 +18,8 @@ import ReactFlow, {
   Edge,
   NodeTypes,
   EdgeTypes,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
 import { TaskNode } from "./nodes/task-node";
 import { ProjectNode } from "./nodes/project-node";
@@ -52,8 +53,8 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const { updateTaskPosition } = useRealTimeData();
   const { fitView } = useReactFlow();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   // Update nodes and edges when project or tasks change
   useEffect(() => {

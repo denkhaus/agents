@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Handle, Position, NodeProps } from "reactflow";
+import { Handle, Position, NodeProps } from "@xyflow/react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,8 +55,8 @@ const taskStateConfig: Record<TaskState, TaskStateConfig> = {
   },
 };
 
-export const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data, selected }) => {
-  const { task, isHighlighted, showDetails } = data;
+export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
+  const { task, isHighlighted, showDetails } = data as TaskNodeData;
   const config = taskStateConfig[task.state as TaskState];
   const Icon = config.icon;
 

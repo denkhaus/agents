@@ -9,13 +9,13 @@ import {
   EdgeLabelRenderer,
   BaseEdge,
   EdgeProps,
-} from "reactflow";
+} from "@xyflow/react";
 
 import { Badge } from "@/components/ui/badge";
 import { DependencyEdgeData } from "@/types/reactflow.types";
 import { cn } from "@/lib/utils";
 
-export const DependencyEdge: React.FC<EdgeProps<DependencyEdgeData>> = ({
+export const DependencyEdge: React.FC<EdgeProps> = ({
   id,
   sourceX,
   sourceY,
@@ -36,8 +36,9 @@ export const DependencyEdge: React.FC<EdgeProps<DependencyEdgeData>> = ({
     targetPosition,
   });
 
-  const isBlocking = data?.isBlocking || false;
-  const dependencyType = data?.dependencyType || "finish-to-start";
+  const dependencyData = data as DependencyEdgeData;
+  const isBlocking = dependencyData?.isBlocking || false;
+  const dependencyType = dependencyData?.dependencyType || "finish-to-start";
 
   // Edge styling based on dependency type and state
   const edgeStyle = {
