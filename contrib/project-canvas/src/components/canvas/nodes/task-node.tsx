@@ -14,6 +14,12 @@ import { TaskState } from "@/types/task.types";
 import { Clock, User, AlertCircle, CheckCircle2, Play, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskNodeData } from "@/types/reactflow.types";
+import { TaskPropertyPanel } from "@/components/property-panels";
+import type {
+  PropertyPanelNode,
+  PropertyInfo,
+  PropertyUpdateCallback,
+} from "@/types";
 
 interface TaskStateConfig {
   color: string;
@@ -55,10 +61,45 @@ const taskStateConfig: Record<TaskState, TaskStateConfig> = {
   },
 };
 
+// Create a class that implements the PropertyPanelNode interface
+class TaskNodeClass implements PropertyPanelNode {
+  constructor(
+    public id: string,
+    public type: string,
+    private task: any,
+    private onUpdate: PropertyUpdateCallback
+  ) {}
+
+  getPropertyInfo(): PropertyInfo {
+    return {
+      id: this.id,
+      type: this.type,
+      title: this.task.title,
+      description: this.task.description,
+      component: (
+        <TaskPropertyPanel
+          task={this.task}
+          onUpdate={this.onUpdate}
+        />
+      )
+    };
+  }
+}
+
 export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
   const { task, isHighlighted, showDetails } = data as TaskNodeData;
   const config = taskStateConfig[task.state as TaskState];
   const Icon = config.icon;
+
+  // Create a property panel node instance - this will be used by the sidebar
+  const createPropertyPanelNode = (onUpdate: PropertyUpdateCallback): PropertyPanelNode => {
+    return new TaskNodeClass(task.id, "Task", task, onUpdate);
+  };
+
+  // Store the factory function on the node data for the sidebar to access
+  React.useEffect(() => {
+    (data as any).getPropertyPanelNode = createPropertyPanelNode;
+  }, [task, data]);
 
   return (
     <div className="task-node">

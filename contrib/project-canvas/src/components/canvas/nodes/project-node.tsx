@@ -13,9 +13,46 @@ import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { ProjectNodeData } from "@/types/reactflow.types";
 import { FolderOpen, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProjectPropertyPanel } from "@/components/property-panels";
+import type { PropertyPanelNode, PropertyInfo, PropertyUpdateCallback } from "@/types";
+
+// Create a class that implements the PropertyPanelNode interface
+class ProjectNodeClass implements PropertyPanelNode {
+  constructor(
+    public id: string,
+    public type: string,
+    private project: any,
+    private onUpdate: PropertyUpdateCallback
+  ) {}
+
+  getPropertyInfo(): PropertyInfo {
+    return {
+      id: this.id,
+      type: this.type,
+      title: this.project.title,
+      description: this.project.description,
+      component: (
+        <ProjectPropertyPanel
+          project={this.project}
+          onUpdate={this.onUpdate}
+        />
+      )
+    };
+  }
+}
 
 export const ProjectNode: React.FC<NodeProps> = ({ data, selected }) => {
   const { project, taskCount, completionRate } = data as ProjectNodeData;
+
+  // Create a property panel node instance - this will be used by the sidebar
+  const createPropertyPanelNode = (onUpdate: PropertyUpdateCallback): PropertyPanelNode => {
+    return new ProjectNodeClass(project.id, "Project", project, onUpdate);
+  };
+
+  // Store the factory function on the node data for the sidebar to access
+  React.useEffect(() => {
+    (data as any).getPropertyPanelNode = createPropertyPanelNode;
+  }, [project, data]);
 
   // Use completionRate in the UI
   const displayCompletionRate =

@@ -24,7 +24,7 @@ import "@xyflow/react/dist/style.css";
 import { TaskNode } from "./nodes/task-node";
 import { ProjectNode } from "./nodes/project-node";
 import { DependencyEdge } from "./edges/dependency-edge";
-import { useProjectStore, useTaskStore } from "@/stores";
+import { useProjectStore, useTaskStore, useUIStore } from "@/stores";
 import { calculateProjectLayout } from "@/utils/layout";
 import { TaskNodeData } from "@/types/reactflow.types";
 
@@ -51,6 +51,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
   const { currentProject } = useProjectStore();
   const { tasks } = useTaskStore();
   const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
+  const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
   const { fitView } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -107,6 +108,20 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     [onNodesChange, updateTaskPosition, updateProjectPosition, nodes]
   );
 
+  // Handle node selection changes
+  const handleSelectionChange = useCallback(
+    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+      const selectedNodeIds = selectedNodes.map(node => node.id);
+      setSelectedNodes(selectedNodeIds);
+      
+      // Open the right sidebar when a node is selected
+      if (selectedNodeIds.length > 0) {
+        setRightSidebarCollapsed(false);
+      }
+    },
+    [setSelectedNodes, setRightSidebarCollapsed]
+  );
+
   // Auto-fit view when data changes
   useEffect(() => {
     if (nodes.length > 0) {
@@ -122,6 +137,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}

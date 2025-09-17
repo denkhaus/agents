@@ -61,3 +61,12 @@ export type {
   FlowState, 
   NodeStyleConfig 
 } from './reactflow.types';
+
+// Property Panel types
+export type {
+  PropertyPanelNode,
+  PropertyInfo,
+  EditableNodeProperties,
+  PropertyUpdateCallback,
+  PropertyPanelState
+} from './property-panel.types';

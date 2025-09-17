@@ -7,11 +7,12 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useUIStore, useProjectStore } from "@/stores";
+import { useUIStore, useProjectStore, useTaskStore } from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { cn } from "@/lib/utils";
 import { X, Info, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { PropertyPanelNode, PropertyUpdateCallback } from "@/types";
 
 interface PropertyItem {
   label: string;
@@ -21,16 +22,93 @@ interface PropertyItem {
 }
 
 export const SidebarRight: React.FC = () => {
-  const { rightSidebarCollapsed, currentWorkspace, toggleRightSidebar } = useUIStore();
-  const { currentProject } = useProjectStore();
-  const { agents } = useRealTimeData();
+  const { 
+    rightSidebarCollapsed, 
+    currentWorkspace, 
+    toggleRightSidebar,
+    selection 
+  } = useUIStore();
+  const { currentProject, updateProject } = useProjectStore();
+  const { tasks, updateTask } = useTaskStore();
+  const { agents, nodes } = useRealTimeData();
+
+  // Property update callback
+  const handlePropertyUpdate: PropertyUpdateCallback = React.useCallback(
+    (nodeId, updates) => {
+      // Find the node type and update accordingly
+      const task = tasks.find(t => t.id === nodeId);
+      const project = currentProject && currentProject.id === nodeId ? currentProject : null;
+      
+      if (task) {
+        updateTask(nodeId, updates);
+      } else if (project) {
+        updateProject(nodeId, updates);
+      }
+    },
+    [tasks, currentProject, updateTask, updateProject]
+  );
+
+  const getSelectedNodePropertyPanel = (): PropertyPanelNode | null => {
+    // Get the first selected node
+    const selectedNodeId = selection.selectedNodes[0];
+    if (!selectedNodeId) return null;
+
+    // Find the node in the ReactFlow nodes (this would come from the canvas)
+    // For now, we'll reconstruct the property panel from our data
+    const task = tasks.find(t => t.id === selectedNodeId);
+    const project = currentProject && currentProject.id === selectedNodeId ? currentProject : null;
+
+    if (task) {
+      return {
+        id: task.id,
+        type: "Task",
+        getPropertyInfo: () => ({
+          id: task.id,
+          type: "Task",
+          title: task.title,
+          description: task.description,
+          component: React.createElement(
+            require("@/components/property-panels").TaskPropertyPanel,
+            { task, onUpdate: handlePropertyUpdate }
+          )
+        })
+      };
+    }
+
+    if (project) {
+      return {
+        id: project.id,
+        type: "Project", 
+        getPropertyInfo: () => ({
+          id: project.id,
+          type: "Project",
+          title: project.title,
+          description: project.description,
+          component: React.createElement(
+            require("@/components/property-panels").ProjectPropertyPanel,
+            { project, onUpdate: handlePropertyUpdate }
+          )
+        })
+      };
+    }
+
+    return null;
+  };
 
   const getSelectedItemProperties = () => {
+    // If we're in projects workspace and have a selected node, show its property panel
+    if (currentWorkspace === "projects") {
+      const propertyPanelNode = getSelectedNodePropertyPanel();
+      if (propertyPanelNode) {
+        return propertyPanelNode.getPropertyInfo();
+      }
+      // Fallback to current project if no node selected
+      return currentProject ? getProjectProperties(currentProject) : null;
+    }
+
+    // Handle other workspaces
     switch (currentWorkspace) {
-      case "projects":
-        return currentProject ? getProjectProperties(currentProject) : null;
       case "agents":
-        // For now, show first agent as example
         return agents.length > 0 ? getAgentProperties(agents[0]) : null;
       case "settings":
         return getSettingsProperties();
@@ -104,73 +182,82 @@ export const SidebarRight: React.FC = () => {
           <ScrollArea className="flex-1">
             <div className="p-4">
               {selectedItem ? (
-                <div className="space-y-4">
-                  {/* Item Header */}
-                  <div>
-                    <h3 className="font-medium text-sm mb-1">{selectedItem.title}</h3>
-                    <Badge variant="outline" className="text-xs">
-                      {selectedItem.type}
-                    </Badge>
-                  </div>
+                <div>
+                  {/* Check if this is a new property panel component */}
+                  {selectedItem.component ? (
+                    // Render the unified property panel component
+                    selectedItem.component
+                  ) : (
+                    // Fallback to legacy property display
+                    <div className="space-y-4">
+                      {/* Item Header */}
+                      <div>
+                        <h3 className="font-medium text-sm mb-1">{selectedItem.title}</h3>
+                        <Badge variant="outline" className="text-xs">
+                          {selectedItem.type}
+                        </Badge>
+                      </div>
 
-                  <Separator />
+                      <Separator />
 
-                  {/* Properties List */}
-                  <div className="space-y-3">
-                    {selectedItem.properties.map((property, index) => {
-                      const IconComponent = property.icon;
-                      return (
-                        <div key={index} className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            {IconComponent && (
-                              <IconComponent className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {property.label}
-                            </span>
-                          </div>
-                        <div className="ml-5">
-                          {property.type === "badge" ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {property.value}
-                            </Badge>
-                          ) : property.type === "status" ? (
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={cn(
-                                  "h-2 w-2 rounded-full",
-                                  property.value === "online" && "bg-green-500",
-                                  property.value === "busy" && "bg-yellow-500",
-                                  property.value === "idle" && "bg-gray-400"
+                      {/* Properties List */}
+                      <div className="space-y-3">
+                        {selectedItem.properties?.map((property, index) => {
+                          const IconComponent = property.icon;
+                          return (
+                            <div key={index} className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                {IconComponent && (
+                                  <IconComponent className="h-3 w-3 text-muted-foreground" />
                                 )}
-                              />
-                              <span className="text-xs capitalize">{property.value}</span>
-                            </div>
-                          ) : property.type === "progress" ? (
-                            <div className="space-y-1">
-                              <span className="text-xs">{property.value}</span>
-                              <div className="w-full bg-muted rounded-full h-1">
-                                <div
-                                  className="bg-primary h-1 rounded-full"
-                                  style={{ width: property.value }}
-                                />
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {property.label}
+                                </span>
+                              </div>
+                            <div className="ml-5">
+                              {property.type === "badge" ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  {property.value}
+                                </Badge>
+                              ) : property.type === "status" ? (
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className={cn(
+                                      "h-2 w-2 rounded-full",
+                                      property.value === "online" && "bg-green-500",
+                                      property.value === "busy" && "bg-yellow-500",
+                                      property.value === "idle" && "bg-gray-400"
+                                    )}
+                                  />
+                                  <span className="text-xs capitalize">{property.value}</span>
+                                </div>
+                              ) : property.type === "progress" ? (
+                                <div className="space-y-1">
+                                  <span className="text-xs">{property.value}</span>
+                                  <div className="w-full bg-muted rounded-full h-1">
+                                    <div
+                                      className="bg-primary h-1 rounded-full"
+                                      style={{ width: property.value }}
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-xs">{property.value}</span>
+                              )}
                               </div>
                             </div>
-                          ) : (
-                            <span className="text-xs">{property.value}</span>
-                          )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No item selected</p>
                   <p className="text-xs mt-1">
-                    Select an item to view its properties
+                    Select a node to view its properties
                   </p>
                 </div>
               )}
