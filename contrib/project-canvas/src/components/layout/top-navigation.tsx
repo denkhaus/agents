@@ -3,20 +3,20 @@
  * Contains app title, theme toggle, and global actions
  */
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { ThemeToggle } from './theme-toggle';
-import { useUIStore } from '@/stores';
-import { 
-  Menu, 
-  X, 
-  Zap,
-  Settings,
-  HelpCircle
-} from 'lucide-react';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "./theme-toggle";
+import { useUIStore } from "@/stores";
+import { Menu, X, Zap, Settings, HelpCircle, PanelRight } from "lucide-react";
 
 export const TopNavigation: React.FC = () => {
-  const { sidebarCollapsed, toggleSidebar } = useUIStore();
+  const {
+    sidebarCollapsed,
+    toggleLeftSidebar,
+    rightSidebarCollapsed,
+    toggleRightSidebar,
+    setWorkspace,
+  } = useUIStore();
 
   return (
     <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -27,7 +27,7 @@ export const TopNavigation: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={toggleSidebar}
+            onClick={toggleLeftSidebar}
             className="h-8 w-8 p-0"
           >
             {sidebarCollapsed ? (
@@ -55,13 +55,31 @@ export const TopNavigation: React.FC = () => {
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
+          {/* Right Sidebar Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={toggleRightSidebar}
+            title={
+              rightSidebarCollapsed ? "Show Properties" : "Hide Properties"
+            }
+          >
+            <PanelRight className="h-4 w-4" />
+          </Button>
+
           {/* Help Button */}
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
             <HelpCircle className="h-4 w-4" />
           </Button>
 
           {/* Settings Button */}
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setWorkspace("settings")}
+          >
             <Settings className="h-4 w-4" />
           </Button>
 

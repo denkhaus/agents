@@ -23,13 +23,29 @@ export const useConvexProjects = () => {
       const projects = convexProjects.map(convexProjectToProject);
       setProjects(projects);
 
-      // Set first project as current if none selected, and only if it's not already set.
-      // This prevents a re-render loop.
-      if (!useProjectStore.getState().currentProject && projects.length > 0) {
-        setCurrentProject(projects[0]);
+      if (projects.length > 0) {
+        let projectToSet = null;
+        // Try to find the currently selected project in the new list
+        if (currentProject) {
+          projectToSet = projects.find((p) => p.id === currentProject.id);
+        }
+        // If the current project is not found or none was selected, default to the first project
+        if (!projectToSet) {
+          projectToSet = projects[0];
+        }
+        // Only update if the project to set is different from the current one
+        if (
+          projectToSet &&
+          (!currentProject || currentProject.id !== projectToSet.id)
+        ) {
+          setCurrentProject(projectToSet);
+        }
+      } else if (currentProject) {
+        // If there are no projects but one was selected, clear the selection
+        setCurrentProject(null);
       }
     }
-  }, [convexProjects, setProjects, setCurrentProject]);
+  }, [convexProjects, setProjects, setCurrentProject, currentProject]);
 
   return {
     projects: convexProjects?.map(convexProjectToProject) || [],

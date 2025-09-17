@@ -70,10 +70,13 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
     setNodes(newNodes as Node[]);
     setEdges(newEdges as Edge[]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProject, tasks.length, setNodes, setEdges]);
 
   // Handle new connections (for future dependency management)
   const onConnect: OnConnect = useCallback(
+    // eslint-disable-next-line no-console
     (params) => console.log("Connection made:", params),
     []
   );

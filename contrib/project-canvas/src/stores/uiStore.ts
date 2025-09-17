@@ -23,6 +23,7 @@ interface UIStore {
   sidebar: SidebarConfig;
   currentWorkspace: WorkspaceType;
   sidebarCollapsed: boolean;
+  rightSidebarCollapsed: boolean;
 
   // Theme State
   theme: ThemeConfig;
@@ -42,8 +43,10 @@ interface UIStore {
   isLoading: boolean;
 
   // Sidebar Actions
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleLeftSidebar: () => void;
+  setLeftSidebarCollapsed: (collapsed: boolean) => void;
+  toggleRightSidebar: () => void;
+  setRightSidebarCollapsed: (collapsed: boolean) => void;
   setWorkspace: (workspace: WorkspaceType) => void;
 
   // Theme Actions
@@ -126,6 +129,7 @@ export const useUIStore = create<UIStore>()(
       sidebar: defaultSidebar,
       currentWorkspace: "projects",
       sidebarCollapsed: false,
+      rightSidebarCollapsed: true,
       theme: defaultTheme,
       darkMode: false,
       canvas: defaultCanvas,
@@ -137,17 +141,25 @@ export const useUIStore = create<UIStore>()(
       isLoading: false,
 
       // Sidebar Actions
-      toggleSidebar: () =>
+      toggleLeftSidebar: () =>
         set((state) => ({
           sidebar: { ...state.sidebar, collapsed: !state.sidebar.collapsed },
           sidebarCollapsed: !state.sidebar.collapsed,
         })),
 
-      setSidebarCollapsed: (collapsed) =>
+      setLeftSidebarCollapsed: (collapsed) =>
         set((state) => ({
           sidebar: { ...state.sidebar, collapsed },
           sidebarCollapsed: collapsed,
         })),
+
+      toggleRightSidebar: () =>
+        set((state) => ({
+          rightSidebarCollapsed: !state.rightSidebarCollapsed,
+        })),
+
+      setRightSidebarCollapsed: (collapsed) =>
+        set({ rightSidebarCollapsed: collapsed }),
 
       setWorkspace: (workspace) => set({ currentWorkspace: workspace }),
 
