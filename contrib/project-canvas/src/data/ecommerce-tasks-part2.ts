@@ -8,35 +8,10 @@ import type { Task } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { ecommerceProject } from './projects';
 import { frontendAgent, backendAgent, qaAgent, devopsAgent } from './agents';
+import { ECOM_TASK_IDS } from './ecommerce-tasks'; // Import the correct task IDs
 
 // Import the actual values for runtime usage
 import { TaskState as TaskStateValue } from '../types/task.types';
-
-// Define ECOM_TASK_IDS locally since it's not exported from projects.ts
-const ECOM_TASK_IDS = {
-  // Phase 1: Research & Planning (3 Tasks)
-  RESEARCH: generateUUID(),
-  WIREFRAMES: generateUUID(), 
-  DESIGN_SYSTEM: generateUUID(),
-  
-  // Phase 2: Architecture (4 Tasks)
-  API_DESIGN: generateUUID(),
-  DATABASE_SCHEMA: generateUUID(),
-  FRONTEND_SETUP: generateUUID(),
-  BACKEND_SETUP: generateUUID(),
-  
-  // Phase 3: Core Development (5 Tasks)
-  USER_AUTH: generateUUID(),
-  PRODUCT_CATALOG: generateUUID(),
-  SHOPPING_CART: generateUUID(),
-  PAYMENT_INTEGRATION: generateUUID(),
-  ADMIN_PANEL: generateUUID(),
-  
-  // Phase 4: Testing & Deployment (3 Tasks)
-  TESTING_SETUP: generateUUID(),
-  E2E_TESTS: generateUUID(),
-  DEPLOYMENT: generateUUID()
-};
 
 // Additional Task IDs
 export const ECOM_TASK_IDS_PART2 = {
@@ -62,7 +37,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.API_DOCUMENTATION,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "API Documentation & SDKs",
     description: `## API Documentation & SDK Development
 
@@ -97,7 +72,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.CI_CD_SETUP,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "CI/CD Pipeline Setup",
     description: `## Continuous Integration & Deployment Pipeline
 
@@ -134,7 +109,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.NOTIFICATIONS,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Email & Push Notifications",
     description: `## Notification System Implementation
 
@@ -171,7 +146,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.WISHLIST,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Wishlist & Save for Later",
     description: `## Wishlist Feature Implementation
 
@@ -208,7 +183,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.REVIEWS_RATINGS,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Product Reviews & Ratings",
     description: `## Product Review System
 
@@ -245,7 +220,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.ORDER_MANAGEMENT,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Order Management System",
     description: `## Order Processing & Management
 
@@ -282,7 +257,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.INVENTORY_MANAGEMENT,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Inventory & Stock Management",
     description: `## Real-time Inventory System
 
@@ -320,7 +295,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.PERFORMANCE_TESTING,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Performance & Load Testing",
     description: `## System Performance Validation
 
@@ -356,7 +331,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.SECURITY_AUDIT,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Security Audit & Compliance",
     description: `## Security Assessment & Hardening
 
@@ -392,7 +367,7 @@ export const ecommerceTasksPart2: Task[] = [
   {
     id: ECOM_TASK_IDS_PART2.MONITORING_SETUP,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Monitoring & Alerting System",
     description: `## Production Monitoring Infrastructure
 

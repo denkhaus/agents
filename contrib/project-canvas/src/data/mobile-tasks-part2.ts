@@ -8,35 +8,10 @@ import type { Task } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { mobileProject } from './projects';
 import { frontendAgent, qaAgent, devopsAgent } from './agents';
+import { MOBILE_TASK_IDS } from './mobile-tasks'; // Import the correct task IDs
 
 // Import the actual values for runtime usage
 import { TaskState as TaskStateValue } from '../types/task.types';
-
-// Define MOBILE_TASK_IDS locally since it's not exported from projects.ts
-const MOBILE_TASK_IDS = {
-  // Phase 1: Research & Planning (3 Tasks)
-  RESEARCH: generateUUID(),
-  WIREFRAMES: generateUUID(),
-  DESIGN_SYSTEM: generateUUID(),
-  
-  // Phase 2: Architecture (4 Tasks)
-  TECH_STACK: generateUUID(),
-  API_INTEGRATION: generateUUID(),
-  STATE_MANAGEMENT: generateUUID(),
-  NAVIGATION: generateUUID(),
-  
-  // Phase 3: Core Development (5 Tasks)
-  AUTH_MODULE: generateUUID(),
-  HOME_SCREEN: generateUUID(),
-  PROFILE_SCREEN: generateUUID(),
-  NOTIFICATIONS: generateUUID(),
-  SETTINGS: generateUUID(),
-  
-  // Phase 4: Testing & Deployment (3 Tasks)
-  TESTING: generateUUID(),
-  APP_STORE: generateUUID(),
-  LAUNCH: generateUUID()
-};
 
 // Additional Task IDs
 export const MOBILE_TASK_IDS_PART2 = {
@@ -62,7 +37,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.DATABASE,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Local Database Integration",
     description: `## Mobile Database Implementation
 
@@ -97,7 +72,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.CI_CD,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "CI/CD Pipeline Setup",
     description: `## Mobile CI/CD Implementation
 
@@ -134,7 +109,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.AUTH_IMPLEMENTATION,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Authentication Module Implementation",
     description: `## Mobile Authentication System
 
@@ -170,7 +145,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.HOME_IMPLEMENTATION,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Home Screen Development",
     description: `## Mobile Home Screen Implementation
 
@@ -207,7 +182,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.PROFILE_IMPLEMENTATION,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Profile & Settings Implementation",
     description: `## User Profile & Settings System
 
@@ -243,7 +218,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.NOTIFICATIONS_IMPLEMENTATION,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Notifications System Implementation",
     description: `## Mobile Notifications Framework
 
@@ -279,7 +254,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.SETTINGS_IMPLEMENTATION,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Advanced Settings Implementation",
     description: `## Advanced Settings & Configuration
 
@@ -316,7 +291,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.PERFORMANCE_TESTING,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Performance & Battery Testing",
     description: `## Mobile Performance Validation
 
@@ -353,7 +328,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.SECURITY_AUDIT,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Security Audit & Compliance",
     description: `## Mobile App Security Assessment
 
@@ -390,7 +365,7 @@ export const mobileTasksPart2: Task[] = [
   {
     id: MOBILE_TASK_IDS_PART2.MONITORING,
     projectId: mobileProject.id,
-    parentId: undefined,
+    parentId: MOBILE_TASK_IDS.TECH_STACK,
     title: "Production Monitoring Setup",
     description: `## Mobile App Monitoring Infrastructure
 

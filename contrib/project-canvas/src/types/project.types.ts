@@ -15,6 +15,9 @@ export interface Project {
   totalTasks: number;
   completedTasks: number;
   progress: number; // Percentage (0-100)
+  // UI-specific fields
+  positionX?: number;
+  positionY?: number;
 }
 
 export interface ProjectProgress {

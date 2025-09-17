@@ -21,7 +21,7 @@ export const useRealTimeData = () => {
   const { agents, loading: agentsLoading } = useConvexAgents();
   
   // Mutation hooks
-  const { updateTaskPosition } = useConvexMutations();
+  const { updateTaskPosition, updateProjectPosition } = useConvexMutations();
 
   // Enhanced task position update with Convex sync
   const handleTaskPositionUpdate = async (taskId: string, position: { x: number; y: number }) => {
@@ -41,6 +41,21 @@ export const useRealTimeData = () => {
     }
   };
 
+  // Enhanced project position update with Convex sync
+  const handleProjectPositionUpdate = async (projectId: string, position: { x: number; y: number }) => {
+    try {
+      // Sync to Convex (no local store update needed for projects)
+      await updateProjectPosition({
+        id: projectId as any,
+        positionX: position.x,
+        positionY: position.y,
+      });
+    } catch (error) {
+      console.error('Failed to sync project position:', error);
+      // Could implement retry logic or rollback here
+    }
+  };
+
   return {
     // Data
     projects,
@@ -55,5 +70,6 @@ export const useRealTimeData = () => {
     
     // Actions
     updateTaskPosition: handleTaskPositionUpdate,
+    updateProjectPosition: handleProjectPositionUpdate,
   };
 };

@@ -14,10 +14,7 @@ import { ProjectNodeData } from "@/types/reactflow.types";
 import { FolderOpen, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const ProjectNode: React.FC<NodeProps> = ({
-  data,
-  selected,
-}) => {
+export const ProjectNode: React.FC<NodeProps> = ({ data, selected }) => {
   const { project, taskCount, completionRate } = data as ProjectNodeData;
 
   // Use completionRate in the UI
@@ -28,12 +25,12 @@ export const ProjectNode: React.FC<NodeProps> = ({
     <div className="project-node">
       <Card
         className={cn(
-          "w-96 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 transition-all duration-200 cursor-pointer",
-          "dark:from-primary/10 dark:to-primary/20 dark:border-primary/30",
+          "w-96 bg-gradient-to-br from-primary/5 to-primary/10 transition-all duration-200 cursor-pointer", // Removed border here
+          "dark:from-primary/10 dark:to-primary/20", // Removed dark border here
           selected && "ring-2 ring-primary ring-offset-2 shadow-lg"
         )}
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-x border-t border-b border-border/20 bg-background/80 dark:bg-background/80 rounded-t-lg">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
               <FolderOpen className="h-5 w-5 text-primary" />
@@ -55,7 +52,7 @@ export const ProjectNode: React.FC<NodeProps> = ({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 border-x border-b border-border/40 rounded-b-lg">
           {/* Description */}
           <div>
             <MarkdownRenderer

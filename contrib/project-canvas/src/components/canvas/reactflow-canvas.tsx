@@ -25,7 +25,7 @@ import { TaskNode } from "./nodes/task-node";
 import { ProjectNode } from "./nodes/project-node";
 import { DependencyEdge } from "./edges/dependency-edge";
 import { useProjectStore, useTaskStore } from "@/stores";
-import { calculateTaskLayout } from "@/utils/layout";
+import { calculateProjectLayout } from "@/utils/layout";
 import { TaskNodeData } from "@/types/reactflow.types";
 
 import { useRealTimeData } from "@/hooks/use-real-time-data";
@@ -50,7 +50,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 }) => {
   const { currentProject } = useProjectStore();
   const { tasks } = useTaskStore();
-  const { updateTaskPosition } = useRealTimeData();
+  const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
   const { fitView } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -58,7 +58,7 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
   // Update nodes and edges when project or tasks change
   useEffect(() => {
-    if (!currentProject || tasks.length === 0) {
+    if (!currentProject) {
       setNodes([]);
       setEdges([]);
       return;
@@ -66,8 +66,10 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
 
     // Tasks are already filtered by currentProject in useRealTimeData
     const projectTasks = tasks;
-    const { nodes: newNodes, edges: newEdges } =
-      calculateTaskLayout(projectTasks);
+    
+    // Always use project layout when a project is selected
+    const { nodes: newNodes, edges: newEdges } = 
+      calculateProjectLayout(currentProject, projectTasks);
 
     setNodes(newNodes as Node[]);
     setEdges(newEdges as Edge[]);
@@ -87,14 +89,22 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
     (changes) => {
       onNodesChange(changes);
 
-      // Update task positions in store for persistence
+      // Update positions in store for persistence
       changes.forEach((change) => {
         if (change.type === "position" && change.position) {
-          updateTaskPosition(change.id, change.position);
+          // Find the node to determine its type
+          const node = nodes.find(n => n.id === change.id);
+          if (node) {
+            if (node.type === "task") {
+              updateTaskPosition(change.id, change.position);
+            } else if (node.type === "project") {
+              updateProjectPosition(change.id, change.position);
+            }
+          }
         }
       });
     },
-    [onNodesChange, updateTaskPosition]
+    [onNodesChange, updateTaskPosition, updateProjectPosition, nodes]
   );
 
   // Auto-fit view when data changes
@@ -146,6 +156,9 @@ export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
                 default:
                   return "#94a3b8";
               }
+            }
+            if (node.type === "project") {
+              return "#8b5cf6"; // Purple for project nodes
             }
             return "#8b5cf6";
           }}

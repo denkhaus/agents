@@ -10,7 +10,6 @@ import { ReactFlowCanvas } from "@/components/canvas/reactflow-canvas";
 import { Toaster } from "@/components/ui/toaster";
 import { useUIStore } from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
-import { useDummyData } from "@/hooks/use-dummy-data";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
 
 function App() {
@@ -18,9 +17,6 @@ function App() {
   
   // Real-time data integration
   const { loading } = useRealTimeData();
-  
-  // Load dummy data for development (fallback when Convex is empty)
-  useDummyData();
   
   // Sync settings with Convex
   useSettingsSync();

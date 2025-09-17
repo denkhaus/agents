@@ -14,6 +14,12 @@ import { TaskState as TaskStateValue } from '../types/task.types';
 
 // Task IDs für Dependencies (Go-Model: uuid.UUID)
 export const ECOM_TASK_IDS = {
+  // Root Phase Tasks
+  PHASE_1_PLANNING: generateUUID(),
+  PHASE_2_ARCHITECTURE: generateUUID(),
+  PHASE_3_DEVELOPMENT: generateUUID(),
+  PHASE_4_TESTING: generateUUID(),
+  
   // Phase 1: Research & Planning (3 Tasks)
   RESEARCH: generateUUID(),
   WIREFRAMES: generateUUID(), 
@@ -39,11 +45,37 @@ export const ECOM_TASK_IDS = {
 };
 
 export const ecommerceTasks: Task[] = [
-  // Phase 1: Research & Planning
+  // Root Phase Tasks
+  {
+    id: ECOM_TASK_IDS.PHASE_1_PLANNING,
+    projectId: ecommerceProject.id,
+    parentId: undefined,
+    title: "Phase 1: Research & Planning",
+    description: `## Phase 1: Research & Planning
+    
+This phase covers all initial research, wireframing, and design system work.
+
+### Sub-Tasks
+- Market Research & User Analysis
+- Create Wireframes & Prototypes  
+- Design System & Component Library`,
+    state: TaskStateValue.IN_PROGRESS,
+    complexity: 5,
+    depth: 0,
+    estimate: 6360, // Sum of sub-tasks
+    assignedAgent: designerAgent.id,
+    dependencies: [],
+    dependents: [ECOM_TASK_IDS.PHASE_2_ARCHITECTURE],
+    createdAt: new Date('2024-01-15T08:00:00Z'),
+    updatedAt: new Date('2024-01-20T10:15:00Z'),
+    position: { x: 100, y: 50 }
+  },
+
+  // Phase 1 Sub-Tasks
   {
     id: ECOM_TASK_IDS.RESEARCH,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Market Research & User Analysis",
     description: `## Market Research & User Analysis
 
@@ -62,7 +94,7 @@ export const ecommerceTasks: Task[] = [
 - Recommendations summary`,
     state: TaskStateValue.COMPLETED,
     complexity: 6,
-    depth: 0,
+    depth: 1,
     estimate: 2400, // 40 hours in minutes
     assignedAgent: designerAgent.id,
     dependencies: [],
@@ -76,7 +108,7 @@ export const ecommerceTasks: Task[] = [
   {
     id: ECOM_TASK_IDS.WIREFRAMES,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Create Wireframes & Prototypes",
     description: `## Wireframes & Interactive Prototypes
 
@@ -98,7 +130,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 - Mobile breakpoint designs`,
     state: TaskStateValue.COMPLETED,
     complexity: 7,
-    depth: 0,
+    depth: 1,
     estimate: 1800, // 30 hours
     assignedAgent: designerAgent.id,
     dependencies: [ECOM_TASK_IDS.RESEARCH],
@@ -112,7 +144,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.DESIGN_SYSTEM,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Design System & Component Library",
     description: `## Design System Development
 
@@ -131,7 +163,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
 - Usage guidelines`,
     state: TaskStateValue.IN_PROGRESS,
     complexity: 8,
-    depth: 0,
+    depth: 1,
     estimate: 2160, // 36 hours
     assignedAgent: designerAgent.id,
     dependencies: [ECOM_TASK_IDS.RESEARCH, ECOM_TASK_IDS.WIREFRAMES],

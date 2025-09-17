@@ -272,7 +272,7 @@ export const ecommerceProjectTasks: Task[] = [
   {
     id: ECOM_TASK_IDS.WIREFRAMES,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.RESEARCH,
     title: "Create Wireframes & Prototypes",
     description: `## Wireframes & Interactive Prototypes
 
@@ -314,7 +314,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.DESIGN_SYSTEM,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.WIREFRAMES,
     title: "Design System & Component Library",
     description: `## Design System Development
 
@@ -353,7 +353,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.API_DESIGN,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.RESEARCH,
     title: "API Architecture & Documentation",
     description: `## RESTful API Design
 
@@ -392,7 +392,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.DATABASE_SCHEMA,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.API_DESIGN,
     title: "Database Schema Design",
     description: `## PostgreSQL Database Design
 
@@ -431,7 +431,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.FRONTEND_SETUP,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.DESIGN_SYSTEM,
     title: "Frontend Project Setup",
     description: `## React + TypeScript Setup
 
@@ -471,7 +471,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.BACKEND_SETUP,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.DATABASE_SCHEMA,
     title: "Backend Infrastructure Setup",
     description: `## Node.js + Express Setup
 
@@ -513,7 +513,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.USER_AUTH,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.BACKEND_SETUP,
     title: "User Authentication System",
     description: `## Secure Authentication Implementation
 
@@ -552,7 +552,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.PRODUCT_CATALOG,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.FRONTEND_SETUP,
     title: "Product Catalog & Search",
     description: `## Product Management System
 
@@ -591,7 +591,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.SHOPPING_CART,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PRODUCT_CATALOG,
     title: "Shopping Cart & Checkout",
     description: `## E-commerce Cart System
 
@@ -630,7 +630,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.PAYMENT_INTEGRATION,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.SHOPPING_CART,
     title: "Payment Gateway Integration",
     description: `## Secure Payment Processing
 
@@ -675,7 +675,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.ADMIN_PANEL,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.USER_AUTH,
     title: "Admin Dashboard & Management",
     description: `## Administrative Interface
 
@@ -715,7 +715,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.TESTING_SETUP,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.ADMIN_PANEL,
     title: "Testing Framework Setup",
     description: `## Comprehensive Testing Strategy
 
@@ -754,7 +754,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.E2E_TESTS,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.TESTING_SETUP,
     title: "End-to-End Testing Implementation",
     description: `## Critical User Flow Testing
 
@@ -798,7 +798,7 @@ Design low-fidelity wireframes and interactive prototypes for all major user flo
   {
     id: ECOM_TASK_IDS.DEPLOYMENT,
     projectId: PROJECT_IDS.ECOMMERCE,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.E2E_TESTS,
     title: "Production Deployment & CI/CD",
     description: `## Production Infrastructure
 

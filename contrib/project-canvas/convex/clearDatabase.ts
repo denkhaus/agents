@@ -1,6 +1,6 @@
 /**
  * Clear Database Mutation
- * Löscht alle Daten aus der Datenbank für einen sauberen Neustart
+ * Efficiently clears all data from the database with optimized batching
  */
 
 import { mutation } from "./_generated/server";
@@ -8,36 +8,69 @@ import { mutation } from "./_generated/server";
 export const clearDatabase = mutation({
   args: {},
   handler: async (ctx) => {
-    // Lösche alle Tasks
-    const tasks = await ctx.db.query("tasks").collect();
-    for (const task of tasks) {
-      await ctx.db.delete(task._id);
-    }
+    let totalDeleted = {
+      tasks: 0,
+      agents: 0,
+      projects: 0,
+      events: 0,
+    };
 
-    // Lösche alle Agents
-    const agents = await ctx.db.query("agents").collect();
-    for (const agent of agents) {
-      await ctx.db.delete(agent._id);
-    }
+    // Optimized approach - larger batches but still under limits
+    const batchSize = 100;
+    const maxReadsPerTable = 2000; // Higher limit for faster clearing
+    
+    // Helper function to delete in batches
+    const deleteBatch = async (tableName: string) => {
+      let deletedCount = 0;
+      let totalReads = 0;
+      
+      while (totalReads < maxReadsPerTable) {
+        const batch = await ctx.db.query(tableName as any).take(batchSize);
+        totalReads += batchSize;
+        
+        if (batch.length === 0) break;
+        
+        // Delete all items in parallel for better performance
+        await Promise.all(batch.map(item => ctx.db.delete(item._id)));
+        deletedCount += batch.length;
+        
+        // If we got fewer items than requested, we're done with this table
+        if (batch.length < batchSize) break;
+      }
+      
+      return deletedCount;
+    };
 
-    // Lösche alle Projects
-    const projects = await ctx.db.query("projects").collect();
-    for (const project of projects) {
-      await ctx.db.delete(project._id);
-    }
+    // Clear events first (likely the largest table)
+    totalDeleted.events = await deleteBatch("events");
+    
+    // Then clear other tables
+    totalDeleted.tasks = await deleteBatch("tasks");
+    totalDeleted.agents = await deleteBatch("agents");
+    totalDeleted.projects = await deleteBatch("projects");
 
-    // Lösche alle Events
-    const events = await ctx.db.query("events").collect();
-    for (const event of events) {
-      await ctx.db.delete(event._id);
-    }
+    // Check if there might be more data remaining
+    const remainingTasks = await ctx.db.query("tasks").take(1);
+    const remainingAgents = await ctx.db.query("agents").take(1);
+    const remainingProjects = await ctx.db.query("projects").take(1);
+    const remainingEvents = await ctx.db.query("events").take(1);
+    
+    const hasRemainingData = 
+      remainingTasks.length > 0 || 
+      remainingAgents.length > 0 || 
+      remainingProjects.length > 0 || 
+      remainingEvents.length > 0;
 
     return {
-      message: "Database cleared successfully",
-      deletedTasks: tasks.length,
-      deletedAgents: agents.length,
-      deletedProjects: projects.length,
-      deletedEvents: events.length,
+      message: hasRemainingData 
+        ? "Database partially cleared - run again to continue" 
+        : "Database completely cleared",
+      deletedTasks: totalDeleted.tasks,
+      deletedAgents: totalDeleted.agents,
+      deletedProjects: totalDeleted.projects,
+      deletedEvents: totalDeleted.events,
+      hasRemainingData,
+      totalDeleted: totalDeleted.tasks + totalDeleted.agents + totalDeleted.projects + totalDeleted.events
     };
   },
 });

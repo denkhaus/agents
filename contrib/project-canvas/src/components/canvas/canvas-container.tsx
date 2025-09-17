@@ -17,10 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReactFlow, ReactFlowProvider } from "@xyflow/react";
-import { useProjectStore, useUIStore } from "@/stores";
-import { useTaskStore } from "@/stores";
+import { useProjectStore, useUIStore, useTaskStore } from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
-import { calculateTaskLayout, defaultLayoutOptions } from "@/utils/layout";
+import { calculateProjectLayout, defaultLayoutOptions } from "@/utils/layout";
 import { Project } from "@/types/project.types";
 import { WorkspaceType } from "@/types";
 
@@ -150,10 +149,15 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
 
   // Auto-layout Funktion
   const { tasks } = useTaskStore();
-  const { updateTaskPosition } = useRealTimeData();
+  const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
 
   const handleAutoLayout = useCallback(() => {
-    const { nodes: newNodes } = calculateTaskLayout(tasks, {
+    if (!currentProject) {
+      console.warn("No project selected for auto-layout.");
+      return;
+    }
+
+    const { nodes: newNodes } = calculateProjectLayout(currentProject, tasks, {
       ...defaultLayoutOptions,
       force: true,
     });
@@ -174,13 +178,23 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
       });
     }
 
-    // Persist the new positions for all tasks
+    // Persist the new positions for all nodes
     newNodes.forEach((node) => {
       if (node.position) {
-        updateTaskPosition(node.id, node.position);
+        if (node.type === "task") {
+          updateTaskPosition(node.id, node.position);
+        } else if (node.type === "project") {
+          updateProjectPosition(node.id, node.position);
+        }
       }
     });
-  }, [tasks, updateTaskPosition, reactFlowInstance]);
+  }, [
+    tasks,
+    currentProject,
+    updateTaskPosition,
+    updateProjectPosition,
+    reactFlowInstance,
+  ]);
 
   return (
     <div className={cn("h-full flex flex-col", className)}>

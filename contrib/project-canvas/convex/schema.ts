@@ -15,6 +15,9 @@ export default defineSchema({
     totalTasks: v.number(),
     completedTasks: v.number(),
     progress: v.number(), // 0-100 percentage
+    // UI-specific fields
+    positionX: v.optional(v.number()),
+    positionY: v.optional(v.number()),
     createdAt: v.number(), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
     // Convex automatically adds _id and _creationTime
@@ -90,6 +93,7 @@ export default defineSchema({
   events: defineTable({
     type: v.union(
       v.literal("project_updated"),
+      v.literal("project_position_changed"),
       v.literal("task_created"),
       v.literal("task_updated"),
       v.literal("task_deleted"),

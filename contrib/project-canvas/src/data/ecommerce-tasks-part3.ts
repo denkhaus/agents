@@ -16,7 +16,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.SHOPPING_CART,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Shopping Cart & Checkout",
     description: `## Shopping Cart & Checkout
 
@@ -48,7 +48,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.PAYMENT_INTEGRATION,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Payment Gateway Integration",
     description: `## Payment Gateway Integration
 
@@ -80,7 +80,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.ADMIN_PANEL,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Admin Dashboard & Management",
     description: `## Admin Dashboard & Management
 
@@ -113,7 +113,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.TESTING_SETUP,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Testing Framework Setup",
     description: `## Testing Framework Setup
 
@@ -145,7 +145,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.E2E_TESTS,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "End-to-End Testing Suite",
     description: `## End-to-End Testing Suite
 
@@ -181,7 +181,7 @@ export const ecommerceTasksPart3: Task[] = [
   {
     id: ECOM_TASK_IDS.DEPLOYMENT,
     projectId: ecommerceProject.id,
-    parentId: undefined,
+    parentId: ECOM_TASK_IDS.PHASE_1_PLANNING,
     title: "Production Deployment & CI/CD",
     description: `## Production Deployment & CI/CD
 

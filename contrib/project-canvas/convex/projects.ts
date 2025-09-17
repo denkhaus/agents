@@ -203,3 +203,39 @@ export const remove = mutation({
     return args.id;
   },
 });
+
+// Update project position (UI only)
+export const updatePosition = mutation({
+  args: {
+    id: v.string(), // UUID string
+    positionX: v.number(),
+    positionY: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Find project by UUID
+    const project = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("id"), args.id))
+      .first();
+    if (!project) throw new Error("Project not found");
+    
+    await ctx.db.patch(project._id, {
+      positionX: args.positionX,
+      positionY: args.positionY,
+      updatedAt: Date.now(),
+    });
+
+    // Emit real-time event (throttled)
+    await ctx.db.insert("events", {
+      type: "project_position_changed",
+      entityId: args.id,
+      data: { 
+        positionX: args.positionX, 
+        positionY: args.positionY 
+      },
+      timestamp: Date.now(),
+    });
+
+    return args.id;
+  },
+});

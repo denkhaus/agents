@@ -72,14 +72,14 @@ export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
 
       <Card
         className={cn(
-          "w-80 transition-all duration-200 cursor-pointer",
+          "w-80 transition-all duration-200 cursor-pointer", // Removed border here
           config.color,
           config.darkColor,
           selected && "ring-2 ring-primary ring-offset-2",
           isHighlighted && "shadow-lg scale-105"
         )}
       >
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 border-x border-t border-b border-border/20 bg-background/80 dark:bg-background/80 rounded-t-lg">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm leading-tight truncate">
@@ -106,7 +106,7 @@ export const TaskNode: React.FC<NodeProps> = ({ data, selected }) => {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 border-x border-b border-border/20 rounded-b-lg">
           {/* Description Preview */}
           <div className="mb-3">
             <MarkdownRenderer

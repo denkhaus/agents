@@ -117,10 +117,12 @@ export const useConvexMutations = () => {
   const updateProjectFields = useMutation(api.projects.updateEditableFields);
   const updateTaskFields = useMutation(api.tasks.updateEditableFields);
   const updateTaskPosition = useMutation(api.tasks.updatePosition);
+  const updateProjectPosition = useMutation(api.projects.updatePosition);
 
   return {
     updateProjectFields,
     updateTaskFields,
     updateTaskPosition,
+    updateProjectPosition,
   };
 };

@@ -211,15 +211,38 @@ func (Convex) ClearData() error {
 		return fmt.Errorf("failed to install npm dependencies: %w", err)
 	}
 	
-	// Run the clear command
-	err = sh.RunV("npx", "convex", "dev", "--once", "--run", "clearDatabase:clearDatabase")
-	if err != nil {
-		return fmt.Errorf("failed to clear database: %w", err)
+	// Use optimized clearing with multiple attempts if needed
+	maxAttempts := 10
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		printStatus(fmt.Sprintf("Clearing database (attempt %d/%d)...", attempt, maxAttempts))
+		
+		// Run the clear command
+		output, err := sh.Output("npx", "convex", "dev", "--once", "--run", "clearDatabase:clearDatabase")
+		if err != nil {
+			return fmt.Errorf("failed to clear database on attempt %d: %w", attempt, err)
+		}
+		
+		// Check if output indicates completion
+		if strings.Contains(output, "Database completely cleared") || 
+		   strings.Contains(output, "\"hasRemainingData\":false") {
+			printSuccess("✅ Convex database cleared completely!")
+			return nil
+		}
+		
+		if strings.Contains(output, "\"totalDeleted\":0") {
+			printSuccess("✅ Convex database was already clear!")
+			return nil
+		}
+		
+		// Show progress
+		fmt.Printf("   Progress: %s\n", strings.TrimSpace(output))
 	}
-
-	printSuccess("✅ Convex database cleared successfully!")
+	
+	printWarning("⚠️ Database clearing reached maximum attempts. Some data may remain.")
+	printStatus("You can run 'mage convex:cleardata' again to continue clearing.")
 	return nil
 }
+
 
 // SeedData seeds the Convex database with dummy data
 func (Convex) SeedData() error {

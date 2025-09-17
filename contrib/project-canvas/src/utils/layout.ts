@@ -8,10 +8,10 @@
 
 import { Task } from "../types/task.types";
 import { CustomNode, CustomEdge } from "../types/reactflow.types";
-import { calculateDagreLayout, LayoutOptions, defaultLayoutOptions } from "./dagre-layout";
+import { calculateDagreLayout, calculateProjectLayout, LayoutOptions, defaultLayoutOptions } from "./dagre-layout";
 
 export type { LayoutOptions };
-export { defaultLayoutOptions };
+export { defaultLayoutOptions, calculateProjectLayout };
 
 /**
  * Calculate optimal layout for tasks with dependencies using Dagre

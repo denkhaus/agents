@@ -3,59 +3,17 @@
  * Utilities for working with Convex real-time data
  */
 
-import { Task, TaskState } from "../types/task.types";
+import { Task } from "../types/task.types";
 import { Project, UUID } from "../types/project.types";
 import { Agent, AgentRole, AgentStatus } from "../types/agent.types";
+import { Doc } from "../../convex/_generated/dataModel";
 
-// Convex document types (will match Convex schema)
-export interface ConvexProject {
-  _id: string;
-  _creationTime: number;
-  id: string;
-  title: string;
-  description: string;
-  totalTasks: number;
-  completedTasks: number;
-  progress: number;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface ConvexTask {
-  _id: string;
-  _creationTime: number;
-  id: string;
-  projectId: string;
-  parentId?: string;
-  title: string;
-  description: string;
-  state: TaskState;
-  complexity: number;
-  depth: number;
-  estimate?: number;
-  assignedAgent?: string;
-  dependencies: string[];
-  dependents: string[];
-  positionX?: number;
-  positionY?: number;
-  createdAt: number;
-  completedAt?: number;
-  updatedAt: number;
-}
-
-export interface ConvexAgent {
-  _id: string;
-  _creationTime: number;
-  name: string;
-  role?: string;
-  description?: string;
-  status?: string;
-  isStreaming?: boolean;
-  capabilities?: string[];
-  currentTasks?: string[];
-  lastActiveAt?: number;
-  id: string;
-}
+// Use Convex-generated types for type safety
+export type ConvexProject = Doc<"projects">;
+export type ConvexTask = Doc<"tasks">;
+export type ConvexAgent = Doc<"agents">;
+export type ConvexEvent = Doc<"events">;
+export type ConvexSettings = Doc<"settings">;
 
 /**
  * Convert Convex project to frontend Project type
@@ -70,6 +28,8 @@ export function convexProjectToProject(convexProject: ConvexProject): Project {
     totalTasks: convexProject.totalTasks,
     completedTasks: convexProject.completedTasks,
     progress: convexProject.progress,
+    positionX: convexProject.positionX,
+    positionY: convexProject.positionY,
   };
 }
 
@@ -144,6 +104,8 @@ export function projectToConvexProject(
     totalTasks: project.totalTasks,
     completedTasks: project.completedTasks,
     progress: project.progress,
+    positionX: project.positionX,
+    positionY: project.positionY,
     createdAt: project.createdAt.getTime(),
     updatedAt: project.updatedAt.getTime(),
   };
@@ -227,10 +189,10 @@ export class OptimisticUpdateManager<T> {
 
   clearOldUpdates(maxAge: number = 5000) {
     const now = Date.now();
-    for (const [id, update] of this.updates.entries()) {
+    this.updates.forEach((update, id) => {
       if (now - update.timestamp > maxAge) {
         this.updates.delete(id);
       }
-    }
+    });
   }
 }
