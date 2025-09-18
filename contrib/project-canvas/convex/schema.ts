@@ -4,6 +4,11 @@
  */
 
 import { defineSchema, defineTable } from "convex/server";
+import {
+  InterAgentEventType,
+  MessageEventType,
+  MessageRole,
+} from "./messages.ts";
 import { v } from "convex/values";
 
 export default defineSchema({
@@ -56,6 +61,54 @@ export default defineSchema({
     .index("by_state", ["state"])
     .index("by_assigned_agent", ["assignedAgent"])
     .index("by_updated", ["updatedAt"]),
+
+  // messages table
+  messages: defineTable({
+    id: v.string(), // is UUID
+    invocationId: v.string(), // is UUID
+    timestamp: v.number(), // Unix timestamp
+    routing: v.optional(
+      v.object({
+        fromAgentId: v.string(), // is UUID
+        toAgentId: v.string(), // is UUID
+        sessionId: v.string(), // is UUID
+        streaming: v.optional(v.boolean()),
+      })
+    ),
+    usage: v.optional(
+      v.object({
+        promptTokenCount: v.number(), // is int
+        candidatesTokenCount: v.number(), // is int
+        totalTokenCount: v.number(), // is int
+      })
+    ),
+    interagentType: v.optional(
+      v.union(
+        v.literal(InterAgentEventType.COMMUNICATION),
+        v.literal(InterAgentEventType.RECEIVED)
+      )
+    ),
+    done: v.boolean(),
+    partial: v.boolean(),
+    content: v.string(),
+    author: v.string(),
+    type: v.union(
+      v.literal(MessageEventType.ASSISTANT),
+      v.literal(MessageEventType.TOOL_CALL),
+      v.literal(MessageEventType.TOOL_RESPONSE),
+      v.literal(MessageEventType.REASONING),
+      v.literal(MessageEventType.INTER_AGENT)
+    ),
+    role: v.union(
+      v.literal(MessageRole.ASSISTANT),
+      v.literal(MessageRole.USER),
+      v.literal(MessageRole.SYSTEM),
+      v.literal(MessageRole.TOOL)
+    ),
+  })
+    .index("by_role", ["role"])
+    .index("by_type", ["type"])
+    .index("by_invocation_id", ["invocationId"]),
 
   // Agents table
   agents: defineTable({
@@ -112,12 +165,7 @@ export default defineSchema({
   // User settings table
   settings: defineTable({
     userId: v.string(), // Unique identifier for the user
-    theme: v.optional(
-      v.union(
-        v.literal("light"),
-        v.literal("dark")
-      )
-    ),
+    theme: v.optional(v.union(v.literal("light"), v.literal("dark"))),
     // Application settings
     notifications: v.optional(v.boolean()),
     autoSave: v.optional(v.boolean()),
@@ -134,6 +182,5 @@ export default defineSchema({
     autoLayout: v.optional(v.boolean()),
     createdAt: v.number(), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
-  })
-    .index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]),
 });
