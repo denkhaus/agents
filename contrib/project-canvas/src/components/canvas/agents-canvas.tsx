@@ -1,0 +1,172 @@
+/**
+ * Agents Canvas Component
+ * ReactFlow canvas for agent visualization
+ */
+
+import React, { useCallback, useEffect, useMemo } from "react";
+import {
+  ReactFlow,
+  Background,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+  NodeTypes,
+  EdgeTypes,
+  useReactFlow,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { AgentNode } from "@/components/canvas/nodes";
+import { useAgentProjectStore, useUIStore } from "@/stores";
+import { useAgentProjectData } from "@/hooks/use-agent-project-data";
+
+// Define node types for ReactFlow
+const nodeTypes: NodeTypes = {
+  agent: AgentNode,
+};
+
+// Define edge types (using default for now)
+const edgeTypes: EdgeTypes = {};
+
+interface AgentsCanvasProps {
+  className?: string;
+}
+
+export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
+  // Initialize data
+  useAgentProjectData();
+
+  const { currentAgentProject } = useAgentProjectStore();
+  const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
+  const { fitView } = useReactFlow();
+
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  // Convert agent project data to ReactFlow nodes and edges
+  const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
+    if (!currentAgentProject || !currentAgentProject.agentNodes) {
+      return { reactFlowNodes: [], reactFlowEdges: [] };
+    }
+
+    // Convert agent nodes - ensure they are agent type
+    const reactFlowNodes: Node[] = currentAgentProject.agentNodes
+      .filter(agentNode => agentNode.type === "agent")
+      .map((agentNode) => ({
+        id: agentNode.data.agent.id,
+        type: "agent",
+        position: agentNode.position,
+        data: agentNode.data,
+      }));
+
+    // Convert connections to edges - only for agent connections
+    const reactFlowEdges: Edge[] = currentAgentProject.connections
+      ? currentAgentProject.connections.map((connection) => ({
+          id: connection.id,
+          source: connection.source,
+          target: connection.target,
+          type: "default",
+          label: connection.label,
+          data: connection.data,
+          style: {
+            stroke:
+              connection.type === "hierarchy"
+                ? "#8b5cf6"
+                : connection.type === "communication"
+                  ? "#3b82f6"
+                  : "#10b981",
+            strokeWidth: 2,
+          },
+        }))
+      : [];
+
+    return { reactFlowNodes, reactFlowEdges };
+  }, [currentAgentProject]);
+
+  // Update nodes and edges when agent project changes
+  useEffect(() => {
+    setNodes(reactFlowNodes);
+    setEdges(reactFlowEdges);
+  }, [reactFlowNodes, reactFlowEdges, setNodes, setEdges]);
+
+  // Handle node selection changes
+  const handleSelectionChange = useCallback(
+    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+      const selectedNodeIds = selectedNodes.map((node) => node.id);
+      setSelectedNodes(selectedNodeIds);
+
+      // Open the right sidebar when a node is selected
+      if (selectedNodeIds.length > 0) {
+        setRightSidebarCollapsed(false);
+      }
+    },
+    [setSelectedNodes, setRightSidebarCollapsed]
+  );
+
+  // Handle edge creation
+  const onConnect = useCallback(
+    (params: Connection) => {
+      const newEdge: Edge = {
+        id: crypto.randomUUID(),
+        source: params.source!,
+        target: params.target!,
+        sourceHandle: params.sourceHandle,
+        targetHandle: params.targetHandle,
+        type: "default",
+        style: { stroke: "#3b82f6", strokeWidth: 2 },
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    },
+    [setEdges]
+  );
+
+  // Auto-fit view when data changes
+  useEffect(() => {
+    if (nodes.length > 0) {
+      setTimeout(() => fitView({ padding: 0.2 }), 100);
+    }
+  }, [nodes.length, fitView]);
+
+  return (
+    <div className={`h-full w-full ${className}`}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onSelectionChange={handleSelectionChange}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        attributionPosition="bottom-left"
+        className="bg-background"
+        minZoom={0.1}
+        maxZoom={2}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+      >
+        <Background
+          color="#aaa"
+          gap={16}
+          className="opacity-20 dark:opacity-10"
+        />
+
+        <MiniMap
+          className="bg-background border border-border rounded-md"
+          maskColor="rgba(0, 0, 0, 0.1)"
+          nodeColor={(node) => {
+            if (node.type === "agent") {
+              return "#8b5cf6"; // Purple for agent nodes
+            }
+            return "#8b5cf6";
+          }}
+          position="bottom-right"
+        />
+      </ReactFlow>
+    </div>
+  );
+};

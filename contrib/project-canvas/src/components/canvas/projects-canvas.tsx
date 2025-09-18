@@ -47,7 +47,7 @@ interface ReactFlowCanvasProps {
   className?: string;
 }
 
-export const ReactFlowCanvas: React.FC<ReactFlowCanvasProps> = ({
+export const ProjectsCanvas: React.FC<ReactFlowCanvasProps> = ({
   className,
 }) => {
   const { currentProject } = useProjectStore();

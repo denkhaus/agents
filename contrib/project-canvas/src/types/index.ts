@@ -26,8 +26,15 @@ export type {
   Agent,
   AgentRole,
   AgentStatus,
+  AgentRoleType,
+  AgentStatusType,
   AgentFilter,
   AgentUpdateInput,
+  AgentNode,
+  AgentProject,
+  AgentConnection,
+  AgentProjectFilter,
+  AgentProjectUpdateInput,
 } from "./agent.types";
 
 // UI types

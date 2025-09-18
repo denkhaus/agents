@@ -6,7 +6,9 @@
 import React from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { CanvasContainer } from "@/components/canvas/canvas-container";
-import { ReactFlowCanvas } from "@/components/canvas/reactflow-canvas";
+import { ProjectsCanvas } from "@/components/canvas/projects-canvas";
+import { AgentsCanvas } from "@/components/canvas/agents-canvas";
+import { SettingsCanvas } from "@/components/canvas/settings-canvas";
 import { Toaster } from "@/components/ui/toaster";
 import { useUIStore } from "@/stores";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
@@ -14,10 +16,10 @@ import { useSettingsSync } from "@/hooks/use-settings-sync";
 
 function App() {
   const { currentWorkspace } = useUIStore();
-  
+
   // Real-time data integration
   const { loading } = useRealTimeData();
-  
+
   // Sync settings with Convex
   useSettingsSync();
 
@@ -40,35 +42,46 @@ function App() {
     );
   }
 
+  const renderWorkspaceContent = () => {
+    switch (currentWorkspace) {
+      case "projects":
+        return (
+          <CanvasContainer
+            title="Project Canvas"
+            subtitle="Interactive project and task visualization"
+          >
+            <ProjectsCanvas />
+          </CanvasContainer>
+        );
+      
+      case "agents":
+        return (
+          <CanvasContainer
+            title="Agent Canvas"
+            subtitle="Agent flow and collaboration visualization"
+          >
+            <AgentsCanvas />
+          </CanvasContainer>
+        );
+      
+      case "settings":
+        return (
+          <CanvasContainer
+            title="Application Settings"
+            subtitle="Configure your workspace preferences"
+          >
+            <SettingsCanvas />
+          </CanvasContainer>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
   return (
     <AppLayout>
-      {currentWorkspace === "projects" && (
-        <CanvasContainer>
-          <ReactFlowCanvas />
-        </CanvasContainer>
-      )}
-
-      {currentWorkspace === "agents" && (
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Agents Dashboard</h3>
-            <p className="text-muted-foreground">
-              Agent management interface will be here
-            </p>
-          </div>
-        </div>
-      )}
-
-      {currentWorkspace === "settings" && (
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Settings Panel</h3>
-            <p className="text-muted-foreground">
-              Application settings will be here
-            </p>
-          </div>
-        </div>
-      )}
+      {renderWorkspaceContent()}
       <Toaster />
     </AppLayout>
   );

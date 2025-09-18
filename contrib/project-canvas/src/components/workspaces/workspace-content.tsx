@@ -8,8 +8,8 @@ import { WorkspaceType } from "@/types";
 import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { useProjectStore } from "@/stores";
 import { ProjectsWorkspace } from "./projects-workspace";
-import { AgentsWorkspace } from "./agents-workspace";
 import { SettingsWorkspace } from "./settings-workspace";
+import { AgentsWorkspace } from "./agents-workspace";
 
 interface WorkspaceContentProps {
   workspace: WorkspaceType;

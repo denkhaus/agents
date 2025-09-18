@@ -56,3 +56,50 @@ export interface AgentUpdateInput {
   capabilities?: string[];
   lastActiveAt?: Date;
 }
+
+// Agent Canvas/Flow specific types
+export interface AgentNode {
+  id: UUID;
+  type: 'agent';
+  position: { x: number; y: number };
+  data: {
+    agent: Agent;
+    isSelected?: boolean;
+  };
+}
+
+export interface AgentProject {
+  id: UUID;
+  name: string;
+  description: string;
+  agents: Agent[];
+  agentNodes: AgentNode[];
+  connections: AgentConnection[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AgentConnection {
+  id: UUID;
+  source: UUID; // Agent ID
+  target: UUID; // Agent ID
+  type: 'communication' | 'hierarchy' | 'collaboration';
+  label?: string;
+  data?: {
+    frequency?: number;
+    protocol?: string;
+  };
+}
+
+export interface AgentProjectFilter {
+  searchTerm?: string;
+  hasAgents?: boolean;
+}
+
+export interface AgentProjectUpdateInput {
+  name?: string;
+  description?: string;
+  agents?: Agent[];
+  agentNodes?: AgentNode[];
+  connections?: AgentConnection[];
+}

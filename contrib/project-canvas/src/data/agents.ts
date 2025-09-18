@@ -11,13 +11,13 @@ import {
   AgentStatus as AgentStatusValue,
 } from "../types/agent.types";
 
-// Feste Agent-IDs f√ºr konsistente Referenzen
+// Feste Agent-IDs als UUIDs für konsistente Referenzen
 export const AGENT_IDS = {
-  DESIGNER: "agent-designer-001",
-  FRONTEND_DEV: "agent-frontend-002",
-  BACKEND_DEV: "agent-backend-003",
-  QA_ENGINEER: "agent-qa-004",
-  DEVOPS: "agent-devops-005",
+  DESIGNER: "550e8400-e29b-41d4-a716-446655440001",
+  FRONTEND_DEV: "550e8400-e29b-41d4-a716-446655440002", 
+  BACKEND_DEV: "550e8400-e29b-41d4-a716-446655440003",
+  QA_ENGINEER: "550e8400-e29b-41d4-a716-446655440004",
+  DEVOPS: "550e8400-e29b-41d4-a716-446655440005",
 };
 
 export const masterAgents: Agent[] = [
