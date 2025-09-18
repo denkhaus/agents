@@ -5,5 +5,8 @@ package main
 var Default = Cue.Validate
 
 const (
-	configDir = "./config"
+	configDir             = "./config"
+	projectCanvasDir      = "./contrib/project-canvas"
+	dockerDir             = "./docker"
+	convexGolangClientDir = "./convex_client"
 )

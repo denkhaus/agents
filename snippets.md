@@ -82,3 +82,6 @@ Wichtig: jeder Agent muss auch seine eigene ID kennen um Tasks für sich abzuruf
 │ Die präzisere Definition der Agenten-Fähigkeiten würde solche Fehler komplett vermeiden! │
 │ │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+npx convex-helpers open-api-spec --output-file convex-spec
+npx openapi-generator-cli generate -i convex-spec.yaml -c ../../openapi_config.yaml -g go -o ../../convex_client

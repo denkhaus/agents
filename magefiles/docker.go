@@ -13,10 +13,6 @@ import (
 // Docker contains targets for managing Docker services
 type Docker mg.Namespace
 
-const (
-	dockerDir = "./docker"
-)
-
 // Up starts all Docker services
 func (Docker) Up() error {
 	printStatus("Starting Agents Docker environment...")
@@ -238,7 +234,7 @@ func (Docker) Core() error {
 // InitDB initializes or reinitializes the PostgreSQL databases
 func (Docker) InitDB() error {
 	printStatus("Initializing PostgreSQL databases...")
-	
+
 	// Check if postgres service is running
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "ps", "postgres"); err != nil {
 		printWarning("PostgreSQL service not running. Starting it first...")
@@ -252,25 +248,25 @@ func (Docker) InitDB() error {
 	}
 
 	printStatus("Creating required databases...")
-	
+
 	// Create agents database if it doesn't exist
 	printStatus("Creating 'agents' database...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "createdb", "-U", "agents", "agents"); err != nil {
 		printWarning("Database 'agents' may already exist (this is OK)")
 	}
-	
+
 	// Create convex_self_hosted database if it doesn't exist
 	printStatus("Creating 'convex_self_hosted' database...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "createdb", "-U", "agents", "convex_self_hosted"); err != nil {
 		printWarning("Database 'convex_self_hosted' may already exist (this is OK)")
 	}
-	
+
 	// Verify databases were created
 	printStatus("Verifying database creation...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "-T", "postgres", "psql", "-U", "agents", "-l"); err != nil {
 		return fmt.Errorf("failed to list databases: %w", err)
 	}
-	
+
 	printSuccess("Database initialization completed!")
 	fmt.Println()
 	printStatus("Created databases:")
@@ -280,7 +276,7 @@ func (Docker) InitDB() error {
 	printStatus("Connection strings:")
 	fmt.Println("  - Agents: postgres://agents:agents@localhost:6888/agents?sslmode=disable")
 	fmt.Println("  - Convex: postgres://agents:agents@localhost:6888?sslmode=disable")
-	
+
 	return nil
 }
 
@@ -297,34 +293,34 @@ func (Docker) ResetDB() error {
 	}
 
 	printStatus("Resetting PostgreSQL databases...")
-	
+
 	// Stop all services
 	printStatus("Stopping services...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "down"); err != nil {
 		return fmt.Errorf("failed to stop services: %w", err)
 	}
-	
+
 	// Remove postgres data volume
 	printStatus("Removing postgres data volume...")
 	if err := sh.RunV("docker", "volume", "rm", "docker_postgres_data"); err != nil {
 		printWarning("Failed to remove postgres volume (may not exist)")
 	}
-	
+
 	// Start postgres service (will trigger initialization)
 	printStatus("Starting PostgreSQL with fresh volume...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "up", "-d", "postgres"); err != nil {
 		return fmt.Errorf("failed to start PostgreSQL: %w", err)
 	}
-	
+
 	// Wait for postgres to be ready
 	printStatus("Waiting for PostgreSQL to initialize...")
 	if err := sh.RunV("docker-compose", "-f", filepath.Join(dockerDir, "docker-compose.yml"), "exec", "postgres", "pg_isready", "-U", "agents"); err != nil {
 		return fmt.Errorf("PostgreSQL not ready after reset: %w", err)
 	}
-	
+
 	printSuccess("Database reset completed!")
 	printStatus("The initialization scripts in docker/postgres-init/ have been executed.")
-	
+
 	return nil
 }
 

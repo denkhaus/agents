@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/denkhaus/magelib"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 )
@@ -12,8 +13,8 @@ import (
 // Convex contains targets for managing the Convex backend
 type Convex mg.Namespace
 
-// GenerateAdminKey generates an admin key for the Convex backend
-func (Convex) GenerateAdminKey() error {
+// GenAdminKey generates an admin key for the Convex backend
+func (Convex) GenAdminKey() error {
 	printStatus("Generating Convex admin key...")
 
 	// Check if backend service is running
@@ -190,84 +191,79 @@ func (Convex) Reset() error {
 // ClearData clears all data from the Convex database
 func (Convex) ClearData() error {
 	printStatus("Clearing Convex database...")
-	
-	projectCanvasDir := filepath.Join("contrib", "project-canvas")
-	
+
 	// Check if package.json exists
 	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
 		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
 	}
-	
+
 	// Change to project-canvas directory
 	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
 	if err != nil {
 		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
 	}
 	defer cleanup()
-	
+
 	// Ensure dependencies are installed
 	printStatus("Checking npm dependencies...")
 	if err := sh.RunV("npm", "install"); err != nil {
 		return fmt.Errorf("failed to install npm dependencies: %w", err)
 	}
-	
+
 	// Use optimized clearing with multiple attempts if needed
 	maxAttempts := 10
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		printStatus(fmt.Sprintf("Clearing database (attempt %d/%d)...", attempt, maxAttempts))
-		
+
 		// Run the clear command
 		output, err := sh.Output("npx", "convex", "dev", "--once", "--run", "clearDatabase:clearDatabase")
 		if err != nil {
 			return fmt.Errorf("failed to clear database on attempt %d: %w", attempt, err)
 		}
-		
+
 		// Check if output indicates completion
-		if strings.Contains(output, "Database completely cleared") || 
-		   strings.Contains(output, "\"hasRemainingData\":false") {
+		if strings.Contains(output, "Database completely cleared") ||
+			strings.Contains(output, "\"hasRemainingData\":false") {
 			printSuccess("✅ Convex database cleared completely!")
 			return nil
 		}
-		
+
 		if strings.Contains(output, "\"totalDeleted\":0") {
 			printSuccess("✅ Convex database was already clear!")
 			return nil
 		}
-		
+
 		// Show progress
 		fmt.Printf("   Progress: %s\n", strings.TrimSpace(output))
 	}
-	
+
 	printWarning("⚠️ Database clearing reached maximum attempts. Some data may remain.")
 	printStatus("You can run 'mage convex:cleardata' again to continue clearing.")
 	return nil
 }
 
-
 // SeedData seeds the Convex database with dummy data
 func (Convex) SeedData() error {
 	printStatus("Seeding Convex database with dummy data...")
-	
-	projectCanvasDir := filepath.Join("contrib", "project-canvas")
-	
+
 	// Check if package.json exists
 	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
 		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
 	}
-	
+
 	// Change to project-canvas directory
 	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
 	if err != nil {
 		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
 	}
 	defer cleanup()
-	
+
 	// Ensure dependencies are installed
 	printStatus("Checking npm dependencies...")
 	if err := sh.RunV("npm", "install"); err != nil {
 		return fmt.Errorf("failed to install npm dependencies: %w", err)
 	}
-	
+
 	// Run the seed command
 	err = sh.RunV("npx", "convex", "dev", "--once", "--run", "seed:seedDatabase")
 	if err != nil {
@@ -281,17 +277,17 @@ func (Convex) SeedData() error {
 // ResetData clears and re-seeds the Convex database
 func (Convex) ResetData() error {
 	printStatus("Resetting Convex database (clear + seed)...")
-	
+
 	// Clear first
 	if err := (Convex{}).ClearData(); err != nil {
 		return err
 	}
-	
+
 	// Then seed
 	if err := (Convex{}).SeedData(); err != nil {
 		return err
 	}
-	
+
 	printSuccess("✅ Convex database reset completed!")
 	return nil
 }
@@ -299,27 +295,25 @@ func (Convex) ResetData() error {
 // Dev starts Convex development server
 func (Convex) Dev() error {
 	printStatus("Starting Convex development server...")
-	
-	projectCanvasDir := filepath.Join("contrib", "project-canvas")
-	
+
 	// Check if package.json exists
 	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
 		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
 	}
-	
+
 	// Change to project-canvas directory
 	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
 	if err != nil {
 		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
 	}
 	defer cleanup()
-	
+
 	// Ensure dependencies are installed
 	printStatus("Checking npm dependencies...")
 	if err := sh.RunV("npm", "install"); err != nil {
 		return fmt.Errorf("failed to install npm dependencies: %w", err)
 	}
-	
+
 	// Start development server
 	return sh.RunV("npx", "convex", "dev")
 }
@@ -330,7 +324,8 @@ func (Convex) Help() {
 	fmt.Println("==================================")
 	fmt.Println()
 	fmt.Println("Available targets:")
-	fmt.Println("  mage convex:generateadminkey    Generate admin key for authentication")
+	fmt.Println("  mage convex:genadminkey         Generate admin key for authentication")
+	fmt.Println("  mage convex:genclient           Generate Go client from OpenAPI spec")
 	fmt.Println("  mage convex:showcredentials     Show instance credentials")
 	fmt.Println("  mage convex:status              Check backend status and health")
 	fmt.Println("  mage convex:logs                Show backend logs (follow mode)")
@@ -340,14 +335,8 @@ func (Convex) Help() {
 	fmt.Println("  mage convex:seeddata            Seed database with dummy data")
 	fmt.Println("  mage convex:resetdata           Clear and re-seed database")
 	fmt.Println("  mage convex:dev                 Start Convex development server")
+
 	fmt.Println("  mage convex:help                Show this help message")
-	fmt.Println()
-	fmt.Println("Examples:")
-	fmt.Println("  mage convex:generateadminkey    # Generate admin key for API access")
-	fmt.Println("  mage convex:status              # Check if backend is healthy")
-	fmt.Println("  mage convex:logs                # View real-time logs")
-	fmt.Println("  mage convex:showcredentials     # View instance name and partial secret")
-	fmt.Println("  mage convex:resetdata           # Quick database reset with fresh data")
 	fmt.Println()
 	fmt.Println("Database Management:")
 	fmt.Println("  mage convex:cleardata           # Remove all data from database")
@@ -371,4 +360,59 @@ func (Convex) Help() {
 	fmt.Println("  mage docker:up          Start all services including Convex")
 	fmt.Println("  mage docker:initdb      Initialize PostgreSQL databases")
 	fmt.Println("  mage docker:status      Show status of all Docker services")
+}
+
+// GenClient generates Go client from Convex OpenAPI spec
+func (Convex) GenClient() error {
+	printStatus("Generating Go client from Convex OpenAPI spec...")
+
+	// Check if package.json exists
+	if err := checkFileExists(filepath.Join(projectCanvasDir, "package.json")); err != nil {
+		return fmt.Errorf("package.json not found in %s: %w", projectCanvasDir, err)
+	}
+
+	// Change to project-canvas directory
+	cleanup, err := changeToDirWithCleanup(projectCanvasDir)
+	if err != nil {
+		return fmt.Errorf("failed to change directory to %s: %w", projectCanvasDir, err)
+	}
+	defer cleanup()
+
+	magelib.InDirectory(projectCanvasDir, func() error {
+		// Ensure dependencies are installed
+		printStatus("Checking npm dependencies...")
+		if err := sh.RunV("npm", "install"); err != nil {
+			return fmt.Errorf("failed to install npm dependencies: %w", err)
+		}
+
+		// Generate OpenAPI spec
+		printStatus("Generating OpenAPI specification...")
+		if err := sh.RunV("npx", "convex-helpers", "open-api-spec", "--output-file", "convex-spec"); err != nil {
+			return fmt.Errorf("failed to generate OpenAPI spec: %w", err)
+		}
+
+		// Generate Go client
+		printStatus("Generating Go client...")
+		if err := sh.RunV("npx", "openapi-generator-cli", "generate",
+			"-i", "convex-spec.yaml",
+			"-c", "../../openapi_config.yaml",
+			"-g", "go",
+			"-o", "../../convex_client"); err != nil {
+			return fmt.Errorf("failed to generate Go client: %w", err)
+		}
+
+		return nil
+	})
+
+	magelib.InDirectory(convexGolangClientDir, func() error {
+		return magelib.GoModTidy()
+	})
+
+	printSuccess("Go client generated successfully!")
+	fmt.Println()
+	printStatus("Generated files:")
+	fmt.Println("  - OpenAPI spec: contrib/project-canvas/convex-spec.yaml")
+	fmt.Println("  - Go client: convex_client/")
+
+	return nil
 }

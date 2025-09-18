@@ -3,9 +3,11 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"sort"
 	"time"
 
+	"github.com/denkhaus/agents/convex"
 	"github.com/denkhaus/agents/pkg/shared/resource"
 
 	"github.com/denkhaus/agents/pkg/tools/project/shared"
@@ -28,6 +30,57 @@ func NewMemoryRepository() shared.Repository {
 		tasksByProject: resource.NewManager[[]uuid.UUID](),
 		tasksByParent:  resource.NewManager[[]uuid.UUID](),
 	}
+}
+
+
+
+// request := *convex.NewRequestLoadLoadOne(*convex.NewRequestLoadLoadOneArgs(short, c.token))
+//   resp, httpRes, err := c.client.QueryAPI.ApiRunLoadLoadOnePost(context.Background()).RequestLoadLoadOne(request).Execute()
+//   validationErr := validateResponse(httpRes.StatusCode, err, resp.Status) if
+//   validationErr != nil { return nil, validationErr }
+
+//   linkDoc := resp.Value.Get()
+//   if linkDoc == nil {
+//     err := fs.ErrNotExist
+//     return nil, err
+//   }
+//   link := Link{
+//     Short:    linkDoc.Short,
+//     Long:     linkDoc.Long,
+//     Created:  time.Unix(int64(linkDoc.Created), 0),
+//     LastEdit: time.Unix(int64(linkDoc.LastEdit), 0),
+//     Owner:    linkDoc.Owner,
+//   }
+func getProjectById(projectID uuid.UUID) {
+
+	config := convex.NewConfiguration()
+	client := convex.NewAPIClient(config)
+
+	resp, httpRes, err := client.QueryAPI.ApiRunProjectsGetPostExecute(
+		client.QueryAPI.ApiRunProjectsGetPost(context.Background()).,
+	)
+
+	// validationErr := vavalidateResponse(httpRes.StatusCode, err, resp.Status)
+
+	// if validationErr != nil {
+	// 	return nil, validationErr
+	// }
+
+	linkDoc := resp.Value
+	if linkDoc == nil {
+		err := fs.ErrNotExist
+		return nil, err
+	}
+	link := Link{
+		Short:    linkDoc.Short,
+		Long:     linkDoc.Long,
+		Created:  time.Unix(int64(linkDoc.Created), 0),
+		LastEdit: time.Unix(int64(linkDoc.LastEdit), 0),
+		Owner:    linkDoc.Owner,
+	}
+
+	return &link, nil
+
 }
 
 // Project operations

@@ -1,0 +1,2345 @@
+openapi: 3.0.3
+info:
+  title: Convex App - OpenAPI 3.0
+  version: 0.0.0
+servers:
+- url: http://127.0.0.1:3210
+security:
+- bearerAuth: []
+tags:
+- description: Functions that read data
+  name: query
+- description: Functions that write/update/delete data
+  name: mutation
+- description: Functions that can make calls to external APIs
+  name: action
+paths:
+  /api/run/agents/list:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.list"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.list"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path agents.js:list
+      tags:
+      - query
+  /api/run/agents/listByRole:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.listByRole"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.listByRole"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path agents.js:listByRole
+      tags:
+      - query
+  /api/run/agents/listByStatus:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.listByStatus"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.listByStatus"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path agents.js:listByStatus
+      tags:
+      - query
+  /api/run/agents/get:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.get"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.get"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path agents.js:get
+      tags:
+      - query
+  /api/run/agents/getWithTasks:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.getWithTasks"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.getWithTasks"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path agents.js:getWithTasks
+      tags:
+      - query
+  /api/run/agents/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.create"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.create"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path agents.js:create
+      tags:
+      - mutation
+  /api/run/agents/updateStatus:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.updateStatus"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.updateStatus"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path agents.js:updateStatus
+      tags:
+      - mutation
+  /api/run/agents/assignTask:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.assignTask"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.assignTask"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path agents.js:assignTask
+      tags:
+      - mutation
+  /api/run/agents/unassignTask:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_agents.unassignTask"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_agents.unassignTask"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path agents.js:unassignTask
+      tags:
+      - mutation
+  /api/run/clearDatabase/clearDatabase:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_clearDatabase.clearDatabase"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_clearDatabase.clearDatabase"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path clearDatabase.js:clearDatabase
+      tags:
+      - mutation
+  /api/run/events/getRecentEvents:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_events.getRecentEvents"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_events.getRecentEvents"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path events.js:getRecentEvents
+      tags:
+      - query
+  /api/run/events/subscribeToProject:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_events.subscribeToProject"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_events.subscribeToProject"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path events.js:subscribeToProject
+      tags:
+      - query
+  /api/run/events/cleanupOldEvents:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_events.cleanupOldEvents"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_events.cleanupOldEvents"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path events.js:cleanupOldEvents
+      tags:
+      - mutation
+  /api/run/events/emitEvent:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_events.emitEvent"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_events.emitEvent"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path events.js:emitEvent
+      tags:
+      - mutation
+  /api/run/projects/list:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.list"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.list"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path projects.js:list
+      tags:
+      - query
+  /api/run/projects/get:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.get"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.get"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path projects.js:get
+      tags:
+      - query
+  /api/run/projects/getWithStats:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.getWithStats"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.getWithStats"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path projects.js:getWithStats
+      tags:
+      - query
+  /api/run/projects/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.create"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.create"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path projects.js:create
+      tags:
+      - mutation
+  /api/run/projects/updateEditableFields:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.updateEditableFields"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.updateEditableFields"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path projects.js:updateEditableFields
+      tags:
+      - mutation
+  /api/run/projects/updateStats:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.updateStats"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.updateStats"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path projects.js:updateStats
+      tags:
+      - mutation
+  /api/run/projects/remove:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.remove"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.remove"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path projects.js:remove
+      tags:
+      - mutation
+  /api/run/projects/updatePosition:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_projects.updatePosition"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_projects.updatePosition"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path projects.js:updatePosition
+      tags:
+      - mutation
+  /api/run/seed/seedDatabase:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_seed.seedDatabase"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_seed.seedDatabase"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path seed.js:seedDatabase
+      tags:
+      - mutation
+  /api/run/tasks/listByProject:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.listByProject"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.listByProject"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path tasks.js:listByProject
+      tags:
+      - query
+  /api/run/tasks/get:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.get"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.get"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path tasks.js:get
+      tags:
+      - query
+  /api/run/tasks/listByAgent:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.listByAgent"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.listByAgent"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path tasks.js:listByAgent
+      tags:
+      - query
+  /api/run/tasks/listRootTasks:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.listRootTasks"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.listRootTasks"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path tasks.js:listRootTasks
+      tags:
+      - query
+  /api/run/tasks/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.create"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.create"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path tasks.js:create
+      tags:
+      - mutation
+  /api/run/tasks/updateEditableFields:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.updateEditableFields"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.updateEditableFields"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path tasks.js:updateEditableFields
+      tags:
+      - mutation
+  /api/run/tasks/updatePosition:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.updatePosition"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.updatePosition"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path tasks.js:updatePosition
+      tags:
+      - mutation
+  /api/run/tasks/updateState:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.updateState"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.updateState"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path tasks.js:updateState
+      tags:
+      - mutation
+  /api/run/tasks/remove:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_tasks.remove"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_tasks.remove"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path tasks.js:remove
+      tags:
+      - mutation
+  /api/run/settings/getSettings:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_settings.getSettings"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_settings.getSettings"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a query at the path settings.js:getSettings
+      tags:
+      - query
+  /api/run/settings/updateSettings:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_settings.updateSettings"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_settings.updateSettings"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path settings.js:updateSettings
+      tags:
+      - mutation
+  /api/run/settings/updateTheme:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request_settings.updateTheme"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response_settings.updateTheme"
+          description: Convex executed your request and returned a result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Failed operation
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailedResponse"
+          description: Convex Internal Error
+      summary: Calls a mutation at the path settings.js:updateTheme
+      tags:
+      - mutation
+components:
+  schemas:
+    Request_agents.list:
+      properties:
+        args:
+          type: object
+      required:
+      - args
+      type: object
+    Response_agents.list:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.listByRole:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_listByRole_args"
+      required:
+      - args
+      type: object
+    Response_agents.listByRole:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.listByStatus:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_listByStatus_args"
+      required:
+      - args
+      type: object
+    Response_agents.listByStatus:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.get:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_agents.get:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.getWithTasks:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_agents.getWithTasks:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.create:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_create_args"
+      required:
+      - args
+      type: object
+    Response_agents.create:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.updateStatus:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_updateStatus_args"
+      required:
+      - args
+      type: object
+    Response_agents.updateStatus:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.assignTask:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_assignTask_args"
+      required:
+      - args
+      type: object
+    Response_agents.assignTask:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_agents.unassignTask:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_assignTask_args"
+      required:
+      - args
+      type: object
+    Response_agents.unassignTask:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_clearDatabase.clearDatabase:
+      properties:
+        args:
+          type: object
+      required:
+      - args
+      type: object
+    Response_clearDatabase.clearDatabase:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_events.getRecentEvents:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_events_getRecentEvents_args"
+      required:
+      - args
+      type: object
+    Response_events.getRecentEvents:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_events.subscribeToProject:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_events_subscribeToProject_args"
+      required:
+      - args
+      type: object
+    Response_events.subscribeToProject:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_events.cleanupOldEvents:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_events_cleanupOldEvents_args"
+      required:
+      - args
+      type: object
+    Response_events.cleanupOldEvents:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_events.emitEvent:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_events_emitEvent_args"
+      required:
+      - args
+      type: object
+    Response_events.emitEvent:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.list:
+      properties:
+        args:
+          type: object
+      required:
+      - args
+      type: object
+    Response_projects.list:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.get:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_projects.get:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.getWithStats:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_projects.getWithStats:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.create:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_create_args"
+      required:
+      - args
+      type: object
+    Response_projects.create:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.updateEditableFields:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_updateEditableFields_args"
+      required:
+      - args
+      type: object
+    Response_projects.updateEditableFields:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.updateStats:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_updateStats_args"
+      required:
+      - args
+      type: object
+    Response_projects.updateStats:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.remove:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_projects.remove:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_projects.updatePosition:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_updatePosition_args"
+      required:
+      - args
+      type: object
+    Response_projects.updatePosition:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_seed.seedDatabase:
+      properties:
+        args:
+          type: object
+      required:
+      - args
+      type: object
+    Response_seed.seedDatabase:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.listByProject:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_tasks_listByProject_args"
+      required:
+      - args
+      type: object
+    Response_tasks.listByProject:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.get:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_tasks.get:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.listByAgent:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_tasks_listByAgent_args"
+      required:
+      - args
+      type: object
+    Response_tasks.listByAgent:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.listRootTasks:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_tasks_listRootTasks_args"
+      required:
+      - args
+      type: object
+    Response_tasks.listRootTasks:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.create:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_tasks_create_args"
+      required:
+      - args
+      type: object
+    Response_tasks.create:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.updateEditableFields:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_updateEditableFields_args"
+      required:
+      - args
+      type: object
+    Response_tasks.updateEditableFields:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.updatePosition:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_projects_updatePosition_args"
+      required:
+      - args
+      type: object
+    Response_tasks.updatePosition:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.updateState:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_tasks_updateState_args"
+      required:
+      - args
+      type: object
+    Response_tasks.updateState:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_tasks.remove:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_agents_get_args"
+      required:
+      - args
+      type: object
+    Response_tasks.remove:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_settings.getSettings:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_settings_getSettings_args"
+      required:
+      - args
+      type: object
+    Response_settings.getSettings:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_settings.updateSettings:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_settings_updateSettings_args"
+      required:
+      - args
+      type: object
+    Response_settings.updateSettings:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    Request_settings.updateTheme:
+      properties:
+        args:
+          $ref: "#/components/schemas/Request_settings_updateTheme_args"
+      required:
+      - args
+      type: object
+    Response_settings.updateTheme:
+      example:
+        errorMessage: errorMessage
+        value: ""
+        errorData: "{}"
+        status: success
+      properties:
+        status:
+          enum:
+          - success
+          - error
+          type: string
+        errorMessage:
+          type: string
+        errorData:
+          type: object
+        value: {}
+      required:
+      - status
+      type: object
+    FailedResponse:
+      properties: {}
+      type: object
+    Request_agents_listByRole_args_role:
+      oneOf:
+      - enum:
+        - supervisor
+        type: string
+      - enum:
+        - project-manager
+        type: string
+      - enum:
+        - coder
+        type: string
+      - enum:
+        - researcher
+        type: string
+      - enum:
+        - qa-engineer
+        type: string
+      - enum:
+        - devops
+        type: string
+      - enum:
+        - designer
+        type: string
+    Request_agents_listByRole_args:
+      properties:
+        role:
+          $ref: "#/components/schemas/Request_agents_listByRole_args_role"
+      required:
+      - role
+      type: object
+    Request_agents_listByStatus_args_status:
+      oneOf:
+      - enum:
+        - online
+        type: string
+      - enum:
+        - offline
+        type: string
+      - enum:
+        - busy
+        type: string
+      - enum:
+        - idle
+        type: string
+    Request_agents_listByStatus_args:
+      properties:
+        status:
+          $ref: "#/components/schemas/Request_agents_listByStatus_args_status"
+      required:
+      - status
+      type: object
+    Request_agents_get_args:
+      properties:
+        id:
+          type: string
+      required:
+      - id
+      type: object
+    Request_agents_create_args:
+      properties:
+        capabilities:
+          items:
+            type: string
+          type: array
+        description:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Request_agents_listByRole_args_role"
+      required:
+      - capabilities
+      - description
+      - name
+      - role
+      type: object
+    Request_agents_updateStatus_args:
+      properties:
+        id:
+          type: string
+        isStreaming:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/Request_agents_listByStatus_args_status"
+      required:
+      - id
+      - status
+      type: object
+    Request_agents_assignTask_args:
+      properties:
+        agentId:
+          type: string
+        taskId:
+          type: string
+      required:
+      - agentId
+      - taskId
+      type: object
+    Request_events_getRecentEvents_args:
+      properties:
+        limit:
+          type: number
+        since:
+          type: number
+        types:
+          items:
+            type: string
+          type: array
+      type: object
+    Request_events_subscribeToProject_args:
+      properties:
+        projectId:
+          type: string
+        since:
+          type: number
+      required:
+      - projectId
+      type: object
+    Request_events_cleanupOldEvents_args:
+      properties:
+        olderThan:
+          type: number
+      required:
+      - olderThan
+      type: object
+    Request_events_emitEvent_args:
+      properties:
+        data: {}
+        entityId:
+          type: string
+        type:
+          type: string
+        userId:
+          type: string
+      required:
+      - data
+      - entityId
+      - type
+      type: object
+    Request_projects_create_args:
+      properties:
+        description:
+          type: string
+        title:
+          type: string
+      required:
+      - description
+      - title
+      type: object
+    Request_projects_updateEditableFields_args:
+      properties:
+        description:
+          type: string
+        id:
+          type: string
+        title:
+          type: string
+      required:
+      - id
+      type: object
+    Request_projects_updateStats_args:
+      properties:
+        completedTasks:
+          type: number
+        id:
+          type: string
+        totalTasks:
+          type: number
+      required:
+      - completedTasks
+      - id
+      - totalTasks
+      type: object
+    Request_projects_updatePosition_args:
+      properties:
+        id:
+          type: string
+        positionX:
+          type: number
+        positionY:
+          type: number
+      required:
+      - id
+      - positionX
+      - positionY
+      type: object
+    Request_tasks_listByProject_args:
+      properties:
+        includeCompleted:
+          type: boolean
+        projectId:
+          type: string
+      required:
+      - projectId
+      type: object
+    Request_tasks_listByAgent_args:
+      properties:
+        agentId:
+          type: string
+      required:
+      - agentId
+      type: object
+    Request_tasks_listRootTasks_args:
+      properties:
+        projectId:
+          type: string
+      required:
+      - projectId
+      type: object
+    Request_tasks_create_args:
+      properties:
+        assignedAgent:
+          type: string
+        complexity:
+          type: number
+        dependencies:
+          items:
+            type: string
+          type: array
+        depth:
+          type: number
+        description:
+          type: string
+        estimate:
+          type: number
+        parentId:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+      required:
+      - complexity
+      - depth
+      - description
+      - projectId
+      - title
+      type: object
+    Request_tasks_updateState_args_state:
+      oneOf:
+      - enum:
+        - pending
+        type: string
+      - enum:
+        - in-progress
+        type: string
+      - enum:
+        - completed
+        type: string
+      - enum:
+        - blocked
+        type: string
+      - enum:
+        - cancelled
+        type: string
+    Request_tasks_updateState_args:
+      properties:
+        id:
+          type: string
+        state:
+          $ref: "#/components/schemas/Request_tasks_updateState_args_state"
+      required:
+      - id
+      - state
+      type: object
+    Request_settings_getSettings_args:
+      properties:
+        userId:
+          type: string
+      required:
+      - userId
+      type: object
+    Request_settings_updateSettings_args_theme:
+      oneOf:
+      - enum:
+        - light
+        type: string
+      - enum:
+        - dark
+        type: string
+    Request_settings_updateSettings_args:
+      properties:
+        autoLayout:
+          type: boolean
+        autoSave:
+          type: boolean
+        currentWorkspace:
+          type: string
+        language:
+          type: string
+        leftSidebarCollapsed:
+          type: boolean
+        notifications:
+          type: boolean
+        rightSidebarCollapsed:
+          type: boolean
+        selectedNodeIds:
+          items:
+            type: string
+          type: array
+        selectedProjectId:
+          type: string
+        showBackground:
+          type: boolean
+        showMiniMap:
+          type: boolean
+        theme:
+          $ref: "#/components/schemas/Request_settings_updateSettings_args_theme"
+        userId:
+          type: string
+      required:
+      - userId
+      type: object
+    Request_settings_updateTheme_args:
+      properties:
+        theme:
+          $ref: "#/components/schemas/Request_settings_updateSettings_args_theme"
+        userId:
+          type: string
+      required:
+      - theme
+      - userId
+      type: object
+  securitySchemes:
+    bearerAuth:
+      description: "Token of the format \"Bearer {token}\" for normal authentication\
+        \ and \"Convex {token}\" for admin tokens."
+      scheme: bearer
+      type: http
