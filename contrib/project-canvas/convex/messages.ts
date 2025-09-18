@@ -7,7 +7,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { generateUUID } from "../src/utils/uuid";
 
-export const MessageEventType = {
+export const MessageEventTypes = {
   ASSISTANT: "assistant",
   TOOL_CALL: "tool.call",
   TOOL_RESPONSE: "tool.response",
@@ -15,36 +15,65 @@ export const MessageEventType = {
   INTER_AGENT: "inter_agent",
 } as const;
 
-export const InterAgentEventType = {
+export const MessageEventType = v.union(
+  v.literal(MessageEventTypes.ASSISTANT),
+  v.literal(MessageEventTypes.TOOL_CALL),
+  v.literal(MessageEventTypes.TOOL_RESPONSE),
+  v.literal(MessageEventTypes.REASONING),
+  v.literal(MessageEventTypes.INTER_AGENT)
+);
+
+export const InterAgentEventTypes = {
   COMMUNICATION: "communication",
   RECEIVED: "received",
 } as const;
 
-export const MessageRole = {
+export const MessageInteragentType = v.union(
+  v.literal(InterAgentEventTypes.COMMUNICATION),
+  v.literal(InterAgentEventTypes.RECEIVED)
+);
+
+export const MessageRoles = {
   SYSTEM: "system",
   USER: "user",
   ASSISTANT: "assistant",
   TOOL: "tool",
 } as const;
 
+export const MessageRoleType = v.union(
+  v.literal(MessageRoles.ASSISTANT),
+  v.literal(MessageRoles.USER),
+  v.literal(MessageRoles.SYSTEM),
+  v.literal(MessageRoles.TOOL)
+);
+
+export const MessageRoutingInfo = v.object({
+  fromAgentId: v.string(), // is UUID
+  toAgentId: v.string(), // is UUID
+  sessionId: v.string(), // is UUID
+  streaming: v.optional(v.boolean()),
+});
+
+export const MessageUsageInfo = v.object({
+  promptTokenCount: v.number(), // is int
+  candidatesTokenCount: v.number(), // is int
+  totalTokenCount: v.number(), // is int
+});
+
 // Get all messages for a specific invocation
 export const listByInvocation = query({
-  args: { 
+  args: {
     invocationId: v.string(),
-    limit: v.optional(v.number()),
+    limit: v.number(),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    return ctx.db
       .query("messages")
-      .withIndex("by_invocation_id", (q) => q.eq("invocationId", args.invocationId))
-      .order("desc");
-
-    if (args.limit) {
-      query = query.take(args.limit);
-    }
-
-    const messages = await query.collect();
-    return messages.reverse(); // Return in chronological order
+      .withIndex("by_invocation_id", (q) =>
+        q.eq("invocationId", args.invocationId)
+      )
+      .order("desc")
+      .take(args.limit);
   },
 });
 
@@ -52,147 +81,104 @@ export const listByInvocation = query({
 export const get = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
-    const message = await ctx.db
+    return await ctx.db
       .query("messages")
       .filter((q) => q.eq(q.field("id"), args.id))
       .first();
-    return message;
   },
 });
 
 // Get messages by role
 export const listByRole = query({
-  args: { 
-    role: v.union(
-      v.literal("assistant"),
-      v.literal("user"), 
-      v.literal("system"),
-      v.literal("tool")
-    ),
-    limit: v.optional(v.number()),
+  args: {
+    role: MessageRoleType,
+    limit: v.number(),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    return ctx.db
       .query("messages")
       .withIndex("by_role", (q) => q.eq("role", args.role))
-      .order("desc");
-
-    if (args.limit) {
-      query = query.take(args.limit);
-    }
-
-    return await query.collect();
+      .order("desc")
+      .take(args.limit);
   },
 });
 
 // Get messages by type
 export const listByType = query({
-  args: { 
-    type: v.union(
-      v.literal("assistant"),
-      v.literal("tool.call"),
-      v.literal("tool.response"),
-      v.literal("reasoning"),
-      v.literal("inter_agent")
-    ),
-    limit: v.optional(v.number()),
+  args: {
+    type: MessageEventType,
+    limit: v.number(),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
+    return ctx.db
       .query("messages")
       .withIndex("by_type", (q) => q.eq("type", args.type))
-      .order("desc");
-
-    if (args.limit) {
-      query = query.take(args.limit);
-    }
-
-    return await query.collect();
+      .order("desc")
+      .take(args.limit);
   },
 });
 
 // Get recent messages across all invocations
-export const getRecentMessages = query({
-  args: {
-    limit: v.optional(v.number()),
-    since: v.optional(v.number()), // Unix timestamp
-  },
-  handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("messages")
-      .order("desc");
+// export const getRecentMessages = query({
+//   args: {
+//     limit: v.number(),
+//     since: v.optional(v.number()), // Unix timestamp
+//   },
+//   handler: async (ctx, args) => {
+// //     return ctx.db.query("messages").order("desc").filter((m)-> m.t).take(args.limit);
+//  let messages = await query.collect();
 
-    if (args.limit) {
-      query = query.take(args.limit);
-    }
-
-    let messages = await query.collect();
-
-    // Filter by timestamp if provided
-    if (args.since) {
-      messages = messages.filter(msg => msg.timestamp >= args.since!);
-    }
-
-    return messages;
-  },
-});
+//     // Filter by timestamp if provided
+//     if (args.since) {
+//       messages = messages.filter((msg) => msg.timestamp >= args.since!);
+//     }
+// //   },
+// // });
 
 // Get inter-agent messages
-export const getInterAgentMessages = query({
-  args: {
-    fromAgentId: v.optional(v.string()),
-    toAgentId: v.optional(v.string()),
-    sessionId: v.optional(v.string()),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("messages")
-      .filter((q) => q.neq(q.field("routing"), undefined))
-      .order("desc");
+// export const getInterAgentMessages = query({
+//   args: {
+//     fromAgentId: v.optional(v.string()),
+//     toAgentId: v.optional(v.string()),
+//     sessionId: v.optional(v.string()),
+//     limit: v.optional(v.number()),
+//   },
+//   handler: async (ctx, args) => {
+//     let query = ctx.db
+//       .query("messages")
+//       .filter((q) => q.neq(q.field("routing"), undefined))
+//       .order("desc");
 
-    if (args.limit) {
-      query = query.take(args.limit);
-    }
+//     if (args.limit) {
+//       query = query.take(args.limit);
+//     }
 
-    let messages = await query.collect();
-
-    // Filter by routing parameters if provided
-    if (args.fromAgentId || args.toAgentId || args.sessionId) {
-      messages = messages.filter(msg => {
-        if (!msg.routing) return false;
-        
-        const matchesFrom = !args.fromAgentId || msg.routing.fromAgentId === args.fromAgentId;
-        const matchesTo = !args.toAgentId || msg.routing.toAgentId === args.toAgentId;
-        const matchesSession = !args.sessionId || msg.routing.sessionId === args.sessionId;
-        
-        return matchesFrom && matchesTo && matchesSession;
-      });
-    }
-
-    return messages;
-  },
-});
+//     return query;
+//   },
+// });
 
 // Create a new message
 export const create = mutation({
   args: {
     invocationId: v.string(),
-    routing: v.optional(v.object({
-      fromAgentId: v.string(),
-      toAgentId: v.string(),
-      sessionId: v.string(),
-      streaming: v.optional(v.boolean()),
-    })),
-    usage: v.optional(v.object({
-      promptTokenCount: v.number(),
-      candidatesTokenCount: v.number(),
-      totalTokenCount: v.number(),
-    })),
-    interagentType: v.optional(v.union(
-      v.literal("communication"),
-      v.literal("received")
-    )),
+    routing: v.optional(
+      v.object({
+        fromAgentId: v.string(),
+        toAgentId: v.string(),
+        sessionId: v.string(),
+        streaming: v.optional(v.boolean()),
+      })
+    ),
+    usage: v.optional(
+      v.object({
+        promptTokenCount: v.number(),
+        candidatesTokenCount: v.number(),
+        totalTokenCount: v.number(),
+      })
+    ),
+    interagentType: v.optional(
+      v.union(v.literal("communication"), v.literal("received"))
+    ),
     done: v.boolean(),
     partial: v.boolean(),
     content: v.string(),
@@ -242,15 +228,17 @@ export const update = mutation({
     content: v.optional(v.string()),
     done: v.optional(v.boolean()),
     partial: v.optional(v.boolean()),
-    usage: v.optional(v.object({
-      promptTokenCount: v.number(),
-      candidatesTokenCount: v.number(),
-      totalTokenCount: v.number(),
-    })),
+    usage: v.optional(
+      v.object({
+        promptTokenCount: v.number(),
+        candidatesTokenCount: v.number(),
+        totalTokenCount: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    
+
     // Find the message
     const existingMessage = await ctx.db
       .query("messages")
@@ -312,7 +300,9 @@ export const removeByInvocation = mutation({
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_invocation_id", (q) => q.eq("invocationId", args.invocationId))
+      .withIndex("by_invocation_id", (q) =>
+        q.eq("invocationId", args.invocationId)
+      )
       .collect();
 
     const deletedIds = [];
@@ -340,37 +330,51 @@ export const getStats = query({
     since: v.optional(v.number()), // Unix timestamp
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("messages");
+    let query;
 
     if (args.invocationId) {
-      query = query.withIndex("by_invocation_id", (q) => q.eq("invocationId", args.invocationId));
+      query = ctx.db
+        .query("messages")
+        .withIndex("by_invocation_id", (q) =>
+          q.eq("invocationId", args.invocationId!)
+        );
+    } else {
+      query = ctx.db.query("messages");
     }
 
     let messages = await query.collect();
 
     // Filter by timestamp if provided
     if (args.since) {
-      messages = messages.filter(msg => msg.timestamp >= args.since!);
+      messages = messages.filter((msg) => msg.timestamp >= args.since!);
     }
 
     // Calculate statistics
     const totalMessages = messages.length;
-    const byRole = messages.reduce((acc, msg) => {
-      acc[msg.role] = (acc[msg.role] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byRole = messages.reduce(
+      (acc, msg) => {
+        acc[msg.role] = (acc[msg.role] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const byType = messages.reduce((acc, msg) => {
-      acc[msg.type] = (acc[msg.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byType = messages.reduce(
+      (acc, msg) => {
+        acc[msg.type] = (acc[msg.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     const totalTokens = messages.reduce((sum, msg) => {
       return sum + (msg.usage?.totalTokenCount || 0);
     }, 0);
 
-    const interAgentMessages = messages.filter(msg => msg.routing !== undefined).length;
-    const completedMessages = messages.filter(msg => msg.done).length;
+    const interAgentMessages = messages.filter(
+      (msg) => msg.routing !== undefined
+    ).length;
+    const completedMessages = messages.filter((msg) => msg.done).length;
 
     return {
       totalMessages,
@@ -379,7 +383,8 @@ export const getStats = query({
       totalTokens,
       interAgentMessages,
       completedMessages,
-      completionRate: totalMessages > 0 ? (completedMessages / totalMessages) * 100 : 0,
+      completionRate:
+        totalMessages > 0 ? (completedMessages / totalMessages) * 100 : 0,
     };
   },
 });

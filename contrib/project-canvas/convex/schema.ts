@@ -5,9 +5,11 @@
 
 import { defineSchema, defineTable } from "convex/server";
 import {
-  InterAgentEventType,
   MessageEventType,
-  MessageRole,
+  MessageInteragentType,
+  MessageRoleType,
+  MessageRoutingInfo,
+  MessageUsageInfo,
 } from "./messages.ts";
 import { v } from "convex/values";
 
@@ -67,44 +69,15 @@ export default defineSchema({
     id: v.string(), // is UUID
     invocationId: v.string(), // is UUID
     timestamp: v.number(), // Unix timestamp
-    routing: v.optional(
-      v.object({
-        fromAgentId: v.string(), // is UUID
-        toAgentId: v.string(), // is UUID
-        sessionId: v.string(), // is UUID
-        streaming: v.optional(v.boolean()),
-      })
-    ),
-    usage: v.optional(
-      v.object({
-        promptTokenCount: v.number(), // is int
-        candidatesTokenCount: v.number(), // is int
-        totalTokenCount: v.number(), // is int
-      })
-    ),
-    interagentType: v.optional(
-      v.union(
-        v.literal(InterAgentEventType.COMMUNICATION),
-        v.literal(InterAgentEventType.RECEIVED)
-      )
-    ),
+    routing: v.optional(MessageRoutingInfo),
+    usage: v.optional(MessageUsageInfo),
+    interagentType: v.optional(MessageInteragentType),
     done: v.boolean(),
     partial: v.boolean(),
     content: v.string(),
     author: v.string(),
-    type: v.union(
-      v.literal(MessageEventType.ASSISTANT),
-      v.literal(MessageEventType.TOOL_CALL),
-      v.literal(MessageEventType.TOOL_RESPONSE),
-      v.literal(MessageEventType.REASONING),
-      v.literal(MessageEventType.INTER_AGENT)
-    ),
-    role: v.union(
-      v.literal(MessageRole.ASSISTANT),
-      v.literal(MessageRole.USER),
-      v.literal(MessageRole.SYSTEM),
-      v.literal(MessageRole.TOOL)
-    ),
+    type: MessageEventType,
+    role: MessageRoleType,
   })
     .index("by_role", ["role"])
     .index("by_type", ["type"])
@@ -151,7 +124,11 @@ export default defineSchema({
       v.literal("task_updated"),
       v.literal("task_deleted"),
       v.literal("agent_status_changed"),
-      v.literal("task_position_changed")
+      v.literal("task_position_changed"),
+      v.literal("message_created"),
+      v.literal("message_updated"),
+      v.literal("message_deleted"),
+      v.literal("messages_bulk_deleted")
     ),
     entityId: v.string(), // ID of the affected entity
     data: v.any(), // Event-specific data
