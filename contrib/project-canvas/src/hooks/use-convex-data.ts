@@ -94,6 +94,16 @@ export const useConvexAgents = () => {
   };
 };
 
+// Hook for real-time agent projects
+export const useConvexAgentProjects = () => {
+  const convexAgentProjects = useQuery(api.agentProjects.list);
+
+  return {
+    agentProjects: convexAgentProjects || [],
+    loading: convexAgentProjects === undefined,
+  };
+};
+
 // Hook for real-time events
 export const useConvexEvents = (projectId?: string, since?: number) => {
   const events = useQuery(

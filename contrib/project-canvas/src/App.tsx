@@ -43,10 +43,12 @@ function App() {
   }
 
   const renderWorkspaceContent = () => {
+    // Use keys to force unmounting of previous workspace
     switch (currentWorkspace) {
       case "projects":
         return (
           <CanvasContainer
+            key="projects-workspace"
             title="Project Canvas"
             subtitle="Interactive project and task visualization"
           >
@@ -57,6 +59,7 @@ function App() {
       case "agents":
         return (
           <CanvasContainer
+            key="agents-workspace"
             title="Agent Canvas"
             subtitle="Agent flow and collaboration visualization"
           >
@@ -67,6 +70,7 @@ function App() {
       case "settings":
         return (
           <CanvasContainer
+            key="settings-workspace"
             title="Application Settings"
             subtitle="Configure your workspace preferences"
           >

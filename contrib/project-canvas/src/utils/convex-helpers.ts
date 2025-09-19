@@ -141,6 +141,23 @@ export function taskToConvexTask(task: Task): Partial<ConvexTask> {
 }
 
 /**
+ * Convert frontend Agent to Convex format (for updates)
+ */
+export function agentToConvexAgent(agent: Agent): Partial<ConvexAgent> {
+  return {
+    id: agent.id,
+    name: agent.name,
+    role: agent.role,
+    description: agent.description,
+    status: agent.status,
+    isStreaming: agent.isStreaming,
+    capabilities: agent.capabilities,
+    currentTasks: agent.currentTasks,
+    lastActiveAt: agent.lastActiveAt?.getTime(),
+  };
+}
+
+/**
  * Real-time subscription helpers
  */
 export interface SubscriptionOptions {

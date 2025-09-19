@@ -8,6 +8,7 @@ import { mutation } from "./_generated/server";
 import {
   masterProjects,
   masterAgents,
+  masterAgentProjects,
   allTasks,
 } from "../src/data/master-dummy-data";
 
@@ -81,12 +82,43 @@ export const seedDatabase = mutation({
       await ctx.db.insert("tasks", convexTask);
     }
 
+    // Convert and create agent projects from master dummy data (using UUIDs directly)
+    for (const agentProject of masterAgentProjects) {
+      const convexAgentProject = {
+        id: agentProject.id,
+        name: agentProject.name,
+        description: agentProject.description,
+        agentIds: agentProject.agentNodes.map(node => node.id),
+        agentNodes: agentProject.agentNodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: {
+            isSelected: node.data.isSelected || false,
+          },
+        })),
+        connections: agentProject.connections.map(conn => ({
+          id: conn.id,
+          source: conn.source,
+          target: conn.target,
+          type: conn.type,
+          label: conn.label,
+          data: conn.data,
+        })),
+        createdAt: agentProject.createdAt.getTime(),
+        updatedAt: agentProject.updatedAt.getTime(),
+      };
+      await ctx.db.insert("agentProjects", convexAgentProject);
+      console.log(`Created agent project: ${agentProject.name} with UUID: ${agentProject.id}`);
+    }
+
     // No need for ID mapping updates since we use UUIDs directly
 
     return {
       message: "Database seeded with master dummy data (Go-Model konform)",
       projectCount: masterProjects.length,
       agentCount: masterAgents.length,
+      agentProjectCount: masterAgentProjects.length,
       taskCount: allTasks.length,
     };
   },

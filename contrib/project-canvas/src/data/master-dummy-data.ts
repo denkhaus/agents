@@ -6,6 +6,7 @@
 // Import projects and agents from their respective files
 import { PROJECT_IDS, masterProjects } from "./projects";
 import { AGENT_IDS, masterAgents } from "./agents";
+import { AGENT_PROJECT_IDS, masterAgentProjects } from "./agent-projects";
 
 // Kombinierte Arrays für einfachen Zugriff
 import { ecommerceTasks } from "./ecommerce-tasks";
@@ -24,9 +25,10 @@ export const allMobileTasks = [...mobileTasks, ...mobileTasksPart2];
 
 export const allTasks = [...allEcommerceTasks, ...allMobileTasks];
 
-// Re-export master projects and agents for consistency
+// Re-export master projects, agents, and agent projects for consistency
 export { masterProjects, PROJECT_IDS };
 export { masterAgents, AGENT_IDS };
+export { masterAgentProjects, AGENT_PROJECT_IDS };
 
 // Task IDs for Dependencies (Go-Model: uuid.UUID)
 // These should ideally be moved to their respective task files (ecommerce-tasks.ts, mobile-tasks.ts)

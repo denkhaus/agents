@@ -53,15 +53,23 @@ export const ProjectsCanvas: React.FC<ReactFlowCanvasProps> = ({
   const { currentProject } = useProjectStore();
   const { tasks } = useTaskStore();
   const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
-  const { setSelectedNodes, setRightSidebarCollapsed, setReactFlowNodes } =
+  const { setSelectedNodes, setRightSidebarCollapsed, setReactFlowNodes, currentWorkspace } =
     useUIStore();
   const { fitView } = useReactFlow();
+
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   // Update nodes and edges when project or tasks change
   useEffect(() => {
+    // Don't render project data if not in projects workspace
+    if (currentWorkspace !== "projects") {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
     if (!currentProject) {
       setNodes([]);
       setEdges([]);
@@ -84,7 +92,7 @@ export const ProjectsCanvas: React.FC<ReactFlowCanvasProps> = ({
     setReactFlowNodes(newNodes as Node[]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProject, tasks.length, setNodes, setEdges]);
+  }, [currentProject, tasks.length, currentWorkspace, setNodes, setEdges]);
 
   // Handle new connections (for future dependency management)
   const onConnect: OnConnect = useCallback(

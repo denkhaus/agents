@@ -1,107 +1,137 @@
 /**
  * Agent Project Data Hook
- * Initializes agent project store with sample data
+ * Loads agents from Convex and creates agent project visualization
  */
 
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useAgentProjectStore, useAgentStore } from "@/stores";
-import { masterAgents } from "@/data/agents";
+import { useConvexAgents, useConvexAgentProjects } from "./use-convex-data";
 import { AgentProject, AgentNode } from "@/types/agent.types";
 
-// Create agent nodes from real agents
-const createAgentNodes = (): AgentNode[] => [
-  {
-    id: "node-1",
-    type: "agent",
-    position: { x: 100, y: 100 },
-    data: { agent: masterAgents[0] }, // Designer
-  },
-  {
-    id: "node-2", 
-    type: "agent",
-    position: { x: 300, y: 200 },
-    data: { agent: masterAgents[1] }, // Frontend Dev
-  },
-  {
-    id: "node-3",
-    type: "agent",
-    position: { x: 500, y: 100 },
-    data: { agent: masterAgents[2] }, // Backend Dev
-  },
-  {
-    id: "node-4",
-    type: "agent",
-    position: { x: 300, y: 350 },
-    data: { agent: masterAgents[3] }, // QA Engineer
-  },
-  {
-    id: "node-5",
-    type: "agent",
-    position: { x: 500, y: 300 },
-    data: { agent: masterAgents[4] }, // DevOps
-  },
-];
+// Create agent nodes from Convex agents
+const createAgentNodes = (agents: any[]): AgentNode[] => {
+  const positions = [
+    { x: 100, y: 100 },   // Designer
+    { x: 300, y: 200 },   // Frontend Dev  
+    { x: 500, y: 100 },   // Backend Dev
+    { x: 300, y: 350 },   // QA Engineer
+    { x: 500, y: 300 },   // DevOps
+  ];
 
-// Create sample agent project with real agents
-const createSampleAgentProject = (): AgentProject => ({
-  id: "project-1",
-  name: "Development Team",
-  description: "Main development team with all core roles",
-  agents: masterAgents,
-  agentNodes: createAgentNodes(),
-  connections: [
-    {
-      id: "conn-1",
-      source: masterAgents[0].id, // Designer
-      target: masterAgents[1].id, // Frontend Dev
-      type: "collaboration",
-      label: "Design Handoff",
+  return agents.map((agent, index) => ({
+    id: agent.id, // Use agent ID directly
+    type: "agent" as const,
+    position: positions[index] || { x: 100 + (index * 200), y: 100 },
+    data: { agent },
+  }));
+};
+
+// Create agent project from Convex agents
+const createAgentProject = (agents: any[]): AgentProject => {
+  if (agents.length === 0) {
+    return {
+      id: "project-1",
+      name: "Development Team",
+      description: "Main development team with all core roles",
+      agents: [],
+      agentNodes: [],
+      connections: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
+
+  return {
+    id: "project-1",
+    name: "Development Team", 
+    description: "Main development team with all core roles",
+    agents: agents,
+    agentNodes: createAgentNodes(agents),
+    connections: [
+      // Create connections based on agent roles
+      ...agents.slice(0, -1).map((agent, index) => ({
+        id: `conn-${index + 1}`,
+        source: agent.id,
+        target: agents[index + 1].id,
+        type: "collaboration" as const,
+        label: getConnectionLabel(agent.role, agents[index + 1].role),
+      })),
+    ],
+    createdAt: new Date("2024-01-15"),
+    updatedAt: new Date("2024-01-20"),
+  };
+};
+
+// Helper function to get connection labels based on agent roles
+const getConnectionLabel = (sourceRole: string, targetRole: string): string => {
+  const roleMap: Record<string, Record<string, string>> = {
+    designer: {
+      coder: "Design Handoff",
+      "frontend-dev": "Design Handoff",
     },
-    {
-      id: "conn-2", 
-      source: masterAgents[1].id, // Frontend Dev
-      target: masterAgents[2].id, // Backend Dev
-      type: "communication",
-      label: "API Integration",
+    coder: {
+      "qa-engineer": "Code Review",
+      devops: "Deployment",
     },
-    {
-      id: "conn-3",
-      source: masterAgents[2].id, // Backend Dev
-      target: masterAgents[3].id, // QA Engineer
-      type: "collaboration",
-      label: "Testing",
+    "qa-engineer": {
+      devops: "Testing Results",
     },
-    {
-      id: "conn-4",
-      source: masterAgents[3].id, // QA Engineer
-      target: masterAgents[4].id, // DevOps
-      type: "collaboration", 
-      label: "Deployment",
-    },
-  ],
-  createdAt: new Date("2024-01-15"),
-  updatedAt: new Date("2024-01-20"),
-});
+  };
+
+  return roleMap[sourceRole]?.[targetRole] || "Collaboration";
+};
 
 export const useAgentProjectData = () => {
-  const { agentProjects, setAgentProjects, setCurrentAgentProject } = useAgentProjectStore();
-  const { agents, setAgents } = useAgentStore();
+  const { agentProjects, setAgentProjects, setCurrentAgentProject, currentAgentProject } = useAgentProjectStore();
+  const { setAgents } = useAgentStore();
+  
+  // Load agents and agent projects from Convex
+  const { agents: convexAgents, loading: agentsLoading } = useConvexAgents();
+  const { agentProjects: convexAgentProjects, loading: agentProjectsLoading } = useConvexAgentProjects();
+  
+  // Track if we've already initialized to prevent loops
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Initialize with real agent data if empty
-    if (agentProjects.length === 0) {
-      const sampleProject = createSampleAgentProject();
-      setAgentProjects([sampleProject]);
-      setCurrentAgentProject(sampleProject);
-    }
+    const loading = agentsLoading || agentProjectsLoading;
     
-    if (agents.length === 0) {
-      setAgents(masterAgents);
+    if (!loading) {
+      if (!initializedRef.current) {
+        // Update agent store with Convex data
+        if (convexAgents.length > 0) {
+          setAgents(convexAgents);
+        }
+        
+        // Load agent projects from Convex
+        if (convexAgentProjects.length > 0) {
+          setAgentProjects(convexAgentProjects);
+          
+          // Set the first agent project as current if none is selected
+          if (!currentAgentProject) {
+            setCurrentAgentProject(convexAgentProjects[0]);
+          }
+        } else {
+          // Fallback to dummy data if no Convex agent projects
+          const { masterAgentProjects } = require('@/data/master-dummy-data');
+          
+          if (masterAgentProjects && masterAgentProjects.length > 0) {
+            setAgentProjects(masterAgentProjects);
+            
+            if (!currentAgentProject) {
+              setCurrentAgentProject(masterAgentProjects[0]);
+            }
+          }
+        }
+        
+        initializedRef.current = true;
+      }
     }
-  }, [agentProjects.length, agents.length, setAgentProjects, setCurrentAgentProject, setAgents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentsLoading, agentProjectsLoading, convexAgents.length, convexAgentProjects.length]); // Store setters are stable and don't need to be in deps
 
   return {
     agentProjects,
-    agents,
+    agents: convexAgents,
+    loading: agentsLoading || agentProjectsLoading,
   };
 };

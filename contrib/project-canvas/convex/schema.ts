@@ -139,6 +139,48 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_entity", ["entityId"]),
 
+  // Agent Projects table - for team configurations and canvas layouts
+  agentProjects: defineTable({
+    id: v.string(), // UUID
+    name: v.string(),
+    description: v.string(),
+    // Agent relationships
+    agentIds: v.array(v.string()), // Array of agent UUIDs
+    // Canvas layout data
+    agentNodes: v.array(v.object({
+      id: v.string(), // Agent UUID
+      type: v.literal("agent"),
+      position: v.object({
+        x: v.number(),
+        y: v.number(),
+      }),
+      data: v.object({
+        isSelected: v.optional(v.boolean()),
+      }),
+    })),
+    // Agent connections/relationships
+    connections: v.array(v.object({
+      id: v.string(), // Connection UUID
+      source: v.string(), // Source agent UUID
+      target: v.string(), // Target agent UUID
+      type: v.union(
+        v.literal("communication"),
+        v.literal("hierarchy"), 
+        v.literal("collaboration")
+      ),
+      label: v.optional(v.string()),
+      data: v.optional(v.object({
+        frequency: v.optional(v.number()),
+        protocol: v.optional(v.string()),
+      })),
+    })),
+    // Timestamps
+    createdAt: v.number(), // Unix timestamp
+    updatedAt: v.number(), // Unix timestamp
+  })
+    .index("by_name", ["name"])
+    .index("by_updated", ["updatedAt"]),
+
   // User settings table
   settings: defineTable({
     userId: v.string(), // Unique identifier for the user
