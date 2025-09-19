@@ -17,34 +17,37 @@ export const AGENT_PROJECT_IDS = {
 
 // Agent Node Positionen für Canvas-Layout
 const ECOMMERCE_AGENT_POSITIONS = [
-  { x: 150, y: 100 },  // Designer
-  { x: 400, y: 50 },   // Frontend Dev
-  { x: 400, y: 200 },  // Backend Dev  
-  { x: 650, y: 125 },  // QA Engineer
-  { x: 150, y: 300 },  // DevOps
+  { x: 150, y: 100 }, // Designer
+  { x: 400, y: 50 }, // Frontend Dev
+  { x: 400, y: 200 }, // Backend Dev
+  { x: 650, y: 125 }, // QA Engineer
+  { x: 150, y: 300 }, // DevOps
 ];
 
 const MOBILE_AGENT_POSITIONS = [
-  { x: 200, y: 150 },  // Designer
-  { x: 450, y: 100 },  // Frontend Dev (Mobile)
-  { x: 450, y: 250 },  // Backend Dev
-  { x: 700, y: 175 },  // QA Engineer
+  { x: 200, y: 150 }, // Designer
+  { x: 450, y: 100 }, // Frontend Dev (Mobile)
+  { x: 450, y: 250 }, // Backend Dev
+  { x: 700, y: 175 }, // QA Engineer
 ];
 
 const FULL_TEAM_POSITIONS = [
-  { x: 100, y: 100 },  // Designer
-  { x: 300, y: 50 },   // Frontend Dev
-  { x: 500, y: 50 },   // Backend Dev
-  { x: 300, y: 200 },  // QA Engineer  
-  { x: 500, y: 200 },  // DevOps
+  { x: 100, y: 100 }, // Designer
+  { x: 300, y: 50 }, // Frontend Dev
+  { x: 500, y: 50 }, // Backend Dev
+  { x: 300, y: 200 }, // QA Engineer
+  { x: 500, y: 200 }, // DevOps
 ];
 
 // Erstelle Agent Nodes
-const createAgentNodes = (agentIds: string[], positions: { x: number; y: number }[]): AgentNode[] => {
+const createAgentNodes = (
+  agentIds: string[],
+  positions: { x: number; y: number }[]
+): AgentNode[] => {
   return agentIds.map((agentId, index) => ({
     id: agentId,
     type: "agent" as const,
-    position: positions[index] || { x: 100 + (index * 200), y: 100 },
+    position: positions[index] || { x: 100 + index * 200, y: 100 },
     data: {
       agent: {
         id: agentId,
@@ -66,7 +69,7 @@ const createEcommerceConnections = (): AgentConnection[] => [
     data: { frequency: 8, protocol: "figma-handoff" },
   },
   {
-    id: "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b", 
+    id: "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b",
     source: AGENT_IDS.FRONTEND_DEV,
     target: AGENT_IDS.BACKEND_DEV,
     type: "collaboration",
@@ -104,7 +107,7 @@ const createMobileConnections = (): AgentConnection[] => [
     id: "c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f",
     source: AGENT_IDS.DESIGNER,
     target: AGENT_IDS.FRONTEND_DEV,
-    type: "collaboration", 
+    type: "collaboration",
     label: "Mobile Design System",
     data: { frequency: 9, protocol: "design-tokens" },
   },
@@ -198,7 +201,7 @@ Specialized team configuration for the e-commerce platform redesign project. Opt
 ### Team Composition
 - **Designer**: UX/UI specialist for e-commerce platforms
 - **Frontend Developer**: React/TypeScript expert
-- **Backend Developer**: Node.js/Express specialist  
+- **Backend Developer**: Node.js/Express specialist
 - **QA Engineer**: E-commerce testing and automation
 - **DevOps Engineer**: Web deployment and infrastructure
 
@@ -216,19 +219,22 @@ Specialized team configuration for the e-commerce platform redesign project. Opt
 - Testing reports in Jira
 - Deployment notifications in Teams`,
     agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
-    agentNodes: createAgentNodes([
-      AGENT_IDS.DESIGNER,
-      AGENT_IDS.FRONTEND_DEV,
-      AGENT_IDS.BACKEND_DEV,
-      AGENT_IDS.QA_ENGINEER,
-      AGENT_IDS.DEVOPS,
-    ], ECOMMERCE_AGENT_POSITIONS),
+    agentNodes: createAgentNodes(
+      [
+        AGENT_IDS.DESIGNER,
+        AGENT_IDS.FRONTEND_DEV,
+        AGENT_IDS.BACKEND_DEV,
+        AGENT_IDS.QA_ENGINEER,
+        AGENT_IDS.DEVOPS,
+      ],
+      ECOMMERCE_AGENT_POSITIONS
+    ),
     connections: createEcommerceConnections(),
     createdAt: new Date("2024-01-15T10:00:00Z"),
     updatedAt: new Date("2024-01-20T15:30:00Z"),
   },
 
-  // Mobile Team Configuration  
+  // Mobile Team Configuration
   {
     id: AGENT_PROJECT_IDS.MOBILE_TEAM,
     name: "Mobile Development Team",
@@ -256,12 +262,15 @@ Lean team configuration optimized for mobile app development with React Native. 
 - Automated device testing pipeline
 - Beta testing via TestFlight/Play Console`,
     agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
-    agentNodes: createAgentNodes([
-      AGENT_IDS.DESIGNER,
-      AGENT_IDS.FRONTEND_DEV,
-      AGENT_IDS.BACKEND_DEV,
-      AGENT_IDS.QA_ENGINEER,
-    ], MOBILE_AGENT_POSITIONS),
+    agentNodes: createAgentNodes(
+      [
+        AGENT_IDS.DESIGNER,
+        AGENT_IDS.FRONTEND_DEV,
+        AGENT_IDS.BACKEND_DEV,
+        AGENT_IDS.QA_ENGINEER,
+      ],
+      MOBILE_AGENT_POSITIONS
+    ),
     connections: createMobileConnections(),
     createdAt: new Date("2024-01-10T11:00:00Z"),
     updatedAt: new Date("2024-01-18T17:15:00Z"),
@@ -297,13 +306,16 @@ Complete development team configuration supporting both web and mobile developme
 - End-to-end automation
 - Infrastructure as code`,
     agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
-    agentNodes: createAgentNodes([
-      AGENT_IDS.DESIGNER,
-      AGENT_IDS.FRONTEND_DEV,
-      AGENT_IDS.BACKEND_DEV,
-      AGENT_IDS.QA_ENGINEER,
-      AGENT_IDS.DEVOPS,
-    ], FULL_TEAM_POSITIONS),
+    agentNodes: createAgentNodes(
+      [
+        AGENT_IDS.DESIGNER,
+        AGENT_IDS.FRONTEND_DEV,
+        AGENT_IDS.BACKEND_DEV,
+        AGENT_IDS.QA_ENGINEER,
+        AGENT_IDS.DEVOPS,
+      ],
+      FULL_TEAM_POSITIONS
+    ),
     connections: createFullTeamConnections(),
     createdAt: new Date("2024-01-08T09:00:00Z"),
     updatedAt: new Date("2024-01-22T12:45:00Z"),
@@ -316,7 +328,9 @@ export const mobileTeam = masterAgentProjects[1];
 export const fullDevelopmentTeam = masterAgentProjects[2];
 
 // Helper function to get agent project by project ID (for linking with regular projects)
-export const getAgentProjectForProject = (projectId: string): AgentProject | undefined => {
+export const getAgentProjectForProject = (
+  projectId: string
+): AgentProject | undefined => {
   switch (projectId) {
     case PROJECT_IDS.ECOMMERCE:
       return ecommerceTeam;
@@ -330,6 +344,6 @@ export const getAgentProjectForProject = (projectId: string): AgentProject | und
 // Export connection types for validation
 export const CONNECTION_TYPES = {
   COMMUNICATION: "communication",
-  HIERARCHY: "hierarchy", 
+  HIERARCHY: "hierarchy",
   COLLABORATION: "collaboration",
 } as const;

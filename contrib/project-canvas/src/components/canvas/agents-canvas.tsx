@@ -43,8 +43,6 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
   const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
   const { fitView } = useReactFlow();
 
-
-
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -56,7 +54,7 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
 
     // Convert agent nodes - ensure they are agent type
     const reactFlowNodes: Node[] = currentAgentProject.agentNodes
-      .filter(agentNode => agentNode.type === "agent")
+      .filter((agentNode) => agentNode.type === "agent")
       .map((agentNode) => ({
         id: agentNode.id, // Use agentNode.id directly
         type: "agent",
@@ -67,7 +65,7 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
     // Convert connections to edges - only for agent connections
     const reactFlowEdges: Edge[] = currentAgentProject.connections
       ? currentAgentProject.connections
-          .filter(connection => {
+          .filter((connection) => {
             // Ensure we only process valid connection types
             const validTypes = ["hierarchy", "communication", "collaboration"];
             return validTypes.includes(connection.type);
@@ -90,21 +88,21 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
             },
           }))
       : [];
-    
+
     return { reactFlowNodes, reactFlowEdges };
   }, [currentAgentProject]);
 
   // Update nodes and edges when agent project changes
   useEffect(() => {
     // Additional safety check - ensure all nodes are agent type
-    const safeNodes = reactFlowNodes.filter(node => node.type === "agent");
-    
+    const safeNodes = reactFlowNodes.filter((node) => node.type === "agent");
+
     // Additional safety check - ensure all edges use default type
-    const safeEdges = reactFlowEdges.map(edge => ({
+    const safeEdges = reactFlowEdges.map((edge) => ({
       ...edge,
-      type: "default" // Force all edges to use default type
+      type: "default", // Force all edges to use default type
     }));
-    
+
     setNodes(safeNodes);
     setEdges(safeEdges);
   }, [reactFlowNodes, reactFlowEdges, setNodes, setEdges]);
@@ -150,7 +148,9 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
   // Show loading state
   if (agentDataLoading) {
     return (
-      <div className={`h-full w-full ${className} flex items-center justify-center`}>
+      <div
+        className={`h-full w-full ${className} flex items-center justify-center`}
+      >
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">Loading agents from Convex...</p>

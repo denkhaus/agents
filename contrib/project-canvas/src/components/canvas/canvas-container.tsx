@@ -3,7 +3,7 @@
  * Main container for ReactFlow visualization
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,17 +17,17 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReactFlow, ReactFlowProvider } from "@xyflow/react";
+import { useUIStore, useSettingsStore } from "@/stores";
 import {
-  useProjectStore,
-  useUIStore,
-  useTaskStore,
-  useSettingsStore,
-} from "@/stores";
-import { useRealTimeData } from "@/hooks/use-real-time-data";
-import { calculateLayout, defaultLayoutOptions } from "@/utils/layout";
-import { Project } from "@/types/project.types";
-import { CustomNode } from "@/types/reactflow.types";
-import { WorkspaceType } from "@/types";
+  WORKSPACE_TYPES,
+  getNodeTypeForWorkspace,
+  isValidNodeType,
+  type NodeType,
+  type WorkspaceType,
+} from "@/constants";
+import { StoreRegistry } from "@/stores/store-registry";
+import { NodeTypeRegistry } from "@/registry";
+import "@/stores/registry-initializer"; // Auto-initialize registries
 
 interface CanvasContainerProps {
   children: React.ReactNode;
@@ -38,29 +38,16 @@ interface CanvasContainerProps {
 
 export const CanvasContainer: React.FC<CanvasContainerProps> = ({
   children,
-  title = "Project Visualization",
-  subtitle = "Interactive task flow diagram",
+  title = "Canvas Visualization",
+  subtitle = "Interactive flow diagram",
   className,
 }) => {
-  const { currentProject } = useProjectStore();
-  const { setWorkspace } = useUIStore();
-  const { tasksByProject } = useTaskStore();
-
-  // Task-Anzahl für aktuelles Projekt berechnen
-  const taskCount = currentProject
-    ? tasksByProject[currentProject.id]?.length || 0
-    : 0;
-
   return (
     <ReactFlowProvider>
       <CanvasContainerInner
         title={title}
         subtitle={subtitle}
         className={className}
-        taskCount={taskCount}
-        setWorkspace={setWorkspace}
-        currentProject={currentProject}
-        tasksByProject={tasksByProject}
       >
         {children}
       </CanvasContainerInner>
@@ -68,28 +55,37 @@ export const CanvasContainer: React.FC<CanvasContainerProps> = ({
   );
 };
 
-interface CanvasContainerInnerProps extends CanvasContainerProps {
-  taskCount: number;
-  setWorkspace: (workspace: WorkspaceType) => void;
-  currentProject: Project | null;
-  tasksByProject: Record<string, any[]>;
-}
-
-const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
+const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
   children,
-  title = "Project Visualization",
-  subtitle = "Interactive task flow diagram",
+  title = "Canvas Visualization",
+  subtitle = "Interactive flow diagram",
   className,
-  taskCount,
-  setWorkspace,
-  currentProject,
-  tasksByProject,
 }) => {
   const reactFlowInstance = useReactFlow();
   const { canvasZoom, updateCanvasSettings } = useSettingsStore();
+  const { currentWorkspace } = useUIStore();
 
   // Zustand für Zoomstufe aus Settings Store
   const [zoomLevel, setZoomLevel] = useState(canvasZoom);
+
+  // Get current workspace configuration
+  const currentNodeType = useMemo(() => {
+    return getNodeTypeForWorkspace(currentWorkspace as WorkspaceType);
+  }, [currentWorkspace]);
+
+  // Get node count and display name using registry
+  const { nodeCount, displayName } = useMemo(() => {
+    const config = NodeTypeRegistry.getConfigForWorkspace(
+      currentWorkspace as WorkspaceType
+    );
+    if (config) {
+      return {
+        nodeCount: config.operations.getCount(),
+        displayName: config.displayName,
+      };
+    }
+    return { nodeCount: 0, displayName: "Items" };
+  }, [currentWorkspace]);
 
   // Update zoom level when reactFlowInstance changes or when zoom changes
   React.useEffect(() => {
@@ -146,28 +142,33 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
     }
   };
 
-  // Download Funktion - Exportiert Projekt als JSON
+  // UNIFIED Download Funktion - Workspace-agnostic
   const handleDownload = () => {
-    if (!currentProject) {
-      console.warn("No project selected for download");
+    const config = NodeTypeRegistry.getConfigForWorkspace(
+      currentWorkspace as WorkspaceType
+    );
+    if (!config) {
+      console.warn("No configuration found for current workspace");
       return;
     }
 
-    // Erstelle ein Datenobjekt mit Projekt und Tasks
-    const projectData = {
-      project: currentProject,
-      tasks: tasksByProject[currentProject.id] || [],
+    // Create export data based on current workspace
+    const exportData = {
+      workspace: currentWorkspace,
+      nodeType: currentNodeType,
+      timestamp: new Date().toISOString(),
+      nodeCount: config.operations.getCount(),
     };
 
-    // Konvertiere in JSON
-    const jsonData = JSON.stringify(projectData, null, 2);
+    // Convert to JSON
+    const jsonData = JSON.stringify(exportData, null, 2);
 
-    // Erstelle Blob und Download-Link
+    // Create blob and download link
     const blob = new Blob([jsonData], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${currentProject.title.replace(/\s+/g, "_")}_export.json`;
+    a.download = `${currentWorkspace}_export_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -175,60 +176,72 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
   };
 
   // Settings Funktion - Aktiviert den Settings Workspace
+  const { setWorkspace } = useUIStore();
   const handleSettings = () => {
-    setWorkspace("settings");
+    setWorkspace(WORKSPACE_TYPES.SETTINGS);
   };
 
-  // Auto-layout Funktion
-  const { tasks } = useTaskStore();
-  const { updateTaskPosition, updateProjectPosition } = useRealTimeData();
-
+  // UNIFIED Auto-layout Funktion - Node-agnostic
   const handleAutoLayout = useCallback(() => {
-    if (!currentProject) {
-      console.warn("No project selected for auto-layout.");
+    if (!reactFlowInstance) {
+      console.warn("ReactFlow instance not available for auto-layout.");
       return;
     }
 
-    const { nodes: newNodes } = calculateLayout(currentProject, tasks, {
-      ...defaultLayoutOptions,
-      force: true,
+    const nodes = reactFlowInstance.getNodes();
+    if (nodes.length === 0) {
+      console.warn("No nodes available for auto-layout.");
+      return;
+    }
+
+    // Use existing layout calculation or simple grid layout
+    const gridSize = Math.ceil(Math.sqrt(nodes.length));
+    const spacing = 250;
+
+    const newNodes = nodes.map((node, index) => {
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+
+      return {
+        ...node,
+        position: {
+          x: col * spacing + 100,
+          y: row * spacing + 100,
+        },
+      };
     });
 
     // Update node positions in ReactFlow
-    if (reactFlowInstance) {
-      reactFlowInstance.setNodes((prevNodes) => {
-        return prevNodes.map((node) => {
-          const updatedNode = newNodes.find(
-            (n: CustomNode) => n.id === node.id
-          );
-          if (updatedNode) {
-            return {
-              ...node,
-              position: updatedNode.position,
-            };
-          }
-          return node;
-        });
-      });
-    }
+    reactFlowInstance.setNodes(newNodes);
 
-    // Persist the new positions for all nodes
-    newNodes.forEach((node: CustomNode) => {
-      if (node.position) {
-        if (node.type === "task") {
-          updateTaskPosition(node.id, node.position);
-        } else if (node.type === "project") {
-          updateProjectPosition(node.id, node.position);
+    // UNIFIED POSITION UPDATE - Node-agnostic approach
+    newNodes.forEach((node: any) => {
+      if (node.position && isValidNodeType(node.type)) {
+        const nodeType = node.type as NodeType;
+        const storeOperations = StoreRegistry.getStoreForNodeType(nodeType);
+
+        if (storeOperations?.updatePosition) {
+          storeOperations
+            .updatePosition(node.id, node.position)
+            .catch((error) => {
+              console.error(
+                `Error updating position for ${nodeType} node ${node.id}:`,
+                error
+              );
+            });
+        } else {
+          console.warn(
+            `No position update operation found for node type: ${nodeType}`
+          );
         }
       }
     });
-  }, [
-    tasks,
-    currentProject,
-    updateTaskPosition,
-    updateProjectPosition,
-    reactFlowInstance,
-  ]);
+
+    // Fit view after layout
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+    }, 100);
+  }, [reactFlowInstance]);
 
   return (
     <div className={cn("h-full flex flex-col", className)}>
@@ -241,7 +254,7 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>
           <Badge variant="secondary" className="ml-2">
-            {taskCount} Tasks
+            {nodeCount} {displayName}
           </Badge>
         </div>
 
@@ -324,7 +337,7 @@ const CanvasContainerInner: React.FC<CanvasContainerInnerProps> = ({
         </div>
         <div className="flex items-center gap-4">
           <span>
-            {taskCount} nodes, {Math.max(0, taskCount - 1)} edges
+            {nodeCount} nodes, {Math.max(0, nodeCount - 1)} edges
           </span>
           <span>•</span>
           <span>Connected</span>
@@ -344,9 +357,7 @@ const CanvasOverlay: React.FC = () => {
       <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
         <Card className="p-6 text-center">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">
-            Loading project data...
-          </p>
+          <p className="text-sm text-muted-foreground">Loading data...</p>
         </Card>
       </div>
     );
@@ -361,9 +372,8 @@ const CanvasOverlay: React.FC = () => {
           </div>
           <h3 className="text-lg font-semibold mb-2">No Project Selected</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Select a project from the sidebar to view its task visualization.
+            Select a item from the sidebar to view its visualization.
           </p>
-          <Button>Browse Projects</Button>
         </Card>
       </div>
     );
