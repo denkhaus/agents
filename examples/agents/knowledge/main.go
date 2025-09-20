@@ -31,7 +31,7 @@ import (
 
 	// Embedder.
 	"trpc.group/trpc-go/trpc-agent-go/knowledge/embedder"
-	geminiembedder "trpc.group/trpc-go/trpc-agent-go/knowledge/embedder/gemini"
+	//geminiembedder "trpc.group/trpc-go/trpc-agent-go/knowledge/embedder/gemini"
 	openaiembedder "trpc.group/trpc-go/trpc-agent-go/knowledge/embedder/openai"
 
 	// Source.
@@ -211,8 +211,8 @@ func (c *knowledgeChat) setupVectorDB() (vectorstore.VectorStore, error) {
 // setupEmbedder creates embedder based on the configured embedderType.
 func (c *knowledgeChat) setupEmbedder(ctx context.Context) (embedder.Embedder, error) {
 	switch strings.ToLower(c.embedderType) {
-	case "gemini":
-		return geminiembedder.New(ctx)
+	// case "gemini":
+	// 	return geminiembedder.New(ctx)
 	default: // openai
 		return openaiembedder.New(
 			openaiembedder.WithModel(openaiEmbeddingModel),

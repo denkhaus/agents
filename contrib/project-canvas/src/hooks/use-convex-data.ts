@@ -6,7 +6,12 @@
 import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useProjectStore, useTaskStore, useAgentStore } from "@/stores";
+import {
+  useProjectStore,
+  useTaskStore,
+  useAgentStore,
+  useSettingsStore,
+} from "@/stores";
 import {
   convexProjectToProject,
   convexTaskToTask,
@@ -17,6 +22,7 @@ import {
 export const useConvexProjects = () => {
   const convexProjects = useQuery(api.projects.list);
   const { setProjects, setCurrentProject, currentProject } = useProjectStore();
+  const { selectedProjectId } = useSettingsStore(); // Get selected project ID from settings
 
   React.useEffect(() => {
     if (convexProjects) {
@@ -25,27 +31,32 @@ export const useConvexProjects = () => {
 
       if (projects.length > 0) {
         let projectToSet = null;
-        // Try to find the currently selected project in the new list
-        if (currentProject) {
-          projectToSet = projects.find((p) => p.id === currentProject.id);
+
+        // 1. Try to set current project from selectedProjectId in settings
+        if (selectedProjectId) {
+          projectToSet = projects.find((p) => p.id === selectedProjectId);
         }
-        // If the current project is not found or none was selected, default to the first project
-        if (!projectToSet) {
+
+        // 2. If no project found from settings or no selectedProjectId, default to first project
+        if (!projectToSet && projects.length > 0) {
           projectToSet = projects[0];
         }
-        // Only update if the project to set is different from the current one
-        if (
-          projectToSet &&
-          (!currentProject || currentProject.id !== projectToSet.id)
-        ) {
+
+        // 3. Only update if the project to set is different from the current one
+        if (projectToSet && projectToSet.id !== currentProject?.id) {
           setCurrentProject(projectToSet);
+        } else if (!projectToSet && currentProject) {
+          // If no projects available but one was selected, clear the selection
+          setCurrentProject(null);
         }
-      } else if (currentProject) {
-        // If there are no projects but one was selected, clear the selection
-        setCurrentProject(null);
       }
     }
-  }, [convexProjects, setProjects, setCurrentProject, currentProject]);
+  }, [
+    convexProjects,
+    setProjects, // State setters are stable, but including them is fine
+    setCurrentProject, // State setters are stable, but including them is fine
+    selectedProjectId,
+  ]);
 
   return {
     projects: convexProjects?.map(convexProjectToProject) || [],
@@ -61,7 +72,6 @@ export const useConvexTasks = (projectId?: string) => {
   );
   const { setTasks } = useTaskStore();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (convexTasks) {
       const tasks = convexTasks.map(convexTaskToTask);
@@ -80,7 +90,6 @@ export const useConvexAgents = () => {
   const convexAgents = useQuery(api.agents.list);
   const { setAgents } = useAgentStore();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (convexAgents) {
       const agents = convexAgents.map(convexAgentToAgent);
@@ -128,11 +137,13 @@ export const useConvexMutations = () => {
   const updateTaskFields = useMutation(api.tasks.updateEditableFields);
   const updateTaskPosition = useMutation(api.tasks.updatePosition);
   const updateProjectPosition = useMutation(api.projects.updatePosition);
+  const updateAgentNodes = useMutation(api.agentProjects.updateAgentNodes); // Add updateAgentNodes mutation
 
   return {
     updateProjectFields,
     updateTaskFields,
     updateTaskPosition,
     updateProjectPosition,
+    updateAgentNodes, // Expose the new mutation
   };
 };

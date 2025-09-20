@@ -6,30 +6,47 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+export const SCHEMA = {
+  type: v.union(
+    v.literal("project_updated"),
+    v.literal("project_position_changed"),
+    v.literal("task_created"),
+    v.literal("task_updated"),
+    v.literal("task_deleted"),
+    v.literal("agent_status_changed"),
+    v.literal("task_position_changed"),
+    v.literal("message_created"),
+    v.literal("message_updated"),
+    v.literal("message_deleted"),
+    v.literal("messages_bulk_deleted")
+  ),
+
+  entityId: v.string(), // ID of the affected entity
+  data: v.any(), // Event-specific data
+  userId: v.optional(v.string()), // User who triggered the event
+  timestamp: v.number(),
+};
+
 // Get recent events for real-time updates
 export const getRecentEvents = query({
-  args: { 
+  args: {
     since: v.optional(v.number()), // Unix timestamp
     types: v.optional(v.array(v.string())), // Filter by event types
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("events")
-      .withIndex("by_timestamp");
+    let query = ctx.db.query("events").withIndex("by_timestamp");
 
     // Filter by timestamp if provided
     if (args.since !== undefined) {
       query = query.filter((q) => q.gte(q.field("timestamp"), args.since!));
     }
 
-    let events = await query
-      .order("desc")
-      .take(args.limit || 50);
+    let events = await query.order("desc").take(args.limit || 50);
 
     // Filter by event types if provided
     if (args.types && args.types.length > 0) {
-      events = events.filter(event => args.types!.includes(event.type));
+      events = events.filter((event) => args.types!.includes(event.type));
     }
 
     return events;
@@ -38,7 +55,7 @@ export const getRecentEvents = query({
 
 // Subscribe to events for a specific project
 export const subscribeToProject = query({
-  args: { 
+  args: {
     projectId: v.string(),
     since: v.optional(v.number()),
   },
@@ -51,11 +68,11 @@ export const subscribeToProject = query({
           q.eq(q.field("entityId"), args.projectId),
           q.eq(q.field("data.projectId"), args.projectId)
         );
-        
+
         if (args.since) {
           filter = q.and(filter, q.gte(q.field("timestamp"), args.since));
         }
-        
+
         return filter;
       })
       .order("desc")
@@ -67,7 +84,7 @@ export const subscribeToProject = query({
 
 // Clean up old events (maintenance)
 export const cleanupOldEvents = mutation({
-  args: { 
+  args: {
     olderThan: v.number(), // Unix timestamp
   },
   handler: async (ctx, args) => {

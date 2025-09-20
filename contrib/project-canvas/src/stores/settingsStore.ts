@@ -12,23 +12,25 @@ export interface UserSettings {
   theme: ThemeConfig["mode"];
   leftSidebarCollapsed: boolean;
   rightSidebarCollapsed: boolean;
-  
+
   // Workspace State
   currentWorkspace: WorkspaceType;
   selectedProjectId: UUID | null;
   selectedNodeIds: UUID[];
-  
+
   // Application Settings
   autoSave: boolean;
   notifications: boolean;
   language: string;
-  
+
   // Canvas Settings
   showMiniMap: boolean;
   showBackground: boolean;
   autoLayout: boolean;
   canvasZoom: number;
-  
+  projectCanvasViewport: { x: number; y: number; zoom: number };
+  agentsCanvasViewport: { x: number; y: number; zoom: number };
+
   // Timestamps
   lastUpdated: number;
 }
@@ -40,13 +42,25 @@ interface SettingsStore extends UserSettings {
   updateWorkspace: (workspace: WorkspaceType) => void;
   updateSelectedProject: (projectId: UUID | null) => void;
   updateSelectedNodes: (nodeIds: UUID[]) => void;
-  updateApplicationSettings: (settings: Partial<Pick<UserSettings, 'autoSave' | 'notifications' | 'language'>>) => void;
-  updateCanvasSettings: (settings: Partial<Pick<UserSettings, 'showMiniMap' | 'showBackground' | 'autoLayout' | 'canvasZoom'>>) => void;
-  
+  updateApplicationSettings: (
+    settings: Partial<
+      Pick<UserSettings, "autoSave" | "notifications" | "language">
+    >
+  ) => void;
+  updateCanvasSettings: (
+    settings: Partial<
+      Pick<
+        UserSettings,
+        "showMiniMap" | "showBackground" | "autoLayout" | "canvasZoom"
+      > & { x?: number; y?: number; zoom?: number }
+    >,
+    canvasType: "project" | "agents"
+  ) => void;
+
   // Bulk operations
   updateSettings: (settings: Partial<UserSettings>) => void;
   resetSettings: () => void;
-  
+
   // Sync operations
   loadFromRemote: (remoteSettings: Partial<UserSettings>) => void;
   getSettingsForSync: () => UserSettings;
@@ -57,23 +71,25 @@ const defaultSettings: UserSettings = {
   theme: "light",
   leftSidebarCollapsed: false,
   rightSidebarCollapsed: true,
-  
+
   // Workspace State
   currentWorkspace: "projects",
   selectedProjectId: null,
   selectedNodeIds: [],
-  
+
   // Application Settings
   autoSave: true,
   notifications: true,
   language: "en",
-  
+
   // Canvas Settings
   showMiniMap: true,
   showBackground: true,
   autoLayout: true,
   canvasZoom: 100,
-  
+  projectCanvasViewport: { x: 0, y: 0, zoom: 1 },
+  agentsCanvasViewport: { x: 0, y: 0, zoom: 1 },
+
   // Timestamps
   lastUpdated: Date.now(),
 };
@@ -150,11 +166,31 @@ export const useSettingsStore = create<SettingsStore>()(
           ),
 
         // Canvas Settings
-        updateCanvasSettings: (settings) =>
+        updateCanvasSettings: (settings, canvasType) =>
           set(
-            {
-              ...settings,
-              lastUpdated: Date.now(),
+            (state) => {
+              const newSettings = {
+                ...state,
+                lastUpdated: Date.now(),
+              };
+              if (canvasType === "project") {
+                newSettings.projectCanvasViewport = {
+                  ...state.projectCanvasViewport,
+                  ...settings,
+                };
+              } else if (canvasType === "agents") {
+                newSettings.agentsCanvasViewport = {
+                  ...state.agentsCanvasViewport,
+                  ...settings,
+                };
+              }
+
+              // Update canvasZoom if a zoom setting is provided
+              if (typeof settings.zoom === "number") {
+                newSettings.canvasZoom = Math.round(settings.zoom * 100);
+              }
+
+              return newSettings;
             },
             false,
             "settings/updateCanvasSettings"
@@ -186,7 +222,10 @@ export const useSettingsStore = create<SettingsStore>()(
           set(
             (state) => {
               // Only update if remote settings are newer
-              if (remoteSettings.lastUpdated && remoteSettings.lastUpdated > state.lastUpdated) {
+              if (
+                remoteSettings.lastUpdated &&
+                remoteSettings.lastUpdated > state.lastUpdated
+              ) {
                 return {
                   ...state,
                   ...remoteSettings,
@@ -214,6 +253,8 @@ export const useSettingsStore = create<SettingsStore>()(
             showBackground: state.showBackground,
             autoLayout: state.autoLayout,
             canvasZoom: state.canvasZoom,
+            projectCanvasViewport: state.projectCanvasViewport,
+            agentsCanvasViewport: state.agentsCanvasViewport,
             lastUpdated: state.lastUpdated,
           };
         },
@@ -234,6 +275,8 @@ export const useSettingsStore = create<SettingsStore>()(
           showBackground: state.showBackground,
           autoLayout: state.autoLayout,
           canvasZoom: state.canvasZoom,
+          projectCanvasViewport: state.projectCanvasViewport,
+          agentsCanvasViewport: state.agentsCanvasViewport,
           lastUpdated: state.lastUpdated,
         }),
       }

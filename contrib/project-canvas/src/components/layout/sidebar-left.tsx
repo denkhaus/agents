@@ -4,16 +4,15 @@
  */
 
 import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useUIStore, useProjectStore } from "@/stores";
+import { useUIStore, useProjectStore, useAgentStore } from "@/stores"; // Added useAgentStore
 import { WorkspaceType } from "@/types";
-import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { FolderOpen, Users, Settings, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WorkspaceContent } from "@/components/workspaces";
 
 const getWorkspaces = (
   projectCount: number,
@@ -24,6 +23,7 @@ const getWorkspaces = (
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   count?: number;
+  path: string; // Added path for routing
 }> => [
   {
     id: "projects",
@@ -31,6 +31,7 @@ const getWorkspaces = (
     icon: FolderOpen,
     description: "Manage and visualize projects",
     count: projectCount,
+    path: "/projects",
   },
   {
     id: "agents",
@@ -38,30 +39,31 @@ const getWorkspaces = (
     icon: Users,
     description: "View agent status and assignments",
     count: agentCount,
+    path: "/agents",
   },
   {
     id: "settings",
     label: "Settings",
     icon: Settings,
     description: "Application preferences",
+    path: "/settings",
   },
 ];
 
 export const SidebarLeft: React.FC = () => {
-  const { sidebarCollapsed, currentWorkspace, setWorkspace } = useUIStore();
-
-  const { setCurrentProject } = useProjectStore();
-  const { projects, agents } = useRealTimeData();
+  const { sidebarCollapsed } = useUIStore();
+  const { setCurrentProject, projects } = useProjectStore();
+  const { agents } = useAgentStore();
+  const location = useLocation();
 
   const workspaces = getWorkspaces(projects.length, agents.length);
 
-  // Auto-select first project when clicking Projects workspace
-  const handleProjectsClick = () => {
-    setWorkspace("projects");
-    if (projects.length > 0) {
+  // Auto-select first project when navigating to Projects workspace
+  React.useEffect(() => {
+    if (location.pathname === "/projects" && projects.length > 0) {
       setCurrentProject(projects[0]);
     }
-  };
+  }, [location.pathname, projects, setCurrentProject]);
 
   return (
     <aside
@@ -76,7 +78,7 @@ export const SidebarLeft: React.FC = () => {
           <div className="space-y-1">
             {workspaces.map((workspace) => {
               const Icon = workspace.icon;
-              const isActive = currentWorkspace === workspace.id;
+              const isActive = location.pathname === workspace.path;
 
               return (
                 <Button
@@ -86,31 +88,29 @@ export const SidebarLeft: React.FC = () => {
                     "w-full justify-start h-10",
                     sidebarCollapsed ? "px-2" : "px-3"
                   )}
-                  onClick={() =>
-                    workspace.id === "projects"
-                      ? handleProjectsClick()
-                      : setWorkspace(workspace.id)
-                  }
+                  asChild
                 >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      sidebarCollapsed ? "mx-auto" : "mr-3"
-                    )}
-                  />
-
-                  {!sidebarCollapsed && (
-                    <>
-                      <span className="flex-1 text-left">
-                        {workspace.label}
-                      </span>
-                      {workspace.count && (
-                        <Badge variant="secondary" className="ml-auto">
-                          {workspace.count}
-                        </Badge>
+                  <Link to={workspace.path}>
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        sidebarCollapsed ? "mx-auto" : "mr-3"
                       )}
-                    </>
-                  )}
+                    />
+
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="flex-1 text-left">
+                          {workspace.label}
+                        </span>
+                        {workspace.count && (
+                          <Badge variant="secondary" className="ml-auto">
+                            {workspace.count}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </Link>
                 </Button>
               );
             })}
@@ -119,12 +119,12 @@ export const SidebarLeft: React.FC = () => {
 
         <Separator />
 
-        {/* Workspace Content */}
+        {/* Workspace Content - no longer rendered here directly */}
         <div className="flex-1 overflow-hidden">
           {!sidebarCollapsed && (
             <ScrollArea className="h-full">
-              <div className="p-2">
-                <WorkspaceContent workspace={currentWorkspace} />
+              <div className="p-2 max-w-full overflow-hidden">
+                {/* Content will be rendered by router */}
               </div>
             </ScrollArea>
           )}
@@ -146,4 +146,3 @@ export const SidebarLeft: React.FC = () => {
     </aside>
   );
 };
-

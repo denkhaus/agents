@@ -7,7 +7,7 @@ require (
 	entgo.io/ent v0.14.5
 	github.com/MichaelMure/go-term-markdown v0.1.4
 	github.com/briandowns/spinner v1.23.2
-	github.com/charmbracelet/bubbletea v1.3.8
+	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/chzyer/readline v1.5.1
 	github.com/go-chi/chi/v5 v5.2.3
@@ -32,13 +32,13 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.30.0
-	trpc.group/trpc-go/trpc-a2a-go v0.2.3
-	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250904070130-981d83483333
-	trpc.group/trpc-go/trpc-agent-go v0.1.2
-	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.0.3
-	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.0.4
-	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.0.0-20250910084842-ece5d4c66387
-	trpc.group/trpc-go/trpc-agent-go/session/redis v0.0.5
+	trpc.group/trpc-go/trpc-a2a-go v0.2.4-0.20250904070130-981d83483333
+	trpc.group/trpc-go/trpc-a2a-go/taskmanager/redis v0.0.0-20250917090329-17ce522e097d
+	trpc.group/trpc-go/trpc-agent-go v0.2.1
+	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/pgvector v0.2.0
+	trpc.group/trpc-go/trpc-agent-go/knowledge/vectorstore/tcvector v0.2.0
+	trpc.group/trpc-go/trpc-agent-go/memory/redis v0.2.0
+	trpc.group/trpc-go/trpc-agent-go/session/redis v0.2.1
 	trpc.group/trpc-go/trpc-mcp-go v0.0.5
 )
 

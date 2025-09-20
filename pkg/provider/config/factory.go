@@ -65,11 +65,11 @@ func (f *UnifiedAgentFactory) CreateAgent(ctx context.Context, environment Envir
 	case shared.AgentTypeDefault:
 		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, availableAgents)
 	case shared.AgentTypeChain:
-		ag, err = f.createChainAgent(ctx, environment, agentConfig, allTools)
+		ag, err = f.createChainAgent(ctx, environment, agentConfig)
 	case shared.AgentTypeCycle:
-		ag, err = f.createCycleAgent(ctx, environment, agentConfig, allTools)
+		ag, err = f.createCycleAgent(ctx, environment, agentConfig)
 	case shared.AgentTypeParallel:
-		ag, err = f.createParallelAgent(ctx, environment, agentConfig, allTools)
+		ag, err = f.createParallelAgent(ctx, environment, agentConfig)
 	default:
 		// Default to LLM agent if type is not specified or unknown
 		ag, err = f.createLLMAgent(ctx, environment, agentConfig, allTools, availableAgents)

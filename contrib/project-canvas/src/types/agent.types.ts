@@ -60,7 +60,7 @@ export interface AgentUpdateInput {
 // Agent Canvas/Flow specific types
 export interface AgentNode {
   id: UUID;
-  type: 'agent';
+  type: "agent";
   position: { x: number; y: number };
   data: {
     agent: Agent;
@@ -72,7 +72,6 @@ export interface AgentProject {
   id: UUID;
   name: string;
   description: string;
-  agents: Agent[];
   agentNodes: AgentNode[];
   connections: AgentConnection[];
   createdAt: Date;
@@ -83,7 +82,7 @@ export interface AgentConnection {
   id: UUID;
   source: UUID; // Agent ID
   target: UUID; // Agent ID
-  type: 'communication' | 'hierarchy' | 'collaboration';
+  type: "communication" | "hierarchy" | "collaboration";
   label?: string;
   data?: {
     frequency?: number;
@@ -99,7 +98,6 @@ export interface AgentProjectFilter {
 export interface AgentProjectUpdateInput {
   name?: string;
   description?: string;
-  agents?: Agent[];
   agentNodes?: AgentNode[];
   connections?: AgentConnection[];
 }

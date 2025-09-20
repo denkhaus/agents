@@ -37,6 +37,18 @@ export type {
   AgentProjectUpdateInput,
 } from "./agent.types";
 
+export type {
+  TaskStoreState,
+  ProjectStoreState,
+  AgentProjectStoreState,
+  RealTimeDataState,
+  TaskStoreGetter,
+  ProjectStoreGetter,
+  AgentProjectStoreGetter,
+  RealTimeDataGetter,
+  Position as StorePosition,
+} from "./store-operations.types";
+
 // UI types
 export type {
   WorkspaceType,

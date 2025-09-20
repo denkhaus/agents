@@ -3,10 +3,10 @@
  * Main container for ReactFlow visualization
  */
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   ZoomIn,
   ZoomOut,
@@ -16,24 +16,18 @@ import {
   Layout,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useReactFlow, ReactFlowProvider } from "@xyflow/react";
-import { useUIStore, useSettingsStore } from "@/stores";
-import {
-  WORKSPACE_TYPES,
-  getNodeTypeForWorkspace,
-  isValidNodeType,
-  type NodeType,
-  type WorkspaceType,
-} from "@/constants";
-import { StoreRegistry } from "@/stores/store-registry";
+import { useReactFlow, ReactFlowProvider, Viewport } from "@xyflow/react"; // Import Viewport type
+import { useSettingsStore } from "@/stores";
+import { getNodeTypeForWorkspace, type WorkspaceType } from "@/constants";
 import { NodeTypeRegistry } from "@/registry";
-import "@/stores/registry-initializer"; // Auto-initialize registries
 
 interface CanvasContainerProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
   className?: string;
+  onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
+  onAutoLayoutRequest?: () => void; // New prop for auto-layout
 }
 
 export const CanvasContainer: React.FC<CanvasContainerProps> = ({
@@ -41,6 +35,7 @@ export const CanvasContainer: React.FC<CanvasContainerProps> = ({
   title = "Canvas Visualization",
   subtitle = "Interactive flow diagram",
   className,
+  onAutoLayoutRequest,
 }) => {
   return (
     <ReactFlowProvider>
@@ -48,6 +43,7 @@ export const CanvasContainer: React.FC<CanvasContainerProps> = ({
         title={title}
         subtitle={subtitle}
         className={className}
+        onAutoLayoutRequest={onAutoLayoutRequest} // Pass the prop down
       >
         {children}
       </CanvasContainerInner>
@@ -60,64 +56,56 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
   title = "Canvas Visualization",
   subtitle = "Interactive flow diagram",
   className,
+  onViewportChange,
+  onAutoLayoutRequest, // Destructure the new prop
 }) => {
   const reactFlowInstance = useReactFlow();
-  const { canvasZoom, updateCanvasSettings } = useSettingsStore();
-  const { currentWorkspace } = useUIStore();
+  const {
+    updateCanvasSettings,
+    projectCanvasViewport,
+    agentsCanvasViewport,
+    canvasZoom, // Read canvasZoom from the store
+  } = useSettingsStore();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  // Zustand für Zoomstufe aus Settings Store
-  const [zoomLevel, setZoomLevel] = useState(canvasZoom);
+  // Determine the current viewport based on the active route
+  const initialViewport = useMemo(() => {
+    if (location.pathname === "/projects") {
+      return projectCanvasViewport;
+    } else if (location.pathname === "/agents") {
+      return agentsCanvasViewport;
+    }
+    return { x: 0, y: 0, zoom: 1 }; // Default or fallback
+  }, [location.pathname, projectCanvasViewport, agentsCanvasViewport]);
+
+  // Handler for viewport changes (pan, zoom)
+  const handleOnViewportChange = useCallback(
+    (_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+      const newPersistedViewport = {
+        x: viewport.x,
+        y: viewport.y,
+        zoom: viewport.zoom,
+      };
+      updateCanvasSettings(
+        newPersistedViewport,
+        location.pathname === "/projects" ? "project" : "agents"
+      );
+
+      // Call external onViewportChange if provided
+      if (onViewportChange) {
+        onViewportChange({ x: viewport.x, y: viewport.y, zoom: viewport.zoom });
+      }
+    },
+    [updateCanvasSettings, location.pathname, onViewportChange]
+  );
 
   // Get current workspace configuration
   const currentNodeType = useMemo(() => {
-    return getNodeTypeForWorkspace(currentWorkspace as WorkspaceType);
-  }, [currentWorkspace]);
-
-  // Get node count and display name using registry
-  const { nodeCount, displayName } = useMemo(() => {
-    const config = NodeTypeRegistry.getConfigForWorkspace(
-      currentWorkspace as WorkspaceType
-    );
-    if (config) {
-      return {
-        nodeCount: config.operations.getCount(),
-        displayName: config.displayName,
-      };
-    }
-    return { nodeCount: 0, displayName: "Items" };
-  }, [currentWorkspace]);
-
-  // Update zoom level when reactFlowInstance changes or when zoom changes
-  React.useEffect(() => {
-    if (reactFlowInstance) {
-      const currentZoom = Math.round(reactFlowInstance.getZoom() * 100);
-      setZoomLevel(currentZoom);
-
-      // Save to settings store if different
-      if (currentZoom !== canvasZoom) {
-        updateCanvasSettings({ canvasZoom: currentZoom });
-      }
-    }
-  }, [reactFlowInstance, canvasZoom, updateCanvasSettings]);
-
-  // Add event listener for zoom changes
-  React.useEffect(() => {
-    if (!reactFlowInstance) return;
-
-    // Use a timer to periodically check for zoom changes
-    // This is a workaround since onViewportChange might not be available
-    const interval = setInterval(() => {
-      const currentZoom = Math.round(reactFlowInstance.getZoom() * 100);
-      if (currentZoom !== zoomLevel) {
-        setZoomLevel(currentZoom);
-        updateCanvasSettings({ canvasZoom: currentZoom });
-      }
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [reactFlowInstance, updateCanvasSettings, zoomLevel]);
+    // Map pathname to WorkspaceType for getNodeTypeForWorkspace
+    const workspaceType = location.pathname.substring(1) as WorkspaceType;
+    return getNodeTypeForWorkspace(workspaceType);
+  }, [location.pathname]);
 
   // Zoom-In Funktion
   const handleZoomIn = () => {
@@ -144,9 +132,9 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
 
   // UNIFIED Download Funktion - Workspace-agnostic
   const handleDownload = () => {
-    const config = NodeTypeRegistry.getConfigForWorkspace(
-      currentWorkspace as WorkspaceType
-    );
+    // Map pathname to WorkspaceType for NodeTypeRegistry
+    const workspaceType = location.pathname.substring(1) as WorkspaceType;
+    const config = NodeTypeRegistry.getConfigForWorkspace(workspaceType);
     if (!config) {
       console.warn("No configuration found for current workspace");
       return;
@@ -154,10 +142,10 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
 
     // Create export data based on current workspace
     const exportData = {
-      workspace: currentWorkspace,
+      workspace: workspaceType,
       nodeType: currentNodeType,
       timestamp: new Date().toISOString(),
-      nodeCount: config.operations.getCount(),
+      nodeCount: 0, // Will be calculated by the component
     };
 
     // Convert to JSON
@@ -168,80 +156,38 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${currentWorkspace}_export_${Date.now()}.json`;
+    a.download = `${location.pathname.substring(1)}_export_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  // Settings Funktion - Aktiviert den Settings Workspace
-  const { setWorkspace } = useUIStore();
+  // Settings Funktion - Navigiert zum Settings Workspace
   const handleSettings = () => {
-    setWorkspace(WORKSPACE_TYPES.SETTINGS);
+    navigate("/settings");
   };
 
   // UNIFIED Auto-layout Funktion - Node-agnostic
   const handleAutoLayout = useCallback(() => {
-    if (!reactFlowInstance) {
-      console.warn("ReactFlow instance not available for auto-layout.");
-      return;
+    if (onAutoLayoutRequest) {
+      onAutoLayoutRequest();
     }
-
-    const nodes = reactFlowInstance.getNodes();
-    if (nodes.length === 0) {
-      console.warn("No nodes available for auto-layout.");
-      return;
-    }
-
-    // Use existing layout calculation or simple grid layout
-    const gridSize = Math.ceil(Math.sqrt(nodes.length));
-    const spacing = 250;
-
-    const newNodes = nodes.map((node, index) => {
-      const row = Math.floor(index / gridSize);
-      const col = index % gridSize;
-
-      return {
-        ...node,
-        position: {
-          x: col * spacing + 100,
-          y: row * spacing + 100,
-        },
-      };
-    });
-
-    // Update node positions in ReactFlow
-    reactFlowInstance.setNodes(newNodes);
-
-    // UNIFIED POSITION UPDATE - Node-agnostic approach
-    newNodes.forEach((node: any) => {
-      if (node.position && isValidNodeType(node.type)) {
-        const nodeType = node.type as NodeType;
-        const storeOperations = StoreRegistry.getStoreForNodeType(nodeType);
-
-        if (storeOperations?.updatePosition) {
-          storeOperations
-            .updatePosition(node.id, node.position)
-            .catch((error) => {
-              console.error(
-                `Error updating position for ${nodeType} node ${node.id}:`,
-                error
-              );
-            });
-        } else {
-          console.warn(
-            `No position update operation found for node type: ${nodeType}`
-          );
-        }
+    
+    // Also trigger the specific canvas auto-layout based on current workspace
+    const currentPath = location.pathname;
+    if (currentPath.includes('/agents')) {
+      // Trigger agent canvas auto-layout
+      if ((window as any).triggerAgentAutoLayout) {
+        (window as any).triggerAgentAutoLayout();
       }
-    });
-
-    // Fit view after layout
-    setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }, 100);
-  }, [reactFlowInstance]);
+    } else if (currentPath.includes('/projects')) {
+      // Trigger project canvas auto-layout
+      if ((window as any).triggerProjectAutoLayout) {
+        (window as any).triggerProjectAutoLayout();
+      }
+    }
+  }, [onAutoLayoutRequest, location.pathname]);
 
   return (
     <div className={cn("h-full flex flex-col", className)}>
@@ -253,9 +199,6 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
             <h2 className="text-lg font-semibold">{title}</h2>
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>
-          <Badge variant="secondary" className="ml-2">
-            {nodeCount} {displayName}
-          </Badge>
         </div>
 
         {/* Canvas Controls */}
@@ -271,7 +214,7 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
               <ZoomOut className="h-4 w-4" />
             </Button>
             <div className="px-2 text-xs font-medium border-x border-border">
-              {zoomLevel}%
+              {canvasZoom}%
             </div>
             <Button
               variant="ghost"
@@ -322,7 +265,15 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
 
       {/* Canvas Content */}
       <div className="flex-1 relative overflow-hidden bg-muted/20">
-        {children}
+        {React.Children.map(children, (child) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child as React.ReactElement<any>, {
+                onMove: handleOnViewportChange, // Use onMove for general viewport changes
+                defaultViewport: initialViewport, // Pass initialViewport to child canvas
+                onAutoLayoutRequest: handleAutoLayout, // Pass auto-layout handler to canvas
+              })
+            : child
+        )}
 
         {/* Canvas Overlay - Loading/Empty States */}
         <CanvasOverlay />
@@ -336,9 +287,7 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
           <span>Auto-save enabled</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>
-            {nodeCount} nodes, {Math.max(0, nodeCount - 1)} edges
-          </span>
+          <span>Canvas View</span>
           <span>•</span>
           <span>Connected</span>
         </div>
@@ -348,7 +297,7 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
 };
 
 // Canvas overlay for states
-const CanvasOverlay: React.FC = () => {
+export const CanvasOverlay: React.FC = () => {
   const [isLoading] = React.useState(false);
   const [isEmpty] = React.useState(false);
 

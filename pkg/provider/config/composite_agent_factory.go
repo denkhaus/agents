@@ -10,11 +10,10 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/agent/cycleagent"
 
 	"trpc.group/trpc-go/trpc-agent-go/agent/parallelagent"
-	"trpc.group/trpc-go/trpc-agent-go/tool"
 )
 
 // createChainAgent creates a chain agent with the provided configuration
-func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig) (agent.Agent, error) {
 	options := []chainagent.Option{}
 
 	// Add sub-agents
@@ -33,16 +32,12 @@ func (f *UnifiedAgentFactory) createChainAgent(ctx context.Context, environment 
 		options = append(options, chainagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
-	if len(tools) > 0 {
-		options = append(options, chainagent.WithTools(tools))
-	}
-
 	// Create and return the chain agent
 	return chainagent.New(agentConfig.Name, options...), nil
 }
 
 // createCycleAgent creates a cycle agent with the provided configuration
-func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig) (agent.Agent, error) {
 	options := []cycleagent.Option{}
 
 	// Add sub-agents
@@ -66,16 +61,12 @@ func (f *UnifiedAgentFactory) createCycleAgent(ctx context.Context, environment 
 		options = append(options, cycleagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
 	}
 
-	if len(tools) > 0 {
-		options = append(options, cycleagent.WithTools(tools))
-	}
-
 	// Create and return the cycle agent
 	return cycleagent.New(agentConfig.Name, options...), nil
 }
 
 // createParallelAgent creates a parallel agent with the provided configuration
-func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig, tools []tool.Tool) (agent.Agent, error) {
+func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environment EnvironmentName, agentConfig *AgentConfig) (agent.Agent, error) {
 	options := []parallelagent.Option{}
 
 	// Add sub-agents
@@ -92,10 +83,6 @@ func (f *UnifiedAgentFactory) createParallelAgent(ctx context.Context, environme
 	// Add channel buffer size if specified
 	if agentConfig.Setting.Agent.ChannelBufferSize > 0 {
 		options = append(options, parallelagent.WithChannelBufferSize(agentConfig.Setting.Agent.ChannelBufferSize))
-	}
-
-	if len(tools) > 0 {
-		options = append(options, parallelagent.WithTools(tools))
 	}
 
 	// Create and return the parallel agent

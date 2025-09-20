@@ -11,6 +11,9 @@ import type {
   ProjectEditableFields,
   UUID,
 } from "@/types";
+import { api } from "../../convex/_generated/api";
+import { convex } from "@/lib/convex";
+import { convexProjectToProject } from "@/utils/convex-helpers";
 
 export interface ProjectStore {
   // State
@@ -158,11 +161,9 @@ export const useProjectStore = create<ProjectStore>()(
       fetchProjects: async () => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          // const projects = await convex.query(api.projects.list);
-          // set({ projects, loading: false });
-          console.log("fetchProjects - to be implemented with Convex");
-          set({ loading: false });
+          const projects = await convex.query(api.projects.list);
+          const mappedProjects = projects.map(convexProjectToProject);
+          set({ projects: mappedProjects, loading: false });
         } catch (error) {
           set({
             error:
@@ -177,12 +178,21 @@ export const useProjectStore = create<ProjectStore>()(
       createProject: async (input) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          // const project = await convex.mutation(api.projects.create, input);
-          // get().addProject(project);
-          console.log("createProject - to be implemented with Convex", input);
+          const projectId = await convex.mutation(api.projects.create, {
+            title: input.title || "New Project", // Provide default or throw error
+            description: input.description || "",
+          });
+          // After creating, fetch the full project to get all fields including createdAt, etc.
+          const newConvexProject = await convex.query(api.projects.get, {
+            id: projectId,
+          });
+          if (!newConvexProject) {
+            throw new Error("Failed to retrieve new project after creation.");
+          }
+          const newProject = convexProjectToProject(newConvexProject);
+          get().addProject(newProject);
           set({ loading: false });
-          return {} as Project; // Temporary
+          return newProject;
         } catch (error) {
           set({
             error:
@@ -198,14 +208,10 @@ export const useProjectStore = create<ProjectStore>()(
       updateProjectAsync: async (id, updates) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          // await convex.mutation(api.projects.update, { id, ...updates });
-          get().updateProject(id, updates);
-          console.log(
-            "updateProjectAsync - to be implemented with Convex",
+          await convex.mutation(api.projects.updateEditableFields, {
             id,
-            updates
-          );
+            ...updates,
+          });
           set({ loading: false });
         } catch (error) {
           set({
@@ -222,10 +228,8 @@ export const useProjectStore = create<ProjectStore>()(
       deleteProjectAsync: async (id) => {
         set({ loading: true, error: null });
         try {
-          // TODO: Implement with Convex
-          // await convex.mutation(api.projects.delete, { id });
+          await convex.mutation(api.projects.remove, { id });
           get().deleteProject(id);
-          console.log("deleteProjectAsync - to be implemented with Convex", id);
           set({ loading: false });
         } catch (error) {
           set({

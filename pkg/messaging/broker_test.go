@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/denkhaus/agents/pkg/shared"
+	"github.com/denkhaus/agents/pkg/utils"
 	"github.com/google/uuid"
 	"trpc.group/trpc-go/trpc-agent-go/agent"
 	"trpc.group/trpc-go/trpc-agent-go/event"
@@ -48,14 +49,13 @@ func (ma *mockAgent) IsStreaming() bool {
 }
 
 func (ma *mockAgent) GetInfo() *shared.AgentInfo {
-	info := shared.NewAgentInfo(
-		ma.id,
-		"test",
-		false,
-		ma.name,
-		"Mock agent for testing",
-	)
-	return &info
+	return &shared.AgentInfo{
+		ID:          ma.id,
+		Role:        "test",
+		IsStreaming: utils.BoolPtr(false),
+		Name:        ma.name,
+		Description: "Mock agent for testing",
+	}
 }
 
 func (ma *mockAgent) GetRole() shared.AgentRole {
@@ -73,8 +73,8 @@ func TestResourceManagerIntegration(t *testing.T) {
 	agent2 := &mockAgent{name: "Agent2", id: uuid2}
 
 	// Convert to shared.TheAgent using the shared.NewAgent function
-	wrapper1 := shared.NewAgent(agent1, uuid1, false, shared.AgentRole("test"))
-	wrapper2 := shared.NewAgent(agent2, uuid2, false, shared.AgentRole("test"))
+	wrapper1 := shared.NewAgent(agent1, uuid1, false, shared.AgentRole("test"), []uuid.UUID{})
+	wrapper2 := shared.NewAgent(agent2, uuid2, false, shared.AgentRole("test"), []uuid.UUID{})
 
 	// Register agents
 	broker.RegisterAgent(uuid1, wrapper1)

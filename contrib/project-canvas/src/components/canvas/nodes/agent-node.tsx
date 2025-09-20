@@ -55,6 +55,8 @@ const getRoleColor = (role: string): string => {
 };
 
 const getAgentInitials = (name: string): string => {
+  if (!name) return "AG";
+  
   return name
     .split(" ")
     .map((word) => word.charAt(0))
@@ -65,6 +67,21 @@ const getAgentInitials = (name: string): string => {
 
 export const AgentNode: React.FC<AgentNodeProps> = ({ data, selected }) => {
   const { agent, isSelected } = data as unknown as AgentNodeData;
+  
+  // Fallback for missing agent data
+  if (!agent) {
+    return (
+      <div className="agent-node">
+        <Card className="min-w-[200px] max-w-[280px]">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-center h-20">
+              <span className="text-muted-foreground">Missing agent data</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="agent-node">
@@ -88,7 +105,7 @@ export const AgentNode: React.FC<AgentNodeProps> = ({ data, selected }) => {
             <div className="relative">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="text-sm font-medium">
-                  {getAgentInitials(agent.name)}
+                  {getAgentInitials(agent.name || "Unknown Agent")}
                 </AvatarFallback>
               </Avatar>
               {/* Status Indicator */}
@@ -101,14 +118,14 @@ export const AgentNode: React.FC<AgentNodeProps> = ({ data, selected }) => {
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm truncate" title={agent.name}>
-                {agent.name}
+              <h3 className="font-medium text-sm truncate" title={agent.name || "Unknown Agent"}>
+                {agent.name || "Unknown Agent"}
               </h3>
               <Badge
                 variant="outline"
                 className={cn("text-xs mt-1", getRoleColor(agent.role))}
               >
-                {agent.role.replace("-", " ")}
+                {agent.role ? agent.role.replace("-", " ") : "Unknown Role"}
               </Badge>
             </div>
           </div>
@@ -144,7 +161,7 @@ export const AgentNode: React.FC<AgentNodeProps> = ({ data, selected }) => {
 
           {/* Status Info */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="capitalize">{agent.status}</span>
+            <span className="capitalize">{agent.status || "unknown"}</span>
             {agent.currentTasks && agent.currentTasks.length > 0 && (
               <span>{agent.currentTasks.length} tasks</span>
             )}

@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { useUIStore } from "@/stores";
@@ -15,8 +16,8 @@ export const TopNavigation: React.FC = () => {
     toggleLeftSidebar,
     rightSidebarCollapsed,
     toggleRightSidebar,
-    setWorkspace,
   } = useUIStore();
+  const navigate = useNavigate();
 
   return (
     <header className="h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -78,7 +79,7 @@ export const TopNavigation: React.FC = () => {
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => setWorkspace("settings")}
+            onClick={() => navigate("/settings")}
           >
             <Settings className="h-4 w-4" />
           </Button>

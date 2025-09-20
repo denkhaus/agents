@@ -12,6 +12,9 @@ import {
   MessageUsageInfo,
 } from "./messages.ts";
 import { v } from "convex/values";
+import { SCHEMA as SettingsSchema } from "./settings.ts";
+import { SCHEMA as AgentProjectsSchema } from "./agentProjects.ts";
+import { SCHEMA as EventsSchema } from "./events.ts";
 
 export default defineSchema({
   // Projects table
@@ -116,90 +119,16 @@ export default defineSchema({
     .index("by_last_active", ["lastActiveAt"]),
 
   // Real-time events for live updates
-  events: defineTable({
-    type: v.union(
-      v.literal("project_updated"),
-      v.literal("project_position_changed"),
-      v.literal("task_created"),
-      v.literal("task_updated"),
-      v.literal("task_deleted"),
-      v.literal("agent_status_changed"),
-      v.literal("task_position_changed"),
-      v.literal("message_created"),
-      v.literal("message_updated"),
-      v.literal("message_deleted"),
-      v.literal("messages_bulk_deleted")
-    ),
-    entityId: v.string(), // ID of the affected entity
-    data: v.any(), // Event-specific data
-    userId: v.optional(v.string()), // User who triggered the event
-    timestamp: v.number(),
-  })
+  events: defineTable(EventsSchema)
     .index("by_type", ["type"])
     .index("by_timestamp", ["timestamp"])
     .index("by_entity", ["entityId"]),
 
   // Agent Projects table - for team configurations and canvas layouts
-  agentProjects: defineTable({
-    id: v.string(), // UUID
-    name: v.string(),
-    description: v.string(),
-    // Agent relationships
-    agentIds: v.array(v.string()), // Array of agent UUIDs
-    // Canvas layout data
-    agentNodes: v.array(v.object({
-      id: v.string(), // Agent UUID
-      type: v.literal("agent"),
-      position: v.object({
-        x: v.number(),
-        y: v.number(),
-      }),
-      data: v.object({
-        isSelected: v.optional(v.boolean()),
-      }),
-    })),
-    // Agent connections/relationships
-    connections: v.array(v.object({
-      id: v.string(), // Connection UUID
-      source: v.string(), // Source agent UUID
-      target: v.string(), // Target agent UUID
-      type: v.union(
-        v.literal("communication"),
-        v.literal("hierarchy"), 
-        v.literal("collaboration")
-      ),
-      label: v.optional(v.string()),
-      data: v.optional(v.object({
-        frequency: v.optional(v.number()),
-        protocol: v.optional(v.string()),
-      })),
-    })),
-    // Timestamps
-    createdAt: v.number(), // Unix timestamp
-    updatedAt: v.number(), // Unix timestamp
-  })
+  agentProjects: defineTable(AgentProjectsSchema)
     .index("by_name", ["name"])
     .index("by_updated", ["updatedAt"]),
 
   // User settings table
-  settings: defineTable({
-    userId: v.string(), // Unique identifier for the user
-    theme: v.optional(v.union(v.literal("light"), v.literal("dark"))),
-    // Application settings
-    notifications: v.optional(v.boolean()),
-    autoSave: v.optional(v.boolean()),
-    language: v.optional(v.string()),
-    // UI state persistence
-    leftSidebarCollapsed: v.optional(v.boolean()),
-    rightSidebarCollapsed: v.optional(v.boolean()),
-    currentWorkspace: v.optional(v.string()),
-    selectedProjectId: v.optional(v.string()),
-    selectedNodeIds: v.optional(v.array(v.string())),
-    // Canvas settings
-    showMiniMap: v.optional(v.boolean()),
-    showBackground: v.optional(v.boolean()),
-    autoLayout: v.optional(v.boolean()),
-    createdAt: v.number(), // Unix timestamp
-    updatedAt: v.number(), // Unix timestamp
-  }).index("by_user", ["userId"]),
+  settings: defineTable(SettingsSchema).index("by_user", ["userId"]),
 });

@@ -3,91 +3,71 @@
  * Updated to use the new layout system
  */
 
-import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import { CanvasContainer } from "@/components/canvas/canvas-container";
 import { ProjectsCanvas } from "@/components/canvas/projects-canvas";
 import { AgentsCanvas } from "@/components/canvas/agents-canvas";
 import { SettingsCanvas } from "@/components/canvas/settings-canvas";
 import { Toaster } from "@/components/ui/toaster";
-import { useUIStore } from "@/stores";
-import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
+import { useConvexProjects, useConvexTasks } from "@/hooks/use-convex-data";
+import { useProjectStore } from "@/stores";
 
 function App() {
-  const { currentWorkspace } = useUIStore();
-
-  // Real-time data integration
-  const { loading } = useRealTimeData();
-
   // Sync settings with Convex
   useSettingsSync();
 
-  // Show loading only for a short time, then show app even if no data
-  const [showLoading, setShowLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setShowLoading(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (loading && showLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading project data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const renderWorkspaceContent = () => {
-    // Use keys to force unmounting of previous workspace
-    switch (currentWorkspace) {
-      case "projects":
-        return (
-          <CanvasContainer
-            key="projects-workspace"
-            title="Project Canvas"
-            subtitle="Interactive project and task visualization"
-          >
-            <ProjectsCanvas />
-          </CanvasContainer>
-        );
-      
-      case "agents":
-        return (
-          <CanvasContainer
-            key="agents-workspace"
-            title="Agent Canvas"
-            subtitle="Agent flow and collaboration visualization"
-          >
-            <AgentsCanvas />
-          </CanvasContainer>
-        );
-      
-      case "settings":
-        return (
-          <CanvasContainer
-            key="settings-workspace"
-            title="Application Settings"
-            subtitle="Configure your workspace preferences"
-          >
-            <SettingsCanvas />
-          </CanvasContainer>
-        );
-      
-      default:
-        return null;
-    }
-  };
+  // Load projects and tasks from Convex
+  useConvexProjects();
+  const { currentProject } = useProjectStore();
+  useConvexTasks(currentProject?.id);
 
   return (
-    <AppLayout>
-      {renderWorkspaceContent()}
-      <Toaster />
-    </AppLayout>
+    <BrowserRouter>
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<Navigate to="/projects" replace />} />
+          <Route
+            path="/projects"
+            element={
+              <CanvasContainer
+                key="projects-workspace"
+                title="Project Canvas"
+                subtitle="Interactive project and task visualization"
+              >
+                <ProjectsCanvas />
+              </CanvasContainer>
+            }
+          />
+          <Route
+            path="/agents"
+            element={
+              <CanvasContainer
+                key="agents-workspace"
+                title="Agent Canvas"
+                subtitle="Agent flow and collaboration visualization"
+              >
+                <AgentsCanvas />
+              </CanvasContainer>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <CanvasContainer
+                key="settings-workspace"
+                title="Application Settings"
+                subtitle="Configure your workspace preferences"
+              >
+                <SettingsCanvas />
+              </CanvasContainer>
+            }
+          />
+        </Routes>
+        <Toaster />
+      </AppLayout>
+    </BrowserRouter>
   );
 }
 

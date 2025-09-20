@@ -218,7 +218,6 @@ Specialized team configuration for the e-commerce platform redesign project. Opt
 - Code reviews via GitHub
 - Testing reports in Jira
 - Deployment notifications in Teams`,
-    agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
     agentNodes: createAgentNodes(
       [
         AGENT_IDS.DESIGNER,
@@ -261,7 +260,6 @@ Lean team configuration optimized for mobile app development with React Native. 
 - GraphQL APIs for efficient mobile data loading
 - Automated device testing pipeline
 - Beta testing via TestFlight/Play Console`,
-    agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
     agentNodes: createAgentNodes(
       [
         AGENT_IDS.DESIGNER,
@@ -305,7 +303,6 @@ Complete development team configuration supporting both web and mobile developme
 - Integrated API contracts
 - End-to-end automation
 - Infrastructure as code`,
-    agents: [], // Wird zur Laufzeit aus agents.ts gefüllt
     agentNodes: createAgentNodes(
       [
         AGENT_IDS.DESIGNER,

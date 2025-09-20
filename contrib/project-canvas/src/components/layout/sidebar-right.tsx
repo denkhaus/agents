@@ -4,11 +4,16 @@
  */
 
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useUIStore, useProjectStore, useTaskStore } from "@/stores";
-import { useRealTimeData } from "@/hooks/use-real-time-data";
+import {
+  useUIStore,
+  useProjectStore,
+  useTaskStore,
+  useAgentStore,
+} from "@/stores"; // Added useAgentStore
 import { cn } from "@/lib/utils";
 import { X, Info, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,14 +36,14 @@ interface PropertyItem {
 export const SidebarRight: React.FC = () => {
   const {
     rightSidebarCollapsed,
-    currentWorkspace,
     toggleRightSidebar,
     selection,
     reactFlowNodes,
   } = useUIStore();
+  const location = useLocation();
   const { currentProject, updateProject } = useProjectStore();
   const { tasks, updateTask } = useTaskStore();
-  const { agents } = useRealTimeData();
+  const { agents } = useAgentStore(); // Get agents from useAgentStore
 
   // Property update callback
   const handlePropertyUpdate: PropertyUpdateCallback = React.useCallback(
@@ -85,7 +90,7 @@ export const SidebarRight: React.FC = () => {
     | { title: string; type: string; properties: PropertyItem[] }
     | null => {
     // If we're in projects workspace and have a selected node, show its property panel
-    if (currentWorkspace === "projects") {
+    if (location.pathname === "/projects") {
       const propertyPanelNode = getSelectedNodePropertyPanel();
       if (propertyPanelNode) {
         return propertyPanelNode.getPropertyInfo();
@@ -94,15 +99,13 @@ export const SidebarRight: React.FC = () => {
       return currentProject ? getProjectProperties(currentProject) : null;
     }
 
-    // Handle other workspaces
-    switch (currentWorkspace) {
-      case "agents":
-        return agents.length > 0 ? getAgentProperties(agents[0]) : null;
-      case "settings":
-        return getSettingsProperties();
-      default:
-        return null;
+    // Handle other workspaces based on route
+    if (location.pathname === "/agents") {
+      return agents.length > 0 ? getAgentProperties(agents[0]) : null;
+    } else if (location.pathname === "/settings") {
+      return getSettingsProperties();
     }
+    return null;
   };
 
   const getProjectProperties = (

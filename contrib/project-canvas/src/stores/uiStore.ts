@@ -8,7 +8,6 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 
 import type {
   UUID,
-  WorkspaceType,
   ViewportState,
   SelectionState,
   LayoutOptions,
@@ -22,7 +21,6 @@ import type { Node } from "@xyflow/react";
 export interface UIStore {
   // Sidebar State
   sidebar: SidebarConfig;
-  currentWorkspace: WorkspaceType;
   sidebarCollapsed: boolean;
   rightSidebarCollapsed: boolean;
 
@@ -51,7 +49,6 @@ export interface UIStore {
   setLeftSidebarCollapsed: (collapsed: boolean) => void;
   toggleRightSidebar: () => void;
   setRightSidebarCollapsed: (collapsed: boolean) => void;
-  setWorkspace: (workspace: WorkspaceType) => void;
 
   // Theme Actions
   toggleDarkMode: () => void;
@@ -134,7 +131,6 @@ export const useUIStore = create<UIStore>()(
     subscribeWithSelector((set, get) => ({
       // Initial State
       sidebar: defaultSidebar,
-      currentWorkspace: "projects",
       sidebarCollapsed: false,
       rightSidebarCollapsed: true,
       theme: defaultTheme,
@@ -168,8 +164,6 @@ export const useUIStore = create<UIStore>()(
 
       setRightSidebarCollapsed: (collapsed) =>
         set({ rightSidebarCollapsed: collapsed }),
-
-      setWorkspace: (workspace) => set({ currentWorkspace: workspace }),
 
       // Theme Actions
       toggleDarkMode: () =>

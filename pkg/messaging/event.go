@@ -12,24 +12,42 @@ import (
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
 
+const (
+	UUID_LEN = 36
+)
+
 type EventType string
 
 const (
-	EventTypeAssistant    EventType = "assistant"
-	EventTypeToolCall     EventType = "tool.call"
-	EventTypeToolResponse EventType = "tool.response"
-	EventTypeReasoning    EventType = "reasoning"
-	EventTypeInterAgent   EventType = "inter_agent"
+	EventTypeError                    EventType = "error"
+	EventTypeAssistant                EventType = "assistant"
+	EventTypeToolCall                 EventType = "tool.call"
+	EventTypeToolResponse             EventType = "tool.response"
+	EventTypeChatCompletion           EventType = "chat.completion"
+	EventTypeChatRunnerCompletion     EventType = "runner.completion"
+	EventTypeReasoning                EventType = "reasoning"
+	EventTypeInterAgent               EventType = "inter_agent"
+	EventTypePreprocessingBasic       EventType = "preprocessing.basic"
+	EventTypePreprocessingIdentity    EventType = "preprocessing.identity"
+	EventTypePreprocessingPlanning    EventType = "preprocessing.planning"
+	EventTypePreprocessingContent     EventType = "preprocessing.content"
+	EventTypePreprocessingInstruction EventType = "preprocessing.instruction"
+	EventTypePostprocessingPlanning   EventType = "postprocessing.planning"
 )
 
 // validate checks if the event type is valid
 func (et EventType) Validate() bool {
 	switch et {
-	case EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning, EventTypeInterAgent:
+	case EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse,
+		EventTypePostprocessingPlanning, EventTypePreprocessingInstruction,
+		EventTypePreprocessingContent, EventTypePreprocessingPlanning,
+		EventTypePreprocessingIdentity, EventTypePreprocessingBasic,
+		EventTypeChatCompletion, EventTypeChatRunnerCompletion,
+		EventTypeReasoning, EventTypeInterAgent,
+		EventTypeError:
 		return true
 	default:
-		// Any other specific type is also valid as long as it's not empty
-		return et != ""
+		return false
 	}
 }
 
@@ -58,24 +76,6 @@ func NewInterAgentEvent(
 		},
 	}
 }
-
-//TODO: CHeck if the underlying event is an error event
-// func NewErrorEvent(invocationID, author, errorType, errorMessage string) *Event {
-// 	return &Event{
-// 		Response: &model.Response{
-// 			Object: model.ObjectTypeError,
-// 			Done:   true,
-// 			Error: &model.ResponseError{
-// 				Type:    errorType,
-// 				Message: errorMessage,
-// 			},
-// 		},
-// 		ID:           uuid.New().String(),
-// 		Timestamp:    time.Now(),
-// 		InvocationID: invocationID,
-// 		Author:       author,
-// 	}
-// }
 
 func NewLLMEvent(info *RoutingInfo, base *event.Event) (*LLMEvent, error) {
 	ev := &LLMEvent{
@@ -110,31 +110,37 @@ func (p *LLMEvent) extract(info *RoutingInfo, isStreaming bool) (*LLMEvent, erro
 
 	p.Author = p.base.Author
 
-	p.Role = p.determineEventRole()
+	p.addEventRole()
+	p.addUsageMetadata()
+	p.addResponseMetadata()
+
+	if p.determineError() {
+		return p, p.finalize()
+	}
+
 	// Build parts.
 	parts := p.buildEventParts()
 	// Filter parts based on streaming mode.
 	parts, isToolEvent := p.filterEventParts(parts, isStreaming)
 	// Skip event if no meaningful parts, unless it's a tool-related event
-	if len(parts) == 0 && !isToolEvent {
-		return nil, nil
-	}
+	if len(parts) > 0 || isToolEvent {
+		p.Parts = parts
 
-	p.Parts = parts
-
-	// Detect reasoning in the content
-	for _, part := range parts {
-		if textPart, ok := part.(*TextPart); ok {
-			if p.detectReasoning(textPart.Content) {
-				p.Type = EventTypeReasoning
-				break
+		// Detect reasoning in the content
+		for _, part := range parts {
+			if textPart, ok := part.(*TextPart); ok {
+				if p.detectReasoning(textPart.Content) {
+					p.Type = EventTypeReasoning
+					break
+				}
 			}
 		}
 	}
 
-	p.addUsageMetadata()
-	p.addResponseMetadata()
+	return p, p.finalize()
+}
 
+func (p *LLMEvent) finalize() error {
 	// Assign default type if none was set
 	if p.Type == "" {
 		// If it's a tool event but wasn't categorized, set appropriate type
@@ -150,14 +156,14 @@ func (p *LLMEvent) extract(info *RoutingInfo, isStreaming bool) (*LLMEvent, erro
 
 	// Validate the LLMEvent
 	if err := p.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to validate LLMEven: %w", err)
+		return fmt.Errorf("failed to validate LLMEven: %w", err)
 	}
 
-	return p, nil
+	return nil
 }
 
-// determineEventRole determines the role for the event content.
-func (p *LLMEvent) determineEventRole() model.Role {
+// addEventRole determines the role for the event content.
+func (p *LLMEvent) addEventRole() {
 	var role model.Role
 	if p.base.Response != nil {
 		if p.base.Response.Object == model.ObjectTypeToolResponse {
@@ -169,13 +175,15 @@ func (p *LLMEvent) determineEventRole() model.Role {
 				role = p.base.Response.Choices[0].Delta.Role
 			}
 		}
-	}
 
-	return role
+		p.Role = role
+	}
 }
 
 func (p *LLMEvent) addUsageMetadata() {
-	if p.base.Usage == nil {
+	if p.base.Usage == nil || (p.base.Usage.PromptTokens == 0 &&
+		p.base.Usage.CompletionTokens == 0 &&
+		p.base.Usage.TotalTokens == 0) {
 		return
 	}
 
@@ -206,6 +214,20 @@ func (p *LLMEvent) detectReasoning(content string) bool {
 	return false
 }
 
+func (p *LLMEvent) determineError() bool {
+	if p.base.Response == nil {
+		return false
+	}
+
+	if p.base.Response.Error != nil {
+		p.Error = p.base.Response.Error
+		p.Type = EventTypeError
+		return true
+	}
+
+	return false
+}
+
 func (p *LLMEvent) addResponseMetadata() {
 	if p.base.Response == nil {
 		return
@@ -229,7 +251,11 @@ func (p *LLMEvent) addResponseMetadata() {
 	if p.base.Response.Created != 0 {
 		p.Created = time.Unix(p.base.Response.Created, 0)
 		p.CreatedTimestamp = p.base.Response.Created
+	} else {
+		p.Created = time.Now()
+		p.CreatedTimestamp = p.Created.Unix()
 	}
+
 	if p.base.Response.Model != "" {
 		p.Model = p.base.Response.Model
 	}
@@ -239,10 +265,27 @@ func (p *LLMEvent) addResponseMetadata() {
 // If the underlying model.Response already contains a non-empty ID we
 // prefer it; otherwise we fall back to the envelope‐level event ID.
 func (p *LLMEvent) eventID() (uuid.UUID, error) {
+	// Prioritize the ID from the LLM response if available.
 	if p.base.Response != nil && p.base.Response.ID != "" {
-		return uuid.Parse(p.base.Response.ID)
+		uuidString := p.base.Response.ID
+		// Some models might return IDs with additional prefixes or suffixes.
+		// We assume the actual UUID is the last UUID_LEN characters.
+		if len(uuidString) > UUID_LEN {
+			uuidString = uuidString[len(uuidString)-UUID_LEN:]
+		}
+		parsedUUID, err := uuid.Parse(uuidString)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("failed to parse response ID '%s': %w", uuidString, err)
+		}
+		return parsedUUID, nil
 	}
-	return uuid.Parse(p.base.ID)
+
+	// Fallback to the envelope-level event ID.
+	parsedUUID, err := uuid.Parse(p.base.ID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to parse base event ID '%s': %w", p.base.ID, err)
+	}
+	return parsedUUID, nil
 }
 
 // isToolResponse reports whether the supplied event represents a tool

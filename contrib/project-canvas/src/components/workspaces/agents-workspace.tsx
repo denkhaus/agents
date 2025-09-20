@@ -79,7 +79,6 @@ export const AgentsWorkspace: React.FC<AgentProjectsPanelProps> = ({
         id: crypto.randomUUID(),
         name: newProjectName.trim(),
         description: newProjectDescription.trim(),
-        agents: [],
         agentNodes: [],
         connections: [],
         createdAt: new Date(),
@@ -130,13 +129,15 @@ export const AgentsWorkspace: React.FC<AgentProjectsPanelProps> = ({
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Agent Projects</h3>
+          <h3 className="text-sm font-medium max-w-full truncate overflow-hidden text-ellipsis">
+            Agent Projects
+          </h3>
           <Dialog
             open={isCreateDialogOpen}
             onOpenChange={setIsCreateDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button size="sm" className="h-8 w-8 p-0">
+              <Button size="sm" className="h-8 w-8 p-0 flex-shrink-0">
                 <Plus className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -216,7 +217,7 @@ export const AgentsWorkspace: React.FC<AgentProjectsPanelProps> = ({
             <Card
               key={project.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-md",
+                "cursor-pointer transition-all duration-200 hover:shadow-md w-full",
                 currentAgentProject?.id === project.id &&
                   "ring-2 ring-blue-500 ring-offset-2"
               )}
@@ -224,7 +225,7 @@ export const AgentsWorkspace: React.FC<AgentProjectsPanelProps> = ({
             >
               <CardContent className="p-2">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 max-w-[calc(100%-40px)]">
                     <h3
                       className="font-medium text-sm truncate"
                       title={project.name}
@@ -254,7 +255,7 @@ export const AgentsWorkspace: React.FC<AgentProjectsPanelProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 flex-shrink-0"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <MoreVertical className="h-4 w-4" />

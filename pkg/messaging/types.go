@@ -130,4 +130,5 @@ type LLMEvent struct {
 	InvocationID     uuid.UUID            `json:"invocation_id,omitempty"`
 	Author           string               `json:"author,omitempty"`
 	InterAgent       *InterAgentEventType `json:"interagent_type,omitempty"`
+	Error            *model.ResponseError `json:"error,omitempty"`
 }

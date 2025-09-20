@@ -5,7 +5,6 @@
 
 import React from "react";
 import { WorkspaceType } from "@/types";
-import { useRealTimeData } from "@/hooks/use-real-time-data";
 import { useProjectStore } from "@/stores";
 import { ProjectsWorkspace } from "./projects-workspace";
 import { SettingsWorkspace } from "./settings-workspace";
@@ -18,8 +17,7 @@ interface WorkspaceContentProps {
 export const WorkspaceContent: React.FC<WorkspaceContentProps> = ({
   workspace,
 }) => {
-  const { projects } = useRealTimeData();
-  const { setCurrentProject, currentProject } = useProjectStore();
+  const { projects, setCurrentProject, currentProject } = useProjectStore(); // Get projects directly from useProjectStore
 
   switch (workspace) {
     case "projects":

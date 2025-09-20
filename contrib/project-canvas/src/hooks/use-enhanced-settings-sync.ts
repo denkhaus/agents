@@ -7,8 +7,10 @@ import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useSettingsStore, type UserSettings } from "@/stores/settingsStore";
-import { UIStore, useUIStore } from "@/stores/uiStore";
-import { ProjectStore, useProjectStore } from "@/stores/projectStore";
+import { useUIStore } from "@/stores/uiStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { UIStore } from "@/stores/uiStore"; // Re-import UIStore interface
+import { ProjectStore } from "@/stores/projectStore"; // Re-import ProjectStore interface
 
 // Simple user ID for demo purposes - in a real app this would come from auth
 const USER_ID = "default-user";
@@ -34,7 +36,6 @@ export const useEnhancedSettingsSync = () => {
         theme: remoteSettings.theme,
         leftSidebarCollapsed: remoteSettings.leftSidebarCollapsed,
         rightSidebarCollapsed: remoteSettings.rightSidebarCollapsed,
-        currentWorkspace: remoteSettings.currentWorkspace as any,
         selectedProjectId: remoteSettings.selectedProjectId,
         selectedNodeIds: remoteSettings.selectedNodeIds || [],
         autoSave: remoteSettings.autoSave,
@@ -43,6 +44,8 @@ export const useEnhancedSettingsSync = () => {
         showMiniMap: remoteSettings.showMiniMap,
         showBackground: remoteSettings.showBackground,
         autoLayout: remoteSettings.autoLayout,
+        projectCanvasViewport: remoteSettings.projectCanvasViewport,
+        agentsCanvasViewport: remoteSettings.agentsCanvasViewport,
         lastUpdated: remoteSettings.updatedAt || Date.now(),
       });
     }
@@ -53,7 +56,7 @@ export const useEnhancedSettingsSync = () => {
     const settings = settingsStore.getSettingsForSync();
 
     // Update UI store with settings
-    if (settings.theme !== uiStore.theme.mode) {
+    if (settings.theme && settings.theme !== uiStore.theme.mode) {
       uiStore.setTheme({ mode: settings.theme });
     }
 
@@ -65,42 +68,38 @@ export const useEnhancedSettingsSync = () => {
       uiStore.setRightSidebarCollapsed(settings.rightSidebarCollapsed);
     }
 
-    if (settings.currentWorkspace !== uiStore.currentWorkspace) {
-      uiStore.setWorkspace(settings.currentWorkspace);
+    if (settings.selectedNodeIds) {
+      if (
+        settings.selectedNodeIds.length !==
+          uiStore.selection.selectedNodes.length ||
+        !settings.selectedNodeIds.every((id) =>
+          uiStore.selection.selectedNodes.includes(id)
+        )
+      ) {
+        uiStore.setSelectedNodes(settings.selectedNodeIds);
+      }
     }
-
-    if (
-      settings.selectedNodeIds.length !==
-        uiStore.selection.selectedNodes.length ||
-      !settings.selectedNodeIds.every((id) =>
-        uiStore.selection.selectedNodes.includes(id)
-      )
-    ) {
-      uiStore.setSelectedNodes(settings.selectedNodeIds);
-    }
-  }, [
-    settingsStore.theme,
-    settingsStore.leftSidebarCollapsed,
-    settingsStore.rightSidebarCollapsed,
-    settingsStore.currentWorkspace,
-    settingsStore.selectedNodeIds,
-    uiStore,
-  ]);
+  }, [settingsStore, uiStore]);
 
   // Sync settings store to project store
   React.useEffect(() => {
     const settings = settingsStore.getSettingsForSync();
 
-    if (
-      settings.selectedProjectId &&
-      settings.selectedProjectId !== projectStore.currentProject?.id
-    ) {
-      // Load the selected project if it's different
-      // This would typically trigger a project load action
-      console.log("Should load project:", settings.selectedProjectId);
+    if (settings.selectedProjectId) {
+      // Find the project in the store
+      const project = projectStore.projects.find(
+        (p) => p.id === settings.selectedProjectId
+      );
+      if (project && project.id !== projectStore.currentProject?.id) {
+        projectStore.setCurrentProject(project);
+      }
+    } else if (projectStore.currentProject) {
+      // If no selectedProjectId in settings but a project is current, clear it
+      projectStore.setCurrentProject(null);
     }
   }, [
     settingsStore.selectedProjectId,
+    projectStore.projects, // Depend on projects to ensure it runs when projects are loaded
     projectStore.currentProject?.id,
     projectStore,
   ]);
@@ -117,12 +116,13 @@ export const useEnhancedSettingsSync = () => {
           language: settingsUpdate.language,
           leftSidebarCollapsed: settingsUpdate.leftSidebarCollapsed,
           rightSidebarCollapsed: settingsUpdate.rightSidebarCollapsed,
-          currentWorkspace: settingsUpdate.currentWorkspace,
           selectedProjectId: settingsUpdate.selectedProjectId || undefined,
           selectedNodeIds: settingsUpdate.selectedNodeIds,
           showMiniMap: settingsUpdate.showMiniMap,
           showBackground: settingsUpdate.showBackground,
           autoLayout: settingsUpdate.autoLayout,
+          projectCanvasViewport: settingsUpdate.projectCanvasViewport,
+          agentsCanvasViewport: settingsUpdate.agentsCanvasViewport,
         });
       } catch (error) {
         console.error("Failed to sync settings to remote:", error);
@@ -133,7 +133,7 @@ export const useEnhancedSettingsSync = () => {
 
   // Listen for UI store changes and sync to settings store + remote
   React.useEffect(() => {
-    const unsubscribe = uiStore.subscribe(
+    const unsubscribe = useUIStore.subscribe(
       (state: UIStore, prevState: UIStore) => {
         const updates: Partial<UserSettings> = {};
         let hasChanges = false;
@@ -159,12 +159,12 @@ export const useEnhancedSettingsSync = () => {
           hasChanges = true;
         }
 
-        // Check for workspace changes
-        if (state.currentWorkspace !== prevState.currentWorkspace) {
-          updates.currentWorkspace = state.currentWorkspace;
-          settingsStore.updateWorkspace(state.currentWorkspace);
-          hasChanges = true;
-        }
+        // Current workspace is now handled by React Router, no need to sync via settings
+        // if (state.currentWorkspace !== prevState.currentWorkspace) {
+        //   updates.currentWorkspace = state.currentWorkspace;
+        //   settingsStore.updateWorkspace(state.currentWorkspace);
+        //   hasChanges = true;
+        // }
 
         // Check for selection changes
         if (
@@ -188,7 +188,7 @@ export const useEnhancedSettingsSync = () => {
 
   // Listen for project store changes
   React.useEffect(() => {
-    const unsubscribe = projectStore.subscribe(
+    const unsubscribe = useProjectStore.subscribe(
       (state: ProjectStore, prevState: ProjectStore) => {
         if (state.currentProject?.id !== prevState.currentProject?.id) {
           const projectId = state.currentProject?.id || null;

@@ -6,6 +6,51 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+export const SCHEMA = {
+  id: v.string(), // UUID
+  name: v.string(),
+  description: v.string(),
+  // Agent relationships
+  agentIds: v.array(v.string()), // Array of agent UUIDs
+  // Canvas layout data
+  agentNodes: v.array(
+    v.object({
+      id: v.string(), // Agent UUID
+      type: v.literal("agent"),
+      position: v.object({
+        x: v.number(),
+        y: v.number(),
+      }),
+      data: v.object({
+        isSelected: v.optional(v.boolean()),
+      }),
+    })
+  ),
+  // Agent connections/relationships
+  connections: v.array(
+    v.object({
+      id: v.string(), // Connection UUID
+      source: v.string(), // Source agent UUID
+      target: v.string(), // Target agent UUID
+      type: v.union(
+        v.literal("communication"),
+        v.literal("hierarchy"),
+        v.literal("collaboration")
+      ),
+      label: v.optional(v.string()),
+      data: v.optional(
+        v.object({
+          frequency: v.optional(v.number()),
+          protocol: v.optional(v.string()),
+        })
+      ),
+    })
+  ),
+  // Timestamps
+  createdAt: v.number(), // Unix timestamp
+  updatedAt: v.number(), // Unix timestamp
+};
+
 // Query: List all agent projects
 export const list = query({
   args: {},
@@ -89,32 +134,40 @@ export const create = mutation({
     name: v.string(),
     description: v.string(),
     agentIds: v.array(v.string()),
-    agentNodes: v.array(v.object({
-      id: v.string(),
-      type: v.literal("agent"),
-      position: v.object({
-        x: v.number(),
-        y: v.number(),
-      }),
-      data: v.object({
-        isSelected: v.optional(v.boolean()),
-      }),
-    })),
-    connections: v.optional(v.array(v.object({
-      id: v.string(),
-      source: v.string(),
-      target: v.string(),
-      type: v.union(
-        v.literal("communication"),
-        v.literal("hierarchy"),
-        v.literal("collaboration")
-      ),
-      label: v.optional(v.string()),
-      data: v.optional(v.object({
-        frequency: v.optional(v.number()),
-        protocol: v.optional(v.string()),
-      })),
-    }))),
+    agentNodes: v.array(
+      v.object({
+        id: v.string(),
+        type: v.literal("agent"),
+        position: v.object({
+          x: v.number(),
+          y: v.number(),
+        }),
+        data: v.object({
+          isSelected: v.optional(v.boolean()),
+        }),
+      })
+    ),
+    connections: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          source: v.string(),
+          target: v.string(),
+          type: v.union(
+            v.literal("communication"),
+            v.literal("hierarchy"),
+            v.literal("collaboration")
+          ),
+          label: v.optional(v.string()),
+          data: v.optional(
+            v.object({
+              frequency: v.optional(v.number()),
+              protocol: v.optional(v.string()),
+            })
+          ),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -167,17 +220,19 @@ export const updateEditableFields = mutation({
 export const updateAgentNodes = mutation({
   args: {
     id: v.string(),
-    agentNodes: v.array(v.object({
-      id: v.string(),
-      type: v.literal("agent"),
-      position: v.object({
-        x: v.number(),
-        y: v.number(),
-      }),
-      data: v.object({
-        isSelected: v.optional(v.boolean()),
-      }),
-    })),
+    agentNodes: v.array(
+      v.object({
+        id: v.string(),
+        type: v.literal("agent"),
+        position: v.object({
+          x: v.number(),
+          y: v.number(),
+        }),
+        data: v.object({
+          isSelected: v.optional(v.boolean()),
+        }),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const agentProject = await ctx.db
@@ -202,21 +257,25 @@ export const updateAgentNodes = mutation({
 export const updateConnections = mutation({
   args: {
     id: v.string(),
-    connections: v.array(v.object({
-      id: v.string(),
-      source: v.string(),
-      target: v.string(),
-      type: v.union(
-        v.literal("communication"),
-        v.literal("hierarchy"),
-        v.literal("collaboration")
-      ),
-      label: v.optional(v.string()),
-      data: v.optional(v.object({
-        frequency: v.optional(v.number()),
-        protocol: v.optional(v.string()),
-      })),
-    })),
+    connections: v.array(
+      v.object({
+        id: v.string(),
+        source: v.string(),
+        target: v.string(),
+        type: v.union(
+          v.literal("communication"),
+          v.literal("hierarchy"),
+          v.literal("collaboration")
+        ),
+        label: v.optional(v.string()),
+        data: v.optional(
+          v.object({
+            frequency: v.optional(v.number()),
+            protocol: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const agentProject = await ctx.db

@@ -3,6 +3,7 @@ package schema
 import (
 	"testing"
 
+	"github.com/denkhaus/agents/pkg/messaging"
 	"trpc.group/trpc-go/trpc-agent-go/event"
 	"trpc.group/trpc-go/trpc-agent-go/model"
 )
@@ -30,7 +31,7 @@ func TestNewLLMEvent(t *testing.T) {
 		},
 	}
 
-	llmEvent, err := NewLLMEvent(baseEvent, false)
+	llmEvent, err := messaging.NewLLMEvent(baseEvent, false)
 	if err != nil {
 		t.Fatalf("NewLLMEvent failed: %v", err)
 	}
@@ -334,19 +335,19 @@ func TestLLMEvent_AddResponseMetadata(t *testing.T) {
 func TestEventType_Validate(t *testing.T) {
 	// Test valid event types
 	validTypes := []EventType{EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning}
-	
+
 	for _, eventType := range validTypes {
 		if !eventType.Validate() {
 			t.Errorf("expected event type '%s' to be valid", eventType)
 		}
 	}
-	
+
 	// Test that any other specific type is also valid
 	customType := EventType("some-other-type")
 	if !customType.Validate() {
 		t.Errorf("expected custom event type '%s' to be valid", customType)
 	}
-	
+
 	// Test that empty type is invalid
 	emptyType := EventType("")
 	if emptyType.Validate() {
@@ -357,31 +358,31 @@ func TestEventType_Validate(t *testing.T) {
 func TestLLMEvent_Validate(t *testing.T) {
 	// Test valid event types
 	validTypes := []EventType{EventTypeAssistant, EventTypeToolCall, EventTypeToolResponse, EventTypeReasoning}
-	
+
 	for _, eventType := range validTypes {
 		llmEvent := &LLMEvent{
 			Type: eventType,
 		}
-		
+
 		if err := llmEvent.Validate(); err != nil {
 			t.Errorf("expected event with type '%s' to be valid, got error: %v", eventType, err)
 		}
 	}
-	
+
 	// Test that any other specific type is also valid
 	llmEvent := &LLMEvent{
 		Type: "some-other-type",
 	}
-	
+
 	if err := llmEvent.Validate(); err != nil {
 		t.Errorf("expected event with custom type to be valid, got error: %v", err)
 	}
-	
+
 	// Test that empty type is invalid
 	llmEventEmpty := &LLMEvent{
 		Type: "",
 	}
-	
+
 	if err := llmEventEmpty.Validate(); err == nil {
 		t.Error("expected event with empty type to be invalid")
 	}
@@ -461,7 +462,7 @@ func TestLLMEvent_ExtractWithReasoning(t *testing.T) {
 	if result2.Type != EventTypeAssistant {
 		t.Errorf("expected Type to be EventTypeAssistant for normal content, got '%s'", result2.Type)
 	}
-	
+
 	// Test with tool call content
 	baseEvent3 := &event.Event{
 		Response: &model.Response{
@@ -500,7 +501,7 @@ func TestLLMEvent_ExtractWithReasoning(t *testing.T) {
 	if result3.Type != EventTypeToolCall {
 		t.Errorf("expected Type to be EventTypeToolCall for tool call content, got '%s'", result3.Type)
 	}
-	
+
 	// Test with tool response content
 	baseEvent4 := &event.Event{
 		Response: &model.Response{

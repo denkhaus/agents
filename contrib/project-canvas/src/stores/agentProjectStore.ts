@@ -5,7 +5,14 @@
 
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
-import type { AgentProject, AgentProjectFilter, AgentProjectUpdateInput, AgentNode, AgentConnection, UUID } from "@/types";
+import type {
+  AgentProject,
+  AgentProjectFilter,
+  AgentProjectUpdateInput,
+  AgentNode,
+  AgentConnection,
+  UUID,
+} from "@/types";
 
 interface AgentProjectState {
   // State
@@ -22,17 +29,20 @@ interface AgentProjectState {
   updateAgentProject: (id: UUID, updates: AgentProjectUpdateInput) => void;
   deleteAgentProject: (id: UUID) => void;
   duplicateAgentProject: (id: UUID) => void;
-  
+
   // Agent Node Management
   addAgentToProject: (projectId: UUID, agentNode: AgentNode) => void;
   removeAgentFromProject: (projectId: UUID, agentId: UUID) => void;
-  updateAgentNodePosition: (projectId: UUID, agentId: UUID, position: { x: number; y: number }) => void;
-  
+
   // Connection Management
   addConnection: (projectId: UUID, connection: AgentConnection) => void;
   removeConnection: (projectId: UUID, connectionId: UUID) => void;
-  updateConnection: (projectId: UUID, connectionId: UUID, updates: Partial<AgentConnection>) => void;
-  
+  updateConnection: (
+    projectId: UUID,
+    connectionId: UUID,
+    updates: Partial<AgentConnection>
+  ) => void;
+
   // Utility
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -65,7 +75,11 @@ export const useAgentProjectStore = create<AgentProjectState>()(
         set({ agentProjects }, false, "agentProject/setAgentProjects"),
 
       setCurrentAgentProject: (currentAgentProject) =>
-        set({ currentAgentProject }, false, "agentProject/setCurrentAgentProject"),
+        set(
+          { currentAgentProject },
+          false,
+          "agentProject/setCurrentAgentProject"
+        ),
 
       addAgentProject: (project) =>
         set(
@@ -86,7 +100,11 @@ export const useAgentProjectStore = create<AgentProjectState>()(
             ),
             currentAgentProject:
               state.currentAgentProject?.id === id
-                ? { ...state.currentAgentProject, ...updates, updatedAt: new Date() }
+                ? {
+                    ...state.currentAgentProject,
+                    ...updates,
+                    updatedAt: new Date(),
+                  }
                 : state.currentAgentProject,
           }),
           false,
@@ -96,9 +114,13 @@ export const useAgentProjectStore = create<AgentProjectState>()(
       deleteAgentProject: (id) =>
         set(
           (state) => ({
-            agentProjects: state.agentProjects.filter((project) => project.id !== id),
+            agentProjects: state.agentProjects.filter(
+              (project) => project.id !== id
+            ),
             currentAgentProject:
-              state.currentAgentProject?.id === id ? null : state.currentAgentProject,
+              state.currentAgentProject?.id === id
+                ? null
+                : state.currentAgentProject,
           }),
           false,
           "agentProject/deleteAgentProject"
@@ -116,11 +138,11 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               name: `${project.name} (Copy)`,
               createdAt: new Date(),
               updatedAt: new Date(),
-              agentNodes: project.agentNodes.map(node => ({
+              agentNodes: project.agentNodes.map((node) => ({
                 ...node,
                 id: crypto.randomUUID(),
               })),
-              connections: project.connections.map(conn => ({
+              connections: project.connections.map((conn) => ({
                 ...conn,
                 id: crypto.randomUUID(),
               })),
@@ -151,7 +173,10 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               state.currentAgentProject?.id === projectId
                 ? {
                     ...state.currentAgentProject,
-                    agentNodes: [...state.currentAgentProject.agentNodes, agentNode],
+                    agentNodes: [
+                      ...state.currentAgentProject.agentNodes,
+                      agentNode,
+                    ],
                     updatedAt: new Date(),
                   }
                 : state.currentAgentProject,
@@ -167,9 +192,12 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               project.id === projectId
                 ? {
                     ...project,
-                    agentNodes: project.agentNodes.filter((node) => node.data.agent.id !== agentId),
+                    agentNodes: project.agentNodes.filter(
+                      (node) => node.data.agent.id !== agentId
+                    ),
                     connections: project.connections.filter(
-                      (conn) => conn.source !== agentId && conn.target !== agentId
+                      (conn) =>
+                        conn.source !== agentId && conn.target !== agentId
                     ),
                     updatedAt: new Date(),
                   }
@@ -183,7 +211,8 @@ export const useAgentProjectStore = create<AgentProjectState>()(
                       (node) => node.data.agent.id !== agentId
                     ),
                     connections: state.currentAgentProject.connections.filter(
-                      (conn) => conn.source !== agentId && conn.target !== agentId
+                      (conn) =>
+                        conn.source !== agentId && conn.target !== agentId
                     ),
                     updatedAt: new Date(),
                   }
@@ -191,39 +220,6 @@ export const useAgentProjectStore = create<AgentProjectState>()(
           }),
           false,
           "agentProject/removeAgentFromProject"
-        ),
-
-      updateAgentNodePosition: (projectId, agentId, position) =>
-        set(
-          (state) => ({
-            agentProjects: state.agentProjects.map((project) =>
-              project.id === projectId
-                ? {
-                    ...project,
-                    agentNodes: project.agentNodes.map((node) =>
-                      node.data.agent.id === agentId
-                        ? { ...node, position }
-                        : node
-                    ),
-                    updatedAt: new Date(),
-                  }
-                : project
-            ),
-            currentAgentProject:
-              state.currentAgentProject?.id === projectId
-                ? {
-                    ...state.currentAgentProject,
-                    agentNodes: state.currentAgentProject.agentNodes.map((node) =>
-                      node.data.agent.id === agentId
-                        ? { ...node, position }
-                        : node
-                    ),
-                    updatedAt: new Date(),
-                  }
-                : state.currentAgentProject,
-          }),
-          false,
-          "agentProject/updateAgentNodePosition"
         ),
 
       // Connection Management
@@ -243,7 +239,10 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               state.currentAgentProject?.id === projectId
                 ? {
                     ...state.currentAgentProject,
-                    connections: [...state.currentAgentProject.connections, connection],
+                    connections: [
+                      ...state.currentAgentProject.connections,
+                      connection,
+                    ],
                     updatedAt: new Date(),
                   }
                 : state.currentAgentProject,
@@ -259,7 +258,9 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               project.id === projectId
                 ? {
                     ...project,
-                    connections: project.connections.filter((conn) => conn.id !== connectionId),
+                    connections: project.connections.filter(
+                      (conn) => conn.id !== connectionId
+                    ),
                     updatedAt: new Date(),
                   }
                 : project
@@ -297,8 +298,11 @@ export const useAgentProjectStore = create<AgentProjectState>()(
               state.currentAgentProject?.id === projectId
                 ? {
                     ...state.currentAgentProject,
-                    connections: state.currentAgentProject.connections.map((conn) =>
-                      conn.id === connectionId ? { ...conn, ...updates } : conn
+                    connections: state.currentAgentProject.connections.map(
+                      (conn) =>
+                        conn.id === connectionId
+                          ? { ...conn, ...updates }
+                          : conn
                     ),
                     updatedAt: new Date(),
                   }
@@ -309,7 +313,8 @@ export const useAgentProjectStore = create<AgentProjectState>()(
         ),
 
       // Utility
-      setLoading: (loading) => set({ loading }, false, "agentProject/setLoading"),
+      setLoading: (loading) =>
+        set({ loading }, false, "agentProject/setLoading"),
       setError: (error) => set({ error }, false, "agentProject/setError"),
       setFilter: (filter) =>
         set(
@@ -317,7 +322,8 @@ export const useAgentProjectStore = create<AgentProjectState>()(
           false,
           "agentProject/setFilter"
         ),
-      clearFilter: () => set({ filter: initialFilter }, false, "agentProject/clearFilter"),
+      clearFilter: () =>
+        set({ filter: initialFilter }, false, "agentProject/clearFilter"),
 
       // Computed
       getAgentProjectById: (id) => {
@@ -333,8 +339,12 @@ export const useAgentProjectStore = create<AgentProjectState>()(
           // Search term filter
           if (filter.searchTerm) {
             const searchLower = filter.searchTerm.toLowerCase();
-            const matchesName = project.name.toLowerCase().includes(searchLower);
-            const matchesDescription = project.description.toLowerCase().includes(searchLower);
+            const matchesName = project.name
+              .toLowerCase()
+              .includes(searchLower);
+            const matchesDescription = project.description
+              .toLowerCase()
+              .includes(searchLower);
             if (!matchesName && !matchesDescription) return false;
           }
 

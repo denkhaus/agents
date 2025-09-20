@@ -16,12 +16,20 @@ import {
   Node,
   NodeTypes,
   EdgeTypes,
-  useReactFlow,
+  NodeChange,
+  NodePositionChange,
+  useReactFlow, // Import useReactFlow
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { AgentNode } from "@/components/canvas/nodes";
 import { useAgentProjectStore, useUIStore } from "@/stores";
 import { useAgentProjectData } from "@/hooks/use-agent-project-data";
+import { useCanvasNodePositionSync } from "@/hooks/use-canvas-node-position-sync"; // Import the new hook
+import {
+  calculateAgentLayout,
+  calculateGridLayout,
+  defaultAgentLayoutOptions,
+} from "@/utils/agent-layout";
 
 // Define node types for ReactFlow
 const nodeTypes: NodeTypes = {
@@ -33,40 +41,185 @@ const edgeTypes: EdgeTypes = {};
 
 interface AgentsCanvasProps {
   className?: string;
+  onMove?: (
+    event: MouseEvent | TouchEvent | null,
+    viewport: { x: number; y: number; zoom: number }
+  ) => void;
+  defaultViewport?: { x: number; y: number; zoom: number };
+  onAutoLayoutRequest?: () => void; // Add auto-layout callback
 }
 
-export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
+export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
+  className,
+  onMove,
+  defaultViewport,
+  onAutoLayoutRequest,
+}) => {
   // Initialize data
   const { loading: agentDataLoading } = useAgentProjectData();
 
-  const { currentAgentProject } = useAgentProjectStore();
+  const { currentAgentProject } = useAgentProjectStore(); // Removed updateAgentNodePosition
   const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
-  const { fitView } = useReactFlow();
+  const { updateNodePositionAndPersist } = useCanvasNodePositionSync(
+    "agentProjects",
+    currentAgentProject?.id || null
+  );
+  const reactFlowInstance = useReactFlow();
+  const { setViewport } = reactFlowInstance;
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+
+  // Custom onNodesChange handler to sync position changes with Convex store
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      // Process position changes and sync with Convex store
+      changes.forEach((change) => {
+        if (change.type === "position" && currentAgentProject) {
+          const positionChange = change as NodePositionChange;
+          if (positionChange.position) {
+            // Use the unified hook to update position and persist to Convex
+            updateNodePositionAndPersist(
+              positionChange.id,
+              positionChange.position
+            );
+          }
+        }
+      });
+
+      // Apply changes to local state
+      onNodesChange(changes);
+    },
+    [onNodesChange, currentAgentProject, updateNodePositionAndPersist] // Update dependencies
+  );
+
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // Convert agent project data to ReactFlow nodes and edges
+  // Auto-layout function triggered by canvas container
+  const handleAutoLayout = useCallback(() => {
+    if (!currentAgentProject || !currentAgentProject.agentNodes) return;
+
+    // Extract agents from agent nodes
+    const agents = currentAgentProject.agentNodes
+      .filter((agentNode) => agentNode.type === "agent")
+      .map((agentNode) => ({
+        ...agentNode.data.agent,
+        position: agentNode.position,
+      }));
+
+    // Get connections
+    const connections = currentAgentProject.connections || [];
+
+    // Force new layout calculation
+    const { nodes: layoutNodes, edges: layoutEdges } = calculateAgentLayout(
+      agents,
+      connections,
+      {
+        ...defaultAgentLayoutOptions,
+        force: true, // Force new layout
+      }
+    );
+
+    // Update nodes with new positions
+    const newNodes: Node[] = layoutNodes.map((node) => ({
+      id: node.id,
+      type: "agent",
+      position: node.position,
+      data: node.data as Record<string, unknown>,
+    }));
+
+    // Update edges
+    const newEdges: Edge[] = layoutEdges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: "default",
+      label: edge.label,
+      data: edge.data as Record<string, unknown>,
+      style: edge.style,
+    }));
+
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    // Persist new positions to store
+
+    // Use Promise.all to wait for all updates to complete
+    Promise.all(
+      layoutNodes.map((node) =>
+        updateNodePositionAndPersist(node.id, node.position)
+      )
+    ).catch((error) => {
+      console.error("Error persisting agent positions:", error);
+    });
+  }, [currentAgentProject, setNodes, setEdges, updateNodePositionAndPersist]);
+
+  // Expose auto-layout function to parent
+  useEffect(() => {
+    if (onAutoLayoutRequest) {
+      // Store the handler so it can be called from parent
+      (window as any).triggerAgentAutoLayout = handleAutoLayout;
+    }
+    return () => {
+      delete (window as any).triggerAgentAutoLayout;
+    };
+  }, [handleAutoLayout, onAutoLayoutRequest]);
+
+  // Convert agent project data to ReactFlow nodes and edges with auto-layout
   const { reactFlowNodes, reactFlowEdges } = useMemo(() => {
     if (!currentAgentProject || !currentAgentProject.agentNodes) {
       return { reactFlowNodes: [], reactFlowEdges: [] };
     }
 
-    // Convert agent nodes - ensure they are agent type
+    // Extract agents from agent nodes
+    const agents = currentAgentProject.agentNodes
+      .filter((agentNode) => agentNode.type === "agent")
+      .map((agentNode) => ({
+        ...agentNode.data.agent,
+        position: agentNode.position,
+      }));
+
+    // Use auto-layout if no positions are set or if force layout is requested
+    const hasPositions = agents.some(
+      (agent) =>
+        agent.position && agent.position.x !== 0 && agent.position.y !== 0
+    );
+
+    if (!hasPositions || onAutoLayoutRequest) {
+      // Use hierarchical layout if connections exist, otherwise use grid layout
+      const connections = currentAgentProject.connections || [];
+
+      let layoutResult;
+      if (connections.length > 0) {
+        layoutResult = calculateAgentLayout(agents, connections, {
+          ...defaultAgentLayoutOptions,
+          force: !hasPositions,
+        });
+      } else {
+        layoutResult = calculateGridLayout(agents, {
+          force: !hasPositions,
+        });
+      }
+
+      return {
+        reactFlowNodes: layoutResult.nodes,
+        reactFlowEdges: layoutResult.edges,
+      };
+    }
+
+    // Use existing positions
     const reactFlowNodes: Node[] = currentAgentProject.agentNodes
       .filter((agentNode) => agentNode.type === "agent")
       .map((agentNode) => ({
-        id: agentNode.id, // Use agentNode.id directly
+        id: agentNode.id,
         type: "agent",
         position: agentNode.position,
         data: agentNode.data,
       }));
 
-    // Convert connections to edges - only for agent connections
+    // Convert connections to edges
     const reactFlowEdges: Edge[] = currentAgentProject.connections
       ? currentAgentProject.connections
           .filter((connection) => {
-            // Ensure we only process valid connection types
             const validTypes = ["hierarchy", "communication", "collaboration"];
             return validTypes.includes(connection.type);
           })
@@ -74,7 +227,7 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
             id: connection.id,
             source: connection.source,
             target: connection.target,
-            type: "default", // Always use default edge type
+            type: "default",
             label: connection.label,
             data: connection.data,
             style: {
@@ -90,12 +243,24 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
       : [];
 
     return { reactFlowNodes, reactFlowEdges };
-  }, [currentAgentProject]);
+  }, [currentAgentProject, onAutoLayoutRequest]);
 
   // Update nodes and edges when agent project changes
   useEffect(() => {
     // Additional safety check - ensure all nodes are agent type
     const safeNodes = reactFlowNodes.filter((node) => node.type === "agent");
+    if (defaultViewport) {
+      const currentViewport = reactFlowInstance.getViewport(); // Get current viewport
+      // Only update if defaultViewport is significantly different from currentViewport
+      if (
+        defaultViewport &&
+        (Math.abs(defaultViewport.x - currentViewport.x) > 1 ||
+          Math.abs(defaultViewport.y - currentViewport.y) > 1 ||
+          Math.abs(defaultViewport.zoom - currentViewport.zoom) > 0.001)
+      ) {
+        setViewport(defaultViewport);
+      }
+    }
 
     // Additional safety check - ensure all edges use default type
     const safeEdges = reactFlowEdges.map((edge) => ({
@@ -138,13 +303,6 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
     [setEdges]
   );
 
-  // Auto-fit view when data changes
-  useEffect(() => {
-    if (nodes.length > 0) {
-      setTimeout(() => fitView({ padding: 0.2 }), 100);
-    }
-  }, [nodes.length, fitView]);
-
   // Show loading state
   if (agentDataLoading) {
     return (
@@ -164,18 +322,18 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({ className }) => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onSelectionChange={handleSelectionChange}
+        onMove={onMove} // Pass the onMove prop here
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
         attributionPosition="bottom-left"
         className="bg-background"
         minZoom={0.1}
         maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        defaultViewport={defaultViewport} // Use the passed defaultViewport
       >
         <Background
           color="#aaa"

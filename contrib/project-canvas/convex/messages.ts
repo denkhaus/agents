@@ -8,19 +8,37 @@ import { v } from "convex/values";
 import { generateUUID } from "../src/utils/uuid";
 
 export const MessageEventTypes = {
+  ERROR: "error",
   ASSISTANT: "assistant",
   TOOL_CALL: "tool.call",
   TOOL_RESPONSE: "tool.response",
+  CHAT_COMPLETION: "chat.completion",
+  CHAT_RUNNER_COMPLETION: "runner.completion",
   REASONING: "reasoning",
   INTER_AGENT: "inter_agent",
+  PREPROCESSING_BASIC: "preprocessing.basic",
+  PREPROCESSING_IDENTITY: "preprocessing.identity",
+  PREPROCESSING_PLANNING: "preprocessing.planning",
+  PREPROCESSING_CONTENT: "preprocessing.content",
+  PREPROCESSING_INSTRUCTION: "preprocessing.instruction",
+  POSTPROCESSING_PLANNING: "postprocessing.planning",
 } as const;
 
 export const MessageEventType = v.union(
+  v.literal(MessageEventTypes.ERROR),
   v.literal(MessageEventTypes.ASSISTANT),
   v.literal(MessageEventTypes.TOOL_CALL),
   v.literal(MessageEventTypes.TOOL_RESPONSE),
+  v.literal(MessageEventTypes.CHAT_COMPLETION),
+  v.literal(MessageEventTypes.CHAT_RUNNER_COMPLETION),
   v.literal(MessageEventTypes.REASONING),
-  v.literal(MessageEventTypes.INTER_AGENT)
+  v.literal(MessageEventTypes.INTER_AGENT),
+  v.literal(MessageEventTypes.PREPROCESSING_BASIC),
+  v.literal(MessageEventTypes.PREPROCESSING_IDENTITY),
+  v.literal(MessageEventTypes.PREPROCESSING_PLANNING),
+  v.literal(MessageEventTypes.PREPROCESSING_CONTENT),
+  v.literal(MessageEventTypes.PREPROCESSING_INSTRUCTION),
+  v.literal(MessageEventTypes.POSTPROCESSING_PLANNING)
 );
 
 export const InterAgentEventTypes = {
@@ -183,19 +201,8 @@ export const create = mutation({
     partial: v.boolean(),
     content: v.string(),
     author: v.string(),
-    type: v.union(
-      v.literal("assistant"),
-      v.literal("tool.call"),
-      v.literal("tool.response"),
-      v.literal("reasoning"),
-      v.literal("inter_agent")
-    ),
-    role: v.union(
-      v.literal("assistant"),
-      v.literal("user"),
-      v.literal("system"),
-      v.literal("tool")
-    ),
+    type: MessageEventType,
+    role: MessageRoleType,
   },
   handler: async (ctx, args) => {
     const messageId = generateUUID();
