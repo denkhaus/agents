@@ -69,8 +69,8 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Determine the current viewport based on the active route
-  const initialViewport = useMemo(() => {
+  // Get current viewport based on the active route
+  const getCurrentViewport = useCallback(() => {
     if (location.pathname === "/projects") {
       return projectCanvasViewport;
     } else if (location.pathname === "/agents") {
@@ -78,6 +78,12 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
     }
     return { x: 0, y: 0, zoom: 1 }; // Default or fallback
   }, [location.pathname, projectCanvasViewport, agentsCanvasViewport]);
+
+  // Determine the current viewport based on the active route
+  const initialViewport = useMemo(() => {
+    const viewport = getCurrentViewport();
+    return viewport;
+  }, [location.pathname, getCurrentViewport]);
 
   // Handler for viewport changes (pan, zoom)
   const handleOnViewportChange = useCallback(
@@ -87,9 +93,12 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
         y: viewport.y,
         zoom: viewport.zoom,
       };
+      
+      const canvasType = location.pathname === "/projects" ? "project" : "agents";
+      
       updateCanvasSettings(
         newPersistedViewport,
-        location.pathname === "/projects" ? "project" : "agents"
+        canvasType
       );
 
       // Call external onViewportChange if provided
@@ -265,15 +274,16 @@ const CanvasContainerInner: React.FC<CanvasContainerProps> = ({
 
       {/* Canvas Content */}
       <div className="flex-1 relative overflow-hidden bg-muted/20">
-        {React.Children.map(children, (child) =>
-          React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<any>, {
-                onMove: handleOnViewportChange, // Use onMove for general viewport changes
-                defaultViewport: initialViewport, // Pass initialViewport to child canvas
-                onAutoLayoutRequest: handleAutoLayout, // Pass auto-layout handler to canvas
-              })
-            : child
-        )}
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as React.ReactElement<any>, {
+              onMove: handleOnViewportChange, // Use onMove for general viewport changes
+              defaultViewport: initialViewport, // Pass initialViewport to child canvas
+              onAutoLayoutRequest: handleAutoLayout, // Pass auto-layout handler to canvas
+            });
+          }
+          return child;
+        })}
 
         {/* Canvas Overlay - Loading/Empty States */}
         <CanvasOverlay />

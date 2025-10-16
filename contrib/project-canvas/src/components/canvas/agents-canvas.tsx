@@ -3,7 +3,7 @@
  * ReactFlow canvas for agent visualization
  */
 
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -58,7 +58,7 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
   // Initialize data
   const { loading: agentDataLoading } = useAgentProjectData();
 
-  const { currentAgentProject } = useAgentProjectStore(); // Removed updateAgentNodePosition
+  const { currentAgentProject, setAgentProjects, setCurrentAgentProject } = useAgentProjectStore();
   const { setSelectedNodes, setRightSidebarCollapsed } = useUIStore();
   const { updateNodePositionAndPersist } = useCanvasNodePositionSync(
     "agentProjects",
@@ -68,28 +68,42 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
   const { setViewport } = reactFlowInstance;
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  
+  // Debounce timer for position updates
+  const positionUpdateTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Custom onNodesChange handler to sync position changes with Convex store
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      // Process position changes and sync with Convex store
+      // Apply changes to local state immediately for smooth UI
+      onNodesChange(changes);
+
+      // Process position changes with debouncing
       changes.forEach((change) => {
         if (change.type === "position" && currentAgentProject) {
           const positionChange = change as NodePositionChange;
           if (positionChange.position) {
-            // Use the unified hook to update position and persist to Convex
-            updateNodePositionAndPersist(
-              positionChange.id,
-              positionChange.position
-            );
+            // Clear existing timer for this node
+            const existingTimer = positionUpdateTimers.current.get(positionChange.id);
+            if (existingTimer) {
+              clearTimeout(existingTimer);
+            }
+
+            // Set new debounced timer (500ms delay)
+            const newTimer = setTimeout(() => {
+              updateNodePositionAndPersist(
+                positionChange.id,
+                positionChange.position!
+              );
+              positionUpdateTimers.current.delete(positionChange.id);
+            }, 500);
+
+            positionUpdateTimers.current.set(positionChange.id, newTimer);
           }
         }
       });
-
-      // Apply changes to local state
-      onNodesChange(changes);
     },
-    [onNodesChange, currentAgentProject, updateNodePositionAndPersist] // Update dependencies
+    [onNodesChange, currentAgentProject, updateNodePositionAndPersist]
   );
 
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -141,9 +155,31 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
     setNodes(newNodes);
     setEdges(newEdges);
 
-    // Persist new positions to store
+    // First update local store immediately to prevent race conditions
+    if (currentAgentProject) {
+      const updatedAgentNodes = currentAgentProject.agentNodes.map((node) => {
+        const layoutNode = layoutNodes.find(ln => ln.id === node.id);
+        return layoutNode ? { ...node, position: layoutNode.position } : node;
+      });
 
-    // Use Promise.all to wait for all updates to complete
+      // Update local store immediately
+      setAgentProjects(
+        useAgentProjectStore.getState().agentProjects.map((project) =>
+          project.id === currentAgentProject.id
+            ? { ...project, agentNodes: updatedAgentNodes }
+            : project
+        )
+      );
+
+      // Also update current project
+      setCurrentAgentProject({
+        ...currentAgentProject,
+        agentNodes: updatedAgentNodes
+      });
+
+    }
+
+    // Then persist to Convex
     Promise.all(
       layoutNodes.map((node) =>
         updateNodePositionAndPersist(node.id, node.position)
@@ -151,7 +187,7 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
     ).catch((error) => {
       console.error("Error persisting agent positions:", error);
     });
-  }, [currentAgentProject, setNodes, setEdges, updateNodePositionAndPersist]);
+  }, [currentAgentProject, setNodes, setEdges, updateNodePositionAndPersist, setAgentProjects, setCurrentAgentProject]);
 
   // Expose auto-layout function to parent
   useEffect(() => {
@@ -209,12 +245,15 @@ export const AgentsCanvas: React.FC<AgentsCanvasProps> = ({
     // Use existing positions
     const reactFlowNodes: Node[] = currentAgentProject.agentNodes
       .filter((agentNode) => agentNode.type === "agent")
-      .map((agentNode) => ({
-        id: agentNode.id,
-        type: "agent",
-        position: agentNode.position,
-        data: agentNode.data,
-      }));
+      .map((agentNode) => {
+        console.log(`USING existing position - Agent ${agentNode.id}:`, agentNode.position);
+        return {
+          id: agentNode.id,
+          type: "agent",
+          position: agentNode.position,
+          data: agentNode.data,
+        };
+      });
 
     // Convert connections to edges
     const reactFlowEdges: Edge[] = currentAgentProject.connections

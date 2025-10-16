@@ -11,6 +11,7 @@ import type {
   AgentStatusType,
 } from "../types/agent.types";
 import { Doc } from "../../convex/_generated/dataModel";
+import { AgentProject, AgentNode, AgentConnection } from "../types/agent.types";
 
 // Use Convex-generated types for type safety
 export type ConvexProject = Doc<"projects">;
@@ -18,6 +19,7 @@ export type ConvexTask = Doc<"tasks">;
 export type ConvexAgent = Doc<"agents">;
 export type ConvexEvent = Doc<"events">;
 export type ConvexSettings = Doc<"settings">;
+export type ConvexAgentProject = Doc<"agentProjects">;
 
 /**
  * Convert Convex project to frontend Project type
@@ -96,124 +98,43 @@ export function convexAgentToAgent(convexAgent: ConvexAgent): Agent {
 }
 
 /**
- * Convert frontend Project to Convex format (for updates)
+ * Convert Convex AgentProject to frontend AgentProject type
  */
-export function projectToConvexProject(
-  project: Project
-): Partial<ConvexProject> {
+export function convexAgentProjectToAgentProject(
+  convexAgentProject: ConvexAgentProject,
+  agents: Agent[] // Pass agents to enrich agentNodes
+): AgentProject {
+  const agentNodes: AgentNode[] = convexAgentProject.agentNodes.map((node) => {
+    const agent = agents.find((a) => a.id === node.id);
+    return {
+      id: node.id as UUID,
+      type: "agent",
+      position: node.position,
+      data: {
+        agent: agent || ({} as Agent), // Ensure agent is populated, fallback to empty Agent if not found
+        isSelected: node.data?.isSelected || false,
+      },
+    };
+  });
+
+  const connections: AgentConnection[] = convexAgentProject.connections.map(
+    (conn) => ({
+      id: conn.id as UUID,
+      source: conn.source as UUID,
+      target: conn.target as UUID,
+      type: conn.type as "communication" | "hierarchy" | "collaboration",
+      label: conn.label,
+      data: conn.data,
+    })
+  );
+
   return {
-    id: project.id,
-    title: project.title,
-    description: project.description,
-    totalTasks: project.totalTasks,
-    completedTasks: project.completedTasks,
-    progress: project.progress,
-    positionX: project.positionX,
-    positionY: project.positionY,
-    createdAt: project.createdAt.getTime(),
-    updatedAt: project.updatedAt.getTime(),
+    id: convexAgentProject.id as UUID,
+    name: convexAgentProject.name,
+    description: convexAgentProject.description,
+    agentNodes: agentNodes,
+    connections: connections,
+    createdAt: new Date(convexAgentProject.createdAt),
+    updatedAt: new Date(convexAgentProject.updatedAt),
   };
-}
-
-/**
- * Convert frontend Task to Convex format (for updates)
- */
-export function taskToConvexTask(task: Task): Partial<ConvexTask> {
-  return {
-    id: task.id,
-    projectId: task.projectId,
-    parentId: task.parentId,
-    title: task.title,
-    description: task.description,
-    state: task.state,
-    complexity: task.complexity,
-    depth: task.depth,
-    estimate: task.estimate,
-    assignedAgent: task.assignedAgent,
-    dependencies: task.dependencies,
-    dependents: task.dependents,
-    positionX: task.position?.x,
-    positionY: task.position?.y,
-    createdAt: task.createdAt.getTime(),
-    completedAt: task.completedAt?.getTime(),
-    updatedAt: task.updatedAt.getTime(),
-  };
-}
-
-/**
- * Convert frontend Agent to Convex format (for updates)
- */
-export function agentToConvexAgent(agent: Agent): Partial<ConvexAgent> {
-  return {
-    id: agent.id,
-    name: agent.name,
-    role: agent.role,
-    description: agent.description,
-    status: agent.status,
-    isStreaming: agent.isStreaming,
-    capabilities: agent.capabilities,
-    currentTasks: agent.currentTasks,
-    lastActiveAt: agent.lastActiveAt?.getTime(),
-  };
-}
-
-/**
- * Real-time subscription helpers
- */
-export interface SubscriptionOptions {
-  projectId?: UUID;
-  includeCompleted?: boolean;
-  maxDepth?: number;
-}
-
-/**
- * Generate Convex query args for tasks
- */
-export function getTaskQueryArgs(options: SubscriptionOptions = {}) {
-  return {
-    projectId: options.projectId,
-    includeCompleted: options.includeCompleted ?? true,
-    maxDepth: options.maxDepth ?? 10,
-  };
-}
-
-/**
- * Optimistic update helpers
- */
-export interface OptimisticUpdate<T> {
-  id: string;
-  data: Partial<T>;
-  timestamp: number;
-}
-
-export class OptimisticUpdateManager<T> {
-  private updates = new Map<string, OptimisticUpdate<T>>();
-
-  addUpdate(id: string, data: Partial<T>) {
-    this.updates.set(id, {
-      id,
-      data,
-      timestamp: Date.now(),
-    });
-  }
-
-  removeUpdate(id: string) {
-    this.updates.delete(id);
-  }
-
-  applyUpdates(items: T[]): T[] {
-    return items.map((item) => {
-      const update = this.updates.get((item as T & { id: string }).id);
-      return update ? { ...item, ...update.data } : item;
-    });
-  }
-
-  clearOldUpdates(maxAge: number = 5000) {
-    const now = Date.now();
-    this.updates.forEach((update, id) => {
-      if (now - update.timestamp > maxAge) {
-        this.updates.delete(id);
-      }
-    });
-  }
 }

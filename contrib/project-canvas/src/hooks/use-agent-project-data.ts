@@ -56,18 +56,24 @@ export const useAgentProjectData = () => {
             }
           } else {
             // Merge positions from Convex with current local state
+            // Prioritize local positions to avoid race conditions
             const mergedProjects = agentProjects.map(localProject => {
               const convexProject = convertedAgentProjects.find(p => p.id === localProject.id);
               if (convexProject) {
-                // Keep local positions if they exist, otherwise use Convex positions
                 const mergedAgentNodes = localProject.agentNodes.map(localNode => {
                   const convexNode = convexProject.agentNodes.find(n => n.id === localNode.id);
-                  return convexNode ? {
-                    ...convexNode,
-                    position: localNode.position.x !== 0 || localNode.position.y !== 0 
-                      ? localNode.position 
-                      : convexNode.position
-                  } : localNode;
+                  if (convexNode) {
+                    // Always prefer local position if it exists and is not at origin
+                    const useLocalPosition = localNode.position && 
+                      (localNode.position.x !== 0 || localNode.position.y !== 0);
+                    
+                    
+                    return {
+                      ...convexNode,
+                      position: useLocalPosition ? localNode.position : convexNode.position
+                    };
+                  }
+                  return localNode;
                 });
                 
                 return {
@@ -79,6 +85,14 @@ export const useAgentProjectData = () => {
             });
             
             setAgentProjects(mergedProjects);
+            
+            // Update current project if it's affected
+            if (currentAgentProject) {
+              const updatedCurrentProject = mergedProjects.find(p => p.id === currentAgentProject.id);
+              if (updatedCurrentProject) {
+                setCurrentAgentProject(updatedCurrentProject);
+              }
+            }
           }
         } else if (
           masterAgentProjects &&

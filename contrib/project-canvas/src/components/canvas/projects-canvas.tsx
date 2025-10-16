@@ -219,17 +219,18 @@ export const ProjectsCanvas: React.FC<ReactFlowCanvasProps> = ({
 
   // Update viewport when defaultViewport prop changes (for persistence across views)
   useEffect(() => {
-    const currentViewport = reactFlowInstance.getViewport(); // Get current viewport
-    // Only update if defaultViewport is significantly different from currentViewport
-    if (
-      defaultViewport &&
-      (Math.abs(defaultViewport.x - currentViewport.x) > 1 ||
-        Math.abs(defaultViewport.y - currentViewport.y) > 1 ||
-        Math.abs(defaultViewport.zoom - currentViewport.zoom) > 0.001)
-    ) {
-      setViewport(defaultViewport);
+    if (defaultViewport) {
+      const currentViewport = reactFlowInstance.getViewport();
+      const diffX = Math.abs(defaultViewport.x - currentViewport.x);
+      const diffY = Math.abs(defaultViewport.y - currentViewport.y);
+      const diffZoom = Math.abs(defaultViewport.zoom - currentViewport.zoom);
+      
+      // Only update if significantly different to prevent loops
+      if (diffX > 50 || diffY > 50 || diffZoom > 0.1) {
+        setViewport(defaultViewport);
+      }
     }
-  }, [defaultViewport, setViewport, reactFlowInstance]); // Add reactFlowInstance to dependencies
+  }, [defaultViewport?.x, defaultViewport?.y, defaultViewport?.zoom, setViewport, reactFlowInstance]);
 
   return (
     <div className={`h-full w-full ${className}`}>
@@ -249,7 +250,7 @@ export const ProjectsCanvas: React.FC<ReactFlowCanvasProps> = ({
         className="bg-background"
         minZoom={0.1}
         maxZoom={2}
-        defaultViewport={defaultViewport} // Use the passed defaultViewport
+        defaultViewport={undefined} // Don't use ReactFlow's defaultViewport, we handle it manually
       >
         <Background
           color="#aaa"
