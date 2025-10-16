@@ -1,4 +1,4 @@
 .env
 .env.docker
-tmp_
+tmp_*
 screenshots/*
