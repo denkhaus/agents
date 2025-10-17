@@ -27,6 +27,9 @@ func (Project) Fields() []ent.Field {
 			NotEmpty(),
 		field.Text("description").
 			Optional(),
+		field.Enum("state").
+			Values("active", "completed", "archived", "deletion-pending").
+			Default("active"),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
@@ -59,5 +62,6 @@ func (Project) Indexes() []ent.Index {
 		index.Fields("created_at"),
 		index.Fields("title"),
 		index.Fields("progress"),
+		index.Fields("state"),
 	}
 }

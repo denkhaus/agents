@@ -64,6 +64,20 @@ func (_u *ProjectUpdate) ClearDescription() *ProjectUpdate {
 	return _u
 }
 
+// SetState sets the "state" field.
+func (_u *ProjectUpdate) SetState(v project.State) *ProjectUpdate {
+	_u.mutation.SetState(v)
+	return _u
+}
+
+// SetNillableState sets the "state" field if the given value is not nil.
+func (_u *ProjectUpdate) SetNillableState(v *project.State) *ProjectUpdate {
+	if v != nil {
+		_u.SetState(*v)
+	}
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ProjectUpdate) SetUpdatedAt(v time.Time) *ProjectUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -217,6 +231,11 @@ func (_u *ProjectUpdate) check() error {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.State(); ok {
+		if err := project.StateValidator(v); err != nil {
+			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Project.state": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.TotalTasks(); ok {
 		if err := project.TotalTasksValidator(v); err != nil {
 			return &ValidationError{Name: "total_tasks", err: fmt.Errorf(`ent: validator failed for field "Project.total_tasks": %w`, err)}
@@ -255,6 +274,9 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(project.FieldDescription, field.TypeString)
+	}
+	if value, ok := _u.mutation.State(); ok {
+		_spec.SetField(project.FieldState, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)
@@ -373,6 +395,20 @@ func (_u *ProjectUpdateOne) SetNillableDescription(v *string) *ProjectUpdateOne 
 // ClearDescription clears the value of the "description" field.
 func (_u *ProjectUpdateOne) ClearDescription() *ProjectUpdateOne {
 	_u.mutation.ClearDescription()
+	return _u
+}
+
+// SetState sets the "state" field.
+func (_u *ProjectUpdateOne) SetState(v project.State) *ProjectUpdateOne {
+	_u.mutation.SetState(v)
+	return _u
+}
+
+// SetNillableState sets the "state" field if the given value is not nil.
+func (_u *ProjectUpdateOne) SetNillableState(v *project.State) *ProjectUpdateOne {
+	if v != nil {
+		_u.SetState(*v)
+	}
 	return _u
 }
 
@@ -542,6 +578,11 @@ func (_u *ProjectUpdateOne) check() error {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.State(); ok {
+		if err := project.StateValidator(v); err != nil {
+			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Project.state": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.TotalTasks(); ok {
 		if err := project.TotalTasksValidator(v); err != nil {
 			return &ValidationError{Name: "total_tasks", err: fmt.Errorf(`ent: validator failed for field "Project.total_tasks": %w`, err)}
@@ -597,6 +638,9 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(project.FieldDescription, field.TypeString)
+	}
+	if value, ok := _u.mutation.State(); ok {
+		_spec.SetField(project.FieldState, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)

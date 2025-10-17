@@ -14,6 +14,7 @@ type ProjectManager interface {
 	GetProject(ctx context.Context, projectID uuid.UUID) (*types.Project, error)
 	UpdateProject(ctx context.Context, projectID uuid.UUID, title, description string) (*types.Project, error)
 	UpdateProjectDescription(ctx context.Context, projectID uuid.UUID, description string) (*types.Project, error)
+	UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState) (*types.Project, error)
 	DeleteProject(ctx context.Context, projectID uuid.UUID) error
 	ListProjects(ctx context.Context) ([]*types.Project, error)
 

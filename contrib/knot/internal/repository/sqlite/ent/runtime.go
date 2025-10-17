@@ -37,29 +37,29 @@ func init() {
 		}
 	}()
 	// projectDescCreatedAt is the schema descriptor for created_at field.
-	projectDescCreatedAt := projectFields[3].Descriptor()
+	projectDescCreatedAt := projectFields[4].Descriptor()
 	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
 	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
 	// projectDescUpdatedAt is the schema descriptor for updated_at field.
-	projectDescUpdatedAt := projectFields[4].Descriptor()
+	projectDescUpdatedAt := projectFields[5].Descriptor()
 	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
 	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	project.UpdateDefaultUpdatedAt = projectDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// projectDescTotalTasks is the schema descriptor for total_tasks field.
-	projectDescTotalTasks := projectFields[5].Descriptor()
+	projectDescTotalTasks := projectFields[6].Descriptor()
 	// project.DefaultTotalTasks holds the default value on creation for the total_tasks field.
 	project.DefaultTotalTasks = projectDescTotalTasks.Default.(int)
 	// project.TotalTasksValidator is a validator for the "total_tasks" field. It is called by the builders before save.
 	project.TotalTasksValidator = projectDescTotalTasks.Validators[0].(func(int) error)
 	// projectDescCompletedTasks is the schema descriptor for completed_tasks field.
-	projectDescCompletedTasks := projectFields[6].Descriptor()
+	projectDescCompletedTasks := projectFields[7].Descriptor()
 	// project.DefaultCompletedTasks holds the default value on creation for the completed_tasks field.
 	project.DefaultCompletedTasks = projectDescCompletedTasks.Default.(int)
 	// project.CompletedTasksValidator is a validator for the "completed_tasks" field. It is called by the builders before save.
 	project.CompletedTasksValidator = projectDescCompletedTasks.Validators[0].(func(int) error)
 	// projectDescProgress is the schema descriptor for progress field.
-	projectDescProgress := projectFields[7].Descriptor()
+	projectDescProgress := projectFields[8].Descriptor()
 	// project.DefaultProgress holds the default value on creation for the progress field.
 	project.DefaultProgress = projectDescProgress.Default.(float64)
 	// project.ProgressValidator is a validator for the "progress" field. It is called by the builders before save.

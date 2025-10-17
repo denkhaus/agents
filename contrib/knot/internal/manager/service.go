@@ -98,6 +98,21 @@ func (s *service) UpdateProjectDescription(ctx context.Context, projectID uuid.U
 	return s.repo.GetProject(ctx, projectID)
 }
 
+func (s *service) UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState) (*types.Project, error) {
+	project, err := s.repo.GetProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	project.State = state
+
+	if err := s.repo.UpdateProject(ctx, project); err != nil {
+		return nil, fmt.Errorf("failed to update project state: %w", err)
+	}
+
+	return s.repo.GetProject(ctx, projectID)
+}
+
 func (s *service) DeleteProject(ctx context.Context, projectID uuid.UUID) error {
 	return s.repo.DeleteProject(ctx, projectID)
 }

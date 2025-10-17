@@ -13,6 +13,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "title", Type: field.TypeString, Size: 200},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "state", Type: field.TypeEnum, Enums: []string{"active", "completed", "archived", "deletion-pending"}, Default: "active"},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "total_tasks", Type: field.TypeInt, Default: 0},
@@ -28,7 +29,7 @@ var (
 			{
 				Name:    "project_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[3]},
+				Columns: []*schema.Column{ProjectsColumns[4]},
 			},
 			{
 				Name:    "project_title",
@@ -38,7 +39,12 @@ var (
 			{
 				Name:    "project_progress",
 				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[7]},
+				Columns: []*schema.Column{ProjectsColumns[8]},
+			},
+			{
+				Name:    "project_state",
+				Unique:  false,
+				Columns: []*schema.Column{ProjectsColumns[3]},
 			},
 		},
 	}

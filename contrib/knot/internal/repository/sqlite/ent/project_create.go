@@ -42,6 +42,20 @@ func (_c *ProjectCreate) SetNillableDescription(v *string) *ProjectCreate {
 	return _c
 }
 
+// SetState sets the "state" field.
+func (_c *ProjectCreate) SetState(v project.State) *ProjectCreate {
+	_c.mutation.SetState(v)
+	return _c
+}
+
+// SetNillableState sets the "state" field if the given value is not nil.
+func (_c *ProjectCreate) SetNillableState(v *project.State) *ProjectCreate {
+	if v != nil {
+		_c.SetState(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ProjectCreate) SetCreatedAt(v time.Time) *ProjectCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -176,6 +190,10 @@ func (_c *ProjectCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *ProjectCreate) defaults() {
+	if _, ok := _c.mutation.State(); !ok {
+		v := project.DefaultState
+		_c.mutation.SetState(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := project.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -210,6 +228,14 @@ func (_c *ProjectCreate) check() error {
 	if v, ok := _c.mutation.Title(); ok {
 		if err := project.TitleValidator(v); err != nil {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.State(); !ok {
+		return &ValidationError{Name: "state", err: errors.New(`ent: missing required field "Project.state"`)}
+	}
+	if v, ok := _c.mutation.State(); ok {
+		if err := project.StateValidator(v); err != nil {
+			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Project.state": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
@@ -284,6 +310,10 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Description(); ok {
 		_spec.SetField(project.FieldDescription, field.TypeString, value)
 		_node.Description = value
+	}
+	if value, ok := _c.mutation.State(); ok {
+		_spec.SetField(project.FieldState, field.TypeEnum, value)
+		_node.State = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(project.FieldCreatedAt, field.TypeTime, value)

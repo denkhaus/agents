@@ -3,6 +3,7 @@
 package project
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -19,6 +20,8 @@ const (
 	FieldTitle = "title"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
+	// FieldState holds the string denoting the state field in the database.
+	FieldState = "state"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -47,6 +50,7 @@ var Columns = []string{
 	FieldID,
 	FieldTitle,
 	FieldDescription,
+	FieldState,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldTotalTasks,
@@ -89,6 +93,34 @@ var (
 	DefaultID func() uuid.UUID
 )
 
+// State defines the type for the "state" enum field.
+type State string
+
+// StateActive is the default value of the State enum.
+const DefaultState = StateActive
+
+// State values.
+const (
+	StateActive          State = "active"
+	StateCompleted       State = "completed"
+	StateArchived        State = "archived"
+	StateDeletionPending State = "deletion-pending"
+)
+
+func (s State) String() string {
+	return string(s)
+}
+
+// StateValidator is a validator for the "state" field enum values. It is called by the builders before save.
+func StateValidator(s State) error {
+	switch s {
+	case StateActive, StateCompleted, StateArchived, StateDeletionPending:
+		return nil
+	default:
+		return fmt.Errorf("project: invalid enum value for state field: %q", s)
+	}
+}
+
 // OrderOption defines the ordering options for the Project queries.
 type OrderOption func(*sql.Selector)
 
@@ -105,6 +137,11 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
+}
+
+// ByState orders the results by the state field.
+func ByState(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldState, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -40,6 +40,7 @@ type ProjectMutation struct {
 	id                 *uuid.UUID
 	title              *string
 	description        *string
+	state              *project.State
 	created_at         *time.Time
 	updated_at         *time.Time
 	total_tasks        *int
@@ -244,6 +245,42 @@ func (m *ProjectMutation) DescriptionCleared() bool {
 func (m *ProjectMutation) ResetDescription() {
 	m.description = nil
 	delete(m.clearedFields, project.FieldDescription)
+}
+
+// SetState sets the "state" field.
+func (m *ProjectMutation) SetState(pr project.State) {
+	m.state = &pr
+}
+
+// State returns the value of the "state" field in the mutation.
+func (m *ProjectMutation) State() (r project.State, exists bool) {
+	v := m.state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldState returns the old "state" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldState(ctx context.Context) (v project.State, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldState: %w", err)
+	}
+	return oldValue.State, nil
+}
+
+// ResetState resets all changes to the "state" field.
+func (m *ProjectMutation) ResetState() {
+	m.state = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -574,12 +611,15 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.title != nil {
 		fields = append(fields, project.FieldTitle)
 	}
 	if m.description != nil {
 		fields = append(fields, project.FieldDescription)
+	}
+	if m.state != nil {
+		fields = append(fields, project.FieldState)
 	}
 	if m.created_at != nil {
 		fields = append(fields, project.FieldCreatedAt)
@@ -608,6 +648,8 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 		return m.Title()
 	case project.FieldDescription:
 		return m.Description()
+	case project.FieldState:
+		return m.State()
 	case project.FieldCreatedAt:
 		return m.CreatedAt()
 	case project.FieldUpdatedAt:
@@ -631,6 +673,8 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldTitle(ctx)
 	case project.FieldDescription:
 		return m.OldDescription(ctx)
+	case project.FieldState:
+		return m.OldState(ctx)
 	case project.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case project.FieldUpdatedAt:
@@ -663,6 +707,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDescription(v)
+		return nil
+	case project.FieldState:
+		v, ok := value.(project.State)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetState(v)
 		return nil
 	case project.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -801,6 +852,9 @@ func (m *ProjectMutation) ResetField(name string) error {
 		return nil
 	case project.FieldDescription:
 		m.ResetDescription()
+		return nil
+	case project.FieldState:
+		m.ResetState()
 		return nil
 	case project.FieldCreatedAt:
 		m.ResetCreatedAt()
