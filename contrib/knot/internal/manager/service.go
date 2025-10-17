@@ -232,6 +232,29 @@ func (s *service) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, d
 	return s.repo.GetTask(ctx, taskID)
 }
 
+func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string) (*types.Task, error) {
+	// Validate title
+	if title == "" {
+		return nil, fmt.Errorf("title cannot be empty")
+	}
+	if len(title) > 200 {
+		return nil, fmt.Errorf("title cannot exceed 200 characters")
+	}
+
+	task, err := s.repo.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	task.Title = title
+
+	if err := s.repo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to update task title: %w", err)
+	}
+
+	return s.repo.GetTask(ctx, taskID)
+}
+
 func (s *service) DeleteTask(ctx context.Context, taskID uuid.UUID) error {
 	return s.repo.DeleteTask(ctx, taskID)
 }

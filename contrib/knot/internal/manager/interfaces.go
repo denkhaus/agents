@@ -22,6 +22,7 @@ type ProjectManager interface {
 	GetTask(ctx context.Context, taskID uuid.UUID) (*types.Task, error)
 	UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state types.TaskState) (*types.Task, error)
 	UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string) (*types.Task, error)
+	UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string) (*types.Task, error)
 	UpdateTaskState(ctx context.Context, taskID uuid.UUID, state types.TaskState) (*types.Task, error)
 	DeleteTask(ctx context.Context, taskID uuid.UUID) error
 	DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID) error

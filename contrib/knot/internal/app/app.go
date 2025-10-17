@@ -11,6 +11,7 @@ import (
 	"github.com/denkhaus/knot/internal/manager"
 	"github.com/denkhaus/knot/internal/repository/inmemory"
 	"github.com/denkhaus/knot/internal/repository/sqlite"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
@@ -19,7 +20,7 @@ import (
 // App represents the CLI application
 type App struct {
 	*cli.App
-	context *Context
+	context *shared.AppContext
 }
 
 // New creates a new CLI application with all dependencies initialized
@@ -47,7 +48,7 @@ func New() (*App, error) {
 	projectManager := manager.NewManagerWithRepository(repo, config)
 	
 	// Create application context
-	appCtx := NewContext(projectManager, appLogger)
+	appCtx := shared.NewAppContext(projectManager, appLogger)
 	
 	// Create CLI app
 	cliApp := &cli.App{
@@ -75,7 +76,7 @@ func New() (*App, error) {
 				Name:        "task",
 				Aliases:     []string{"t"},
 				Usage:       "Task management commands",
-				Subcommands: task.Commands(projectManager, appLogger),
+				Subcommands: task.Commands(appCtx),
 			},
 			{
 				Name:        "dependency",
@@ -102,7 +103,7 @@ func New() (*App, error) {
 			{
 				Name:    "ready",
 				Usage:   "Show tasks with no blockers (ready to work on)",
-				Action:  task.ReadyAction(projectManager, appLogger),
+				Action:  task.ReadyAction(appCtx),
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "project-id",
@@ -127,7 +128,7 @@ func New() (*App, error) {
 			{
 				Name:    "blocked",
 				Usage:   "Show tasks blocked by dependencies",
-				Action:  task.BlockedAction(projectManager, appLogger),
+				Action:  task.BlockedAction(appCtx),
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "project-id",
@@ -152,7 +153,7 @@ func New() (*App, error) {
 			{
 				Name:    "actionable",
 				Usage:   "Find the next actionable task in a project",
-				Action:  task.ActionableAction(projectManager, appLogger),
+				Action:  task.ActionableAction(appCtx),
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "project-id",
@@ -170,7 +171,7 @@ func New() (*App, error) {
 			{
 				Name:    "breakdown",
 				Usage:   "Find tasks that need breakdown based on complexity",
-				Action:  task.BreakdownAction(projectManager, appLogger),
+				Action:  task.BreakdownAction(appCtx),
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "project-id",

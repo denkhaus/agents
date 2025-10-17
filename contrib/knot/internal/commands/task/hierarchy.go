@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
+
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -13,12 +14,12 @@ import (
 )
 
 // HierarchyCommands returns hierarchy navigation CLI commands
-func HierarchyCommands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.Command {
+func HierarchyCommands(appCtx *shared.AppContext) []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:   "children",
 			Usage:  "Get direct children of a task",
-			Action: ChildrenAction(projectManager, logger),
+			Action: ChildrenAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "task-id",
@@ -35,7 +36,7 @@ func HierarchyCommands(projectManager manager.ProjectManager, logger *zap.Logger
 		{
 			Name:   "parent",
 			Usage:  "Get parent task of a task",
-			Action: ParentAction(projectManager, logger),
+			Action: ParentAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "task-id",
@@ -47,7 +48,7 @@ func HierarchyCommands(projectManager manager.ProjectManager, logger *zap.Logger
 		{
 			Name:   "roots",
 			Usage:  "Get root tasks of a project",
-			Action: RootsAction(projectManager, logger),
+			Action: RootsAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "project-id",
@@ -64,7 +65,7 @@ func HierarchyCommands(projectManager manager.ProjectManager, logger *zap.Logger
 		{
 			Name:   "tree",
 			Usage:  "Show task hierarchy as a tree",
-			Action: TreeAction(projectManager, logger),
+			Action: TreeAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "project-id",
@@ -86,7 +87,7 @@ func HierarchyCommands(projectManager manager.ProjectManager, logger *zap.Logger
 }
 
 // ChildrenAction gets direct children of a task
-func ChildrenAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func ChildrenAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("task-id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -96,26 +97,26 @@ func ChildrenAction(projectManager manager.ProjectManager, logger *zap.Logger) c
 
 		recursive := c.Bool("recursive")
 
-		logger.Info("Getting child tasks", 
+		appCtx.Logger.Info("Getting child tasks",
 			zap.String("taskID", taskID.String()),
 			zap.Bool("recursive", recursive))
 
 		// Get the parent task for context
-		parentTask, err := projectManager.GetTask(context.Background(), taskID)
+		parentTask, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get parent task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get parent task", zap.Error(err))
 			return fmt.Errorf("failed to get parent task: %w", err)
 		}
 
 		var children []*types.Task
 		if recursive {
-			children, err = getAllDescendants(projectManager, taskID)
+			children, err = getAllDescendants(appCtx.ProjectManager, taskID)
 		} else {
-			children, err = projectManager.GetChildTasks(context.Background(), taskID)
+			children, err = appCtx.ProjectManager.GetChildTasks(context.Background(), taskID)
 		}
 
 		if err != nil {
-			logger.Error("Failed to get child tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get child tasks", zap.Error(err))
 			return fmt.Errorf("failed to get child tasks: %w", err)
 		}
 
@@ -148,7 +149,7 @@ func ChildrenAction(projectManager manager.ProjectManager, logger *zap.Logger) c
 			if child.Description != "" {
 				fmt.Printf("%s   %s\n", indent, child.Description)
 			}
-			fmt.Printf("%s   State: %s | Complexity: %d | Depth: %d\n", 
+			fmt.Printf("%s   State: %s | Complexity: %d | Depth: %d\n",
 				indent, child.State, child.Complexity, child.Depth)
 			fmt.Println()
 		}
@@ -164,7 +165,7 @@ func ChildrenAction(projectManager manager.ProjectManager, logger *zap.Logger) c
 }
 
 // ParentAction gets parent task of a task
-func ParentAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func ParentAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("task-id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -172,12 +173,12 @@ func ParentAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 			return fmt.Errorf("invalid task ID: %w", err)
 		}
 
-		logger.Info("Getting parent task", zap.String("taskID", taskID.String()))
+		appCtx.Logger.Info("Getting parent task", zap.String("taskID", taskID.String()))
 
 		// Get the child task first
-		childTask, err := projectManager.GetTask(context.Background(), taskID)
+		childTask, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
 			return fmt.Errorf("failed to get task: %w", err)
 		}
 
@@ -188,9 +189,9 @@ func ParentAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 			return nil
 		}
 
-		parentTask, err := projectManager.GetParentTask(context.Background(), taskID)
+		parentTask, err := appCtx.ProjectManager.GetParentTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get parent task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get parent task", zap.Error(err))
 			return fmt.Errorf("failed to get parent task: %w", err)
 		}
 
@@ -203,7 +204,7 @@ func ParentAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		if parentTask.Description != "" {
 			fmt.Printf("  %s\n", parentTask.Description)
 		}
-		fmt.Printf("  State: %s | Complexity: %d | Depth: %d\n", 
+		fmt.Printf("  State: %s | Complexity: %d | Depth: %d\n",
 			parentTask.State, parentTask.Complexity, parentTask.Depth)
 
 		return nil
@@ -211,7 +212,7 @@ func ParentAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 }
 
 // RootsAction gets root tasks of a project
-func RootsAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func RootsAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -221,13 +222,13 @@ func RootsAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 
 		limit := c.Int("limit")
 
-		logger.Info("Getting root tasks", 
+		appCtx.Logger.Info("Getting root tasks",
 			zap.String("projectID", projectID.String()),
 			zap.Int("limit", limit))
 
-		rootTasks, err := projectManager.GetRootTasks(context.Background(), projectID)
+		rootTasks, err := appCtx.ProjectManager.GetRootTasks(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get root tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get root tasks", zap.Error(err))
 			return fmt.Errorf("failed to get root tasks: %w", err)
 		}
 
@@ -262,4 +263,4 @@ func RootsAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 
 		return nil
 	}
-}// getAllDescendants and other missing functions
+} // getAllDescendants and other missing functions

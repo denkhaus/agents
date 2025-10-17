@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -36,7 +36,7 @@ func isTaskReady(task *types.Task, taskMap map[uuid.UUID]*types.Task) bool {
 }
 
 // ActionableAction finds the next actionable task in a project
-func ActionableAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func ActionableAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -44,12 +44,12 @@ func ActionableAction(projectManager manager.ProjectManager, logger *zap.Logger)
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Finding next actionable task", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Finding next actionable task", zap.String("projectID", projectID.String()))
 
 		// Get all tasks in the project
-		allTasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		allTasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -127,7 +127,7 @@ func ActionableAction(projectManager manager.ProjectManager, logger *zap.Logger)
 }
 
 // ReadyAction shows tasks that are ready to work on (no blockers)
-func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func ReadyAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -135,12 +135,12 @@ func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Finding ready tasks", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Finding ready tasks", zap.String("projectID", projectID.String()))
 
 		// Get all tasks in the project
-		allTasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		allTasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -160,7 +160,7 @@ func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 			}
 		}
 
-		logger.Info("Ready tasks found", zap.Int("count", len(readyTasks)))
+		appCtx.Logger.Info("Ready tasks found", zap.Int("count", len(readyTasks)))
 
 		if len(readyTasks) == 0 {
 			if c.Bool("json") {
@@ -209,7 +209,7 @@ func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 }
 
 // BlockedAction shows tasks that are blocked by dependencies
-func BlockedAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func BlockedAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -217,12 +217,12 @@ func BlockedAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Finding blocked tasks", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Finding blocked tasks", zap.String("projectID", projectID.String()))
 
 		// Get all tasks in the project
-		allTasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		allTasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -242,7 +242,7 @@ func BlockedAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 			}
 		}
 
-		logger.Info("Blocked tasks found", zap.Int("count", len(blockedTasks)))
+		appCtx.Logger.Info("Blocked tasks found", zap.Int("count", len(blockedTasks)))
 
 		if len(blockedTasks) == 0 {
 			fmt.Println("No blocked tasks found. All tasks are either ready, completed, or have no dependencies.")
@@ -282,7 +282,7 @@ func BlockedAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 }
 
 // BreakdownAction finds tasks that need breakdown based on complexity threshold
-func BreakdownAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func BreakdownAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -296,14 +296,14 @@ func BreakdownAction(projectManager manager.ProjectManager, logger *zap.Logger) 
 			complexityThreshold = 8 // Default from original pkg/tools/project
 		}
 
-		logger.Info("Finding tasks needing breakdown", 
+		appCtx.Logger.Info("Finding tasks needing breakdown", 
 			zap.String("projectID", projectID.String()),
 			zap.Int("threshold", complexityThreshold))
 
 		// Get all tasks in the project
-		allTasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		allTasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -325,7 +325,7 @@ func BreakdownAction(projectManager manager.ProjectManager, logger *zap.Logger) 
 			}
 		}
 
-		logger.Info("Tasks needing breakdown found", zap.Int("count", len(needsBreakdown)))
+		appCtx.Logger.Info("Tasks needing breakdown found", zap.Int("count", len(needsBreakdown)))
 
 		if len(needsBreakdown) == 0 {
 			fmt.Printf("No tasks need breakdown (complexity >= %d with no subtasks)\n", complexityThreshold)

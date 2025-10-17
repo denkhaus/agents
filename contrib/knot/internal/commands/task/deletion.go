@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/denkhaus/knot/internal/errors"
 	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
+
+	"github.com/denkhaus/knot/internal/errors"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -14,12 +16,12 @@ import (
 )
 
 // DeletionCommands returns task deletion related CLI commands
-func DeletionCommands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.Command {
+func DeletionCommands(appCtx *shared.AppContext) []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:   "delete",
 			Usage:  "Delete a single task (only if no children exist)",
-			Action: deleteAction(projectManager, logger),
+			Action: deleteAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "id",
@@ -41,7 +43,7 @@ func DeletionCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 		{
 			Name:   "delete-subtree",
 			Usage:  "Delete a task and all its descendants recursively",
-			Action: deleteSubtreeAction(projectManager, logger),
+			Action: deleteSubtreeAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "id",
@@ -64,7 +66,7 @@ func DeletionCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 }
 
 // deleteAction handles single task deletion
-func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func deleteAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -75,22 +77,22 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		force := c.Bool("force")
 		dryRun := c.Bool("dry-run")
 
-		logger.Info("Deleting single task", 
+		appCtx.Logger.Info("Deleting single task",
 			zap.String("taskID", taskID.String()),
 			zap.Bool("force", force),
 			zap.Bool("dryRun", dryRun))
 
 		// Get task details for validation and confirmation
-		task, err := projectManager.GetTask(context.Background(), taskID)
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
 			return errors.TaskNotFoundError(taskID)
 		}
 
 		// Check if task has children
-		children, err := projectManager.GetChildTasks(context.Background(), taskID)
+		children, err := appCtx.ProjectManager.GetChildTasks(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to check for child tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to check for child tasks", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "checking child tasks")
 		}
 
@@ -113,17 +115,17 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		fmt.Printf("    State: %s | Complexity: %d\n", task.State, task.Complexity)
 
 		// Check for dependencies
-		dependencies, err := projectManager.GetTaskDependencies(context.Background(), taskID)
+		dependencies, err := appCtx.ProjectManager.GetTaskDependencies(context.Background(), taskID)
 		if err == nil && len(dependencies) > 0 {
-			fmt.Printf("\n⚠️  This task depends on %d other task(s):\n", len(dependencies))
+			fmt.Printf("\n  This task depends on %d other task(s):\n", len(dependencies))
 			for _, dep := range dependencies {
 				fmt.Printf("    • %s (ID: %s)\n", dep.Title, dep.ID)
 			}
 		}
 
-		dependents, err := projectManager.GetDependentTasks(context.Background(), taskID)
+		dependents, err := appCtx.ProjectManager.GetDependentTasks(context.Background(), taskID)
 		if err == nil && len(dependents) > 0 {
-			fmt.Printf("\n⚠️  %d task(s) depend on this task:\n", len(dependents))
+			fmt.Printf("\n  %d task(s) depend on this task:\n", len(dependents))
 			for _, dep := range dependents {
 				fmt.Printf("    • %s (ID: %s)\n", dep.Title, dep.ID)
 			}
@@ -131,7 +133,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		}
 
 		if dryRun {
-			fmt.Printf("\n🔍 DRY RUN: Task would be deleted (no actual changes made)\n")
+			fmt.Printf("\n DRY RUN: Task would be deleted (no actual changes made)\n")
 			return nil
 		}
 
@@ -144,13 +146,13 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		}
 
 		// Perform deletion
-		err = projectManager.DeleteTask(context.Background(), taskID)
+		err = appCtx.ProjectManager.DeleteTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to delete task", zap.Error(err))
+			appCtx.Logger.Error("Failed to delete task", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "deleting task")
 		}
 
-		logger.Info("Task deleted successfully")
+		appCtx.Logger.Info("Task deleted successfully")
 		fmt.Printf("✅ Task deleted successfully: %s\n", task.Title)
 
 		return nil
@@ -158,7 +160,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 }
 
 // deleteSubtreeAction handles recursive task deletion
-func deleteSubtreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func deleteSubtreeAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -169,29 +171,29 @@ func deleteSubtreeAction(projectManager manager.ProjectManager, logger *zap.Logg
 		force := c.Bool("force")
 		dryRun := c.Bool("dry-run")
 
-		logger.Info("Deleting task subtree", 
+		appCtx.Logger.Info("Deleting task subtree",
 			zap.String("taskID", taskID.String()),
 			zap.Bool("force", force),
 			zap.Bool("dryRun", dryRun))
 
 		// Get task details
-		task, err := projectManager.GetTask(context.Background(), taskID)
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
 			return errors.TaskNotFoundError(taskID)
 		}
 
 		// Get all descendants for preview
-		descendants, err := getTaskDescendants(projectManager, taskID)
+		descendants, err := getTaskDescendants(appCtx.ProjectManager, taskID)
 		if err != nil {
-			logger.Error("Failed to get descendants", zap.Error(err))
+			appCtx.Logger.Error("Failed to get descendants", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "getting task descendants")
 		}
 
 		// Show what will be deleted
 		fmt.Printf("Task subtree to delete:\n")
 		fmt.Printf("  📁 %s (ID: %s) [ROOT]\n", task.Title, task.ID)
-		
+
 		if len(descendants) > 0 {
 			fmt.Printf("  └── %d descendant task(s):\n", len(descendants))
 			for _, desc := range descendants {
@@ -217,13 +219,13 @@ func deleteSubtreeAction(projectManager manager.ProjectManager, logger *zap.Logg
 		}
 
 		// Perform deletion
-		err = projectManager.DeleteTaskSubtree(context.Background(), taskID)
+		err = appCtx.ProjectManager.DeleteTaskSubtree(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to delete task subtree", zap.Error(err))
+			appCtx.Logger.Error("Failed to delete task subtree", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "deleting task subtree")
 		}
 
-		logger.Info("Task subtree deleted successfully", zap.Int("totalDeleted", totalTasks))
+		appCtx.Logger.Info("Task subtree deleted successfully", zap.Int("totalDeleted", totalTasks))
 		fmt.Printf("✅ Task subtree deleted successfully: %d task(s) removed\n", totalTasks)
 
 		return nil
@@ -232,13 +234,13 @@ func deleteSubtreeAction(projectManager manager.ProjectManager, logger *zap.Logg
 
 // confirmDeletion prompts user for confirmation
 func confirmDeletion(itemType, itemName string) bool {
-	fmt.Printf("\n⚠️  Are you sure you want to delete this %s?\n", itemType)
+	fmt.Printf("\nAre you sure you want to delete this %s?\n", itemType)
 	fmt.Printf("   %s\n", itemName)
 	fmt.Printf("\nThis action cannot be undone. Type 'yes' to confirm: ")
-	
+
 	var response string
 	fmt.Scanln(&response)
-	
+
 	return strings.ToLower(strings.TrimSpace(response)) == "yes"
 }
 

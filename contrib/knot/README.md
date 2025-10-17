@@ -53,7 +53,7 @@ knot task create --project-id <project-id> --parent-id <parent-task-id> --title 
 knot task list --project-id <project-id>
 
 # Update task state
-knot task update --id <task-id> --state completed
+knot task update-state --id <task-id> --state completed
 ```
 
 ### Dependency Commands

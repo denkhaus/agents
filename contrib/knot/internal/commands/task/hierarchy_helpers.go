@@ -6,14 +6,16 @@ import (
 	"sort"
 
 	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
+
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
 // TreeAction shows task hierarchy as a tree
-func TreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func TreeAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -24,7 +26,7 @@ func TreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 		maxDepth := c.Int("max-depth")
 		rootTaskIDStr := c.String("root-task-id")
 
-		logger.Info("Showing task tree", 
+		appCtx.Logger.Info("Showing task tree",
 			zap.String("projectID", projectID.String()),
 			zap.Int("maxDepth", maxDepth),
 			zap.String("rootTaskID", rootTaskIDStr))
@@ -37,8 +39,8 @@ func TreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 			if err != nil {
 				return fmt.Errorf("invalid root task ID: %w", err)
 			}
-			
-			task, err := projectManager.GetTask(context.Background(), rootTaskID)
+
+			task, err := appCtx.ProjectManager.GetTask(context.Background(), rootTaskID)
 			if err != nil {
 				return fmt.Errorf("failed to get root task: %w", err)
 			}
@@ -46,7 +48,7 @@ func TreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 			fmt.Printf("Task tree starting from '%s':\n\n", task.Title)
 		} else {
 			// Start from project roots
-			roots, err := projectManager.GetRootTasks(context.Background(), projectID)
+			roots, err := appCtx.ProjectManager.GetRootTasks(context.Background(), projectID)
 			if err != nil {
 				return fmt.Errorf("failed to get root tasks: %w", err)
 			}
@@ -65,7 +67,7 @@ func TreeAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 		})
 
 		for _, task := range startingTasks {
-			if err := printTaskTree(projectManager, task, 0, maxDepth, ""); err != nil {
+			if err := printTaskTree(appCtx.ProjectManager, task, 0, maxDepth, ""); err != nil {
 				return fmt.Errorf("failed to print task tree: %w", err)
 			}
 		}
