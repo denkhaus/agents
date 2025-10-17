@@ -1,12 +1,17 @@
 package app
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
 	configCommands "github.com/denkhaus/knot/internal/commands/config"
 	"github.com/denkhaus/knot/internal/commands/dependency"
 	"github.com/denkhaus/knot/internal/commands/health"
 	"github.com/denkhaus/knot/internal/commands/project"
 	"github.com/denkhaus/knot/internal/commands/task"
 	validationCommands "github.com/denkhaus/knot/internal/commands/validation"
+	"github.com/denkhaus/knot/internal/errors"
 	"github.com/denkhaus/knot/internal/logger"
 	"github.com/denkhaus/knot/internal/manager"
 	"github.com/denkhaus/knot/internal/repository/inmemory"
@@ -21,6 +26,39 @@ import (
 type App struct {
 	*cli.App
 	context *shared.AppContext
+}
+
+// isUserInputError checks if an error is due to user input (like missing required flags)
+// rather than an internal application error
+func isUserInputError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	// Check if it's an EnhancedError - these are user-facing validation errors
+	if _, ok := err.(*errors.EnhancedError); ok {
+		return true
+	}
+	
+	errMsg := err.Error()
+	
+	// Common user input errors from urfave/cli
+	userErrorPatterns := []string{
+		"Required flag",
+		"flag provided but not defined",
+		"invalid value",
+		"command not found",
+		"incorrect usage",
+		"flag needs an argument",
+	}
+	
+	for _, pattern := range userErrorPatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // New creates a new CLI application with all dependencies initialized
@@ -214,6 +252,13 @@ func (a *App) Run(args []string) error {
 	defer logger.Sync()
 	
 	if err := a.App.Run(args); err != nil {
+		// For user input errors, print them cleanly without JSON logging
+		if isUserInputError(err) {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			return err
+		}
+		
+		// For internal errors, use the logger
 		a.context.Logger.Error("Application error", zap.Error(err))
 		return err
 	}

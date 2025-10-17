@@ -50,25 +50,33 @@ func (sv *StateValidator) defineAllowedTransitions() {
 		{types.TaskStatePending, types.TaskStateInProgress},
 		{types.TaskStatePending, types.TaskStateBlocked},
 		{types.TaskStatePending, types.TaskStateCancelled},
+		{types.TaskStatePending, types.TaskStateDeletionPending},
 		
 		// From in-progress
 		{types.TaskStateInProgress, types.TaskStateCompleted},
 		{types.TaskStateInProgress, types.TaskStateBlocked},
 		{types.TaskStateInProgress, types.TaskStatePending},
 		{types.TaskStateInProgress, types.TaskStateCancelled},
+		{types.TaskStateInProgress, types.TaskStateDeletionPending},
 		
 		// From completed
 		{types.TaskStateCompleted, types.TaskStateInProgress}, // Reopen for fixes
 		{types.TaskStateCompleted, types.TaskStatePending},    // Reset if needed
+		{types.TaskStateCompleted, types.TaskStateDeletionPending},
 		
 		// From blocked
 		{types.TaskStateBlocked, types.TaskStatePending},
 		{types.TaskStateBlocked, types.TaskStateInProgress},
 		{types.TaskStateBlocked, types.TaskStateCancelled},
+		{types.TaskStateBlocked, types.TaskStateDeletionPending},
 		
 		// From cancelled
 		{types.TaskStateCancelled, types.TaskStatePending},    // Restore
 		{types.TaskStateCancelled, types.TaskStateInProgress}, // Resume
+		{types.TaskStateCancelled, types.TaskStateDeletionPending},
+		
+		// From deletion-pending - NO TRANSITIONS ALLOWED except delete operation
+		// This ensures only the delete command can proceed from this state
 		
 		// Self-transitions (no-op but valid)
 		{types.TaskStatePending, types.TaskStatePending},
@@ -76,6 +84,7 @@ func (sv *StateValidator) defineAllowedTransitions() {
 		{types.TaskStateCompleted, types.TaskStateCompleted},
 		{types.TaskStateBlocked, types.TaskStateBlocked},
 		{types.TaskStateCancelled, types.TaskStateCancelled},
+		{types.TaskStateDeletionPending, types.TaskStateDeletionPending},
 	}
 
 	for _, transition := range transitions {
@@ -130,6 +139,22 @@ func (sv *StateValidator) addValidationRules() {
 						Suggestion:  "Consider breaking down high complexity tasks into smaller subtasks",
 						Example:     "knot breakdown --project-id <project-id> --threshold 7",
 						HelpCommand: "knot task create --help  # to create subtasks",
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "deletion_pending_protection",
+			Description: "Tasks marked for deletion cannot transition to other states except via delete operation",
+			Validate: func(from, to types.TaskState, task *types.Task) error {
+				if from == types.TaskStateDeletionPending && to != types.TaskStateDeletionPending {
+					return &errors.EnhancedError{
+						Operation:   "validating state transition",
+						Cause:       fmt.Errorf("task is marked for deletion and cannot transition to '%s'", to),
+						Suggestion:  "Complete the deletion process or use the delete command to cancel deletion",
+						Example:     "knot task delete --id " + task.ID.String() + " # to complete deletion",
+						HelpCommand: "knot task delete --help",
 					}
 				}
 				return nil
@@ -222,6 +247,7 @@ func (sv *StateValidator) GetAllValidStates() []types.TaskState {
 		types.TaskStateCompleted,
 		types.TaskStateBlocked,
 		types.TaskStateCancelled,
+		types.TaskStateDeletionPending,
 	}
 }
 

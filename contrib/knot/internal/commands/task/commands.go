@@ -283,10 +283,8 @@ func updateStateAction(appCtx *shared.AppContext) cli.ActionFunc {
 		// Validate state transition
 		validator := validation.NewStateValidator()
 		if err := validator.ValidateTransition(task.State, newState, task); err != nil {
-			appCtx.Logger.Error("Invalid state transition",
-				zap.String("from", string(task.State)),
-				zap.String("to", string(newState)),
-				zap.Error(err))
+			// EnhancedError already contains user-friendly formatting
+			// No need to log this as it's a user input validation error
 			return err
 		}
 

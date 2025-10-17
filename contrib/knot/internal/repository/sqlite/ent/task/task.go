@@ -119,11 +119,12 @@ const DefaultState = StatePending
 
 // State values.
 const (
-	StatePending    State = "pending"
-	StateInProgress State = "in-progress"
-	StateCompleted  State = "completed"
-	StateBlocked    State = "blocked"
-	StateCancelled  State = "cancelled"
+	StatePending         State = "pending"
+	StateInProgress      State = "in-progress"
+	StateCompleted       State = "completed"
+	StateBlocked         State = "blocked"
+	StateCancelled       State = "cancelled"
+	StateDeletionPending State = "deletion-pending"
 )
 
 func (s State) String() string {
@@ -133,7 +134,7 @@ func (s State) String() string {
 // StateValidator is a validator for the "state" field enum values. It is called by the builders before save.
 func StateValidator(s State) error {
 	switch s {
-	case StatePending, StateInProgress, StateCompleted, StateBlocked, StateCancelled:
+	case StatePending, StateInProgress, StateCompleted, StateBlocked, StateCancelled, StateDeletionPending:
 		return nil
 	default:
 		return fmt.Errorf("task: invalid enum value for state field: %q", s)

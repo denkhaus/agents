@@ -47,7 +47,7 @@ var (
 		{Name: "id", Type: field.TypeUUID, Unique: true},
 		{Name: "title", Type: field.TypeString, Size: 200},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
-		{Name: "state", Type: field.TypeEnum, Enums: []string{"pending", "in-progress", "completed", "blocked", "cancelled"}, Default: "pending"},
+		{Name: "state", Type: field.TypeEnum, Enums: []string{"pending", "in-progress", "completed", "blocked", "cancelled", "deletion-pending"}, Default: "pending"},
 		{Name: "complexity", Type: field.TypeInt},
 		{Name: "depth", Type: field.TypeInt, Default: 0},
 		{Name: "estimate", Type: field.TypeInt64, Nullable: true},

@@ -32,7 +32,7 @@ func (Task) Fields() []ent.Field {
 		field.Text("description").
 			Optional(),
 		field.Enum("state").
-			Values("pending", "in-progress", "completed", "blocked", "cancelled").
+			Values("pending", "in-progress", "completed", "blocked", "cancelled", "deletion-pending").
 			Default("pending"),
 		field.Int("complexity").
 			Min(1).

@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var Log *zap.Logger
@@ -25,9 +26,12 @@ func init() {
 			Log = zap.NewNop()
 		}
 	} else {
-		// For non-debug modes, use minimal logging to avoid JSON output
-		config := zap.NewProductionConfig()
-		config.Level = zap.NewAtomicLevelAt(zap.ErrorLevel) // Only log errors
+		// For CLI usage, we want human-readable console output by default
+		// This avoids JSON logging unless explicitly needed
+		config := zap.NewDevelopmentConfig()
+		config.EncoderConfig.TimeKey = "" // Remove timestamp for cleaner CLI output
+		config.EncoderConfig.CallerKey = "" // Remove caller info for cleaner CLI output
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder // Colored level names
 		config.OutputPaths = []string{"stderr"} // Send to stderr to not interfere with CLI output
 		
 		// Set log level if specified

@@ -15,6 +15,8 @@ func main() {
 	}
 
 	if err := application.Run(os.Args); err != nil {
-		log.Fatal(err)
+		// Error has already been printed by the Run method
+		// Just exit with error code without additional logging
+		os.Exit(1)
 	}
 }

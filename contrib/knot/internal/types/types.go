@@ -11,11 +11,12 @@ import (
 type TaskState string
 
 const (
-	TaskStatePending    TaskState = "pending"
-	TaskStateInProgress TaskState = "in-progress"
-	TaskStateCompleted  TaskState = "completed"
-	TaskStateBlocked    TaskState = "blocked"
-	TaskStateCancelled  TaskState = "cancelled"
+	TaskStatePending       TaskState = "pending"
+	TaskStateInProgress    TaskState = "in-progress"
+	TaskStateCompleted     TaskState = "completed"
+	TaskStateBlocked       TaskState = "blocked"
+	TaskStateCancelled     TaskState = "cancelled"
+	TaskStateDeletionPending TaskState = "deletion-pending"
 )
 
 // Task represents a single task in the project hierarchy
@@ -37,13 +38,24 @@ type Task struct {
 	CompletedAt   *time.Time  `json:"completed_at,omitempty"`
 }
 
+// ProjectState represents the current state of a project
+type ProjectState string
+
+const (
+	ProjectStateActive         ProjectState = "active"
+	ProjectStateCompleted      ProjectState = "completed"
+	ProjectStateArchived       ProjectState = "archived"
+	ProjectStateDeletionPending ProjectState = "deletion-pending"
+)
+
 // Project represents a project containing hierarchical tasks
 type Project struct {
-	ID          uuid.UUID `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID    `json:"id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	State       ProjectState `json:"state"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 	// Progress metrics
 	TotalTasks     int     `json:"total_tasks"`
 	CompletedTasks int     `json:"completed_tasks"`
