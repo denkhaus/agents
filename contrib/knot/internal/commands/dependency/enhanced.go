@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -13,12 +14,12 @@ import (
 )
 
 // EnhancedCommands returns enhanced dependency-related CLI commands
-func EnhancedCommands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.Command {
+func EnhancedCommands(appCtx *shared.AppContext) []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:   "dependents",
 			Usage:  "List tasks that depend on this task",
-			Action: dependentsAction(projectManager, logger),
+			Action: dependentsAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "task-id",
@@ -35,7 +36,7 @@ func EnhancedCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 		{
 			Name:   "chain",
 			Usage:  "Show dependency chain for a task",
-			Action: chainAction(projectManager, logger),
+			Action: chainAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "task-id",
@@ -57,7 +58,7 @@ func EnhancedCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 		{
 			Name:   "cycles",
 			Usage:  "Detect circular dependencies in project",
-			Action: cyclesAction(projectManager, logger),
+			Action: cyclesAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "project-id",
@@ -69,7 +70,7 @@ func EnhancedCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 		{
 			Name:   "validate",
 			Usage:  "Validate all dependencies in project",
-			Action: validateAction(projectManager, logger),
+			Action: validateAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "project-id",
@@ -81,7 +82,7 @@ func EnhancedCommands(projectManager manager.ProjectManager, logger *zap.Logger)
 	}
 }
 
-func dependentsAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func dependentsAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("task-id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -91,26 +92,26 @@ func dependentsAction(projectManager manager.ProjectManager, logger *zap.Logger)
 
 		recursive := c.Bool("recursive")
 
-		logger.Info("Getting dependent tasks", 
+		appCtx.Logger.Info("Getting dependent tasks",
 			zap.String("taskID", taskID.String()),
 			zap.Bool("recursive", recursive))
 
 		var dependents []*types.Task
 		if recursive {
-			dependents, err = getAllTransitiveDependents(projectManager, taskID)
+			dependents, err = getAllTransitiveDependents(appCtx.ProjectManager, taskID)
 		} else {
-			dependents, err = projectManager.GetDependentTasks(context.Background(), taskID)
+			dependents, err = appCtx.ProjectManager.GetDependentTasks(context.Background(), taskID)
 		}
 
 		if err != nil {
-			logger.Error("Failed to get dependents", zap.Error(err))
+			appCtx.Logger.Error("Failed to get dependents", zap.Error(err))
 			return fmt.Errorf("failed to get dependents: %w", err)
 		}
 
 		// Get the original task for context
-		task, err := projectManager.GetTask(context.Background(), taskID)
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
 			return fmt.Errorf("failed to get task: %w", err)
 		}
 

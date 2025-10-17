@@ -10,23 +10,23 @@ import (
 // ProjectManager defines the public interface for project task management
 type ProjectManager interface {
 	// Project operations
-	CreateProject(ctx context.Context, title, description string) (*types.Project, error)
+	CreateProject(ctx context.Context, title, description, actor string) (*types.Project, error)
 	GetProject(ctx context.Context, projectID uuid.UUID) (*types.Project, error)
-	UpdateProject(ctx context.Context, projectID uuid.UUID, title, description string) (*types.Project, error)
-	UpdateProjectDescription(ctx context.Context, projectID uuid.UUID, description string) (*types.Project, error)
-	UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState) (*types.Project, error)
+	UpdateProject(ctx context.Context, projectID uuid.UUID, title, description string, actor string) (*types.Project, error)
+	UpdateProjectDescription(ctx context.Context, projectID uuid.UUID, description string, actor string) (*types.Project, error)
+	UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState, actor string) (*types.Project, error)
 	DeleteProject(ctx context.Context, projectID uuid.UUID) error
 	ListProjects(ctx context.Context) ([]*types.Project, error)
 
 	// Task operations
-	CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int) (*types.Task, error)
+	CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int, actor string) (*types.Task, error)
 	GetTask(ctx context.Context, taskID uuid.UUID) (*types.Task, error)
-	UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state types.TaskState) (*types.Task, error)
-	UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string) (*types.Task, error)
-	UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string) (*types.Task, error)
-	UpdateTaskState(ctx context.Context, taskID uuid.UUID, state types.TaskState) (*types.Task, error)
-	DeleteTask(ctx context.Context, taskID uuid.UUID) error
-	DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID) error
+	UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state types.TaskState, actor string) (*types.Task, error)
+	UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string, actor string) (*types.Task, error)
+	UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string, actor string) (*types.Task, error)
+	UpdateTaskState(ctx context.Context, taskID uuid.UUID, state types.TaskState, actor string) (*types.Task, error)
+	DeleteTask(ctx context.Context, taskID uuid.UUID, actor string) error
+	DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID, actor string) error
 
 	// Task queries and analysis
 	GetParentTask(ctx context.Context, taskID uuid.UUID) (*types.Task, error)
@@ -48,8 +48,8 @@ type ProjectManager interface {
 	ListUnassignedTasks(ctx context.Context, projectID uuid.UUID) ([]*types.Task, error)
 
 	// Dependency management
-	AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*types.Task, error)
-	RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*types.Task, error)
+	AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID, actor string) (*types.Task, error)
+	RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID, actor string) (*types.Task, error)
 	GetTaskDependencies(ctx context.Context, taskID uuid.UUID) ([]*types.Task, error)
 	GetDependentTasks(ctx context.Context, taskID uuid.UUID) ([]*types.Task, error)
 

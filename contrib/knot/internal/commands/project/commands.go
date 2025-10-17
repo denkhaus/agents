@@ -3,9 +3,10 @@ package project
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/denkhaus/knot/internal/errors"
-	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -13,12 +14,12 @@ import (
 )
 
 // Commands returns all project-related CLI commands
-func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.Command {
+func Commands(appCtx *shared.AppContext) []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:   "create",
 			Usage:  "Create a new project",
-			Action: createAction(projectManager, logger),
+			Action: createAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "title",
@@ -31,17 +32,22 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 					Aliases: []string{"d"},
 					Usage:   "Project description",
 				},
+				&cli.StringFlag{
+					Name:    "actor",
+					Usage:   "Actor name for audit trail (default: $USER)",
+					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
+				},
 			},
 		},
 		{
 			Name:   "list",
 			Usage:  "List all projects",
-			Action: listAction(projectManager, logger),
+			Action: listAction(appCtx),
 		},
 		{
 			Name:   "get",
 			Usage:  "Get project details",
-			Action: getAction(projectManager, logger),
+			Action: getAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "id",
@@ -53,7 +59,7 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 		{
 			Name:   "delete",
 			Usage:  "Delete a project with two-step confirmation",
-			Action: deleteAction(projectManager, logger),
+			Action: deleteAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "id",
@@ -70,21 +76,31 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 	}
 }
 
-func createAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		title := c.String("title")
 		description := c.String("description")
+		actor := c.String("actor")
 
-		logger.Info("Creating project", zap.String("title", title), zap.String("description", description))
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
 
-		project, err := projectManager.CreateProject(context.Background(), title, description)
+		appCtx.Logger.Info("Creating project", zap.String("title", title), zap.String("description", description), zap.String("actor", actor))
+
+		project, err := appCtx.ProjectManager.CreateProject(context.Background(), title, description, actor)
 		if err != nil {
-			logger.Error("Failed to create project", zap.Error(err))
+			appCtx.Logger.Error("Failed to create project", zap.Error(err))
 			return fmt.Errorf("failed to create project: %w", err)
 		}
 
-		logger.Info("Project created successfully", zap.String("projectID", project.ID.String()), zap.String("title", project.Title))
+		appCtx.Logger.Info("Project created successfully", zap.String("projectID", project.ID.String()), zap.String("title", project.Title), zap.String("actor", actor))
 		fmt.Printf("Created project: %s (ID: %s)\n", project.Title, project.ID)
+		fmt.Printf("  Created by: %s\n", actor)
 		if project.Description != "" {
 			fmt.Printf("  Description: %s\n", project.Description)
 		}
@@ -92,17 +108,17 @@ func createAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 	}
 }
 
-func listAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		logger.Info("Listing projects")
+		appCtx.Logger.Info("Listing projects")
 
-		projects, err := projectManager.ListProjects(context.Background())
+		projects, err := appCtx.ProjectManager.ListProjects(context.Background())
 		if err != nil {
-			logger.Error("Failed to list projects", zap.Error(err))
+			appCtx.Logger.Error("Failed to list projects", zap.Error(err))
 			return fmt.Errorf("failed to list projects: %w", err)
 		}
 
-		logger.Info("Projects retrieved", zap.Int("count", len(projects)))
+		appCtx.Logger.Info("Projects retrieved", zap.Int("count", len(projects)))
 
 		if len(projects) == 0 {
 			fmt.Println("No projects found.")
@@ -123,7 +139,7 @@ func listAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 	}
 }
 
-func getAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func getAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		idStr := c.String("id")
 		projectID, err := uuid.Parse(idStr)
@@ -131,11 +147,11 @@ func getAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.Ac
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Getting project", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Getting project", zap.String("projectID", projectID.String()))
 
-		project, err := projectManager.GetProject(context.Background(), projectID)
+		project, err := appCtx.ProjectManager.GetProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project", zap.Error(err))
 			return fmt.Errorf("failed to get project: %w", err)
 		}
 
@@ -153,7 +169,7 @@ func getAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.Ac
 	}
 }
 
-func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func deleteAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -170,7 +186,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		dryRun := c.Bool("dry-run")
 
 		// Get project details
-		project, err := projectManager.GetProject(context.Background(), projectID)
+		project, err := appCtx.ProjectManager.GetProject(context.Background(), projectID)
 		if err != nil {
 			return &errors.EnhancedError{
 				Operation:   "retrieving project",
@@ -182,7 +198,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		}
 
 		// Check if project has tasks
-		tasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		tasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
 			return &errors.EnhancedError{
 				Operation:   "checking project tasks",
@@ -211,7 +227,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 			}
 
 			// Perform deletion
-			err = projectManager.DeleteProject(context.Background(), projectID)
+			err = appCtx.ProjectManager.DeleteProject(context.Background(), projectID)
 			if err != nil {
 				return &errors.EnhancedError{
 					Operation:   "deleting project",
@@ -253,7 +269,7 @@ func deleteAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 			}
 
 			// Mark project for deletion
-			_, err = projectManager.UpdateProjectState(context.Background(), projectID, types.ProjectStateDeletionPending)
+			_, err = appCtx.ProjectManager.UpdateProjectState(context.Background(), projectID, types.ProjectStateDeletionPending, appCtx.Actor)
 			if err != nil {
 				return &errors.EnhancedError{
 					Operation:   "marking project for deletion",

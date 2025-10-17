@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -12,7 +13,7 @@ import (
 )
 
 // chainAction shows the dependency chain for a task
-func chainAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func chainAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("task-id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -28,15 +29,15 @@ func chainAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 			upstream = true
 		}
 
-		logger.Info("Showing dependency chain", 
+		appCtx.Logger.Info("Showing dependency chain",
 			zap.String("taskID", taskID.String()),
 			zap.Bool("upstream", upstream),
 			zap.Bool("downstream", downstream))
 
 		// Get the original task
-		task, err := projectManager.GetTask(context.Background(), taskID)
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
-			logger.Error("Failed to get task", zap.Error(err))
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
 			return fmt.Errorf("failed to get task: %w", err)
 		}
 
@@ -44,7 +45,7 @@ func chainAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 
 		if upstream {
 			fmt.Println("📈 UPSTREAM DEPENDENCIES (what this task depends on):")
-			if err := showUpstreamChain(projectManager, taskID, 0); err != nil {
+			if err := showUpstreamChain(appCtx.ProjectManager, taskID, 0); err != nil {
 				return fmt.Errorf("failed to show upstream chain: %w", err)
 			}
 			fmt.Println()
@@ -52,7 +53,7 @@ func chainAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 
 		if downstream {
 			fmt.Println("📉 DOWNSTREAM DEPENDENCIES (what depends on this task):")
-			if err := showDownstreamChain(projectManager, taskID, 0); err != nil {
+			if err := showDownstreamChain(appCtx.ProjectManager, taskID, 0); err != nil {
 				return fmt.Errorf("failed to show downstream chain: %w", err)
 			}
 			fmt.Println()
@@ -82,7 +83,7 @@ func showUpstreamChain(projectManager manager.ProjectManager, taskID uuid.UUID, 
 			indent += "  "
 		}
 		fmt.Printf("%s  ├─ %s (ID: %s) - %s\n", indent, dep.Title, dep.ID, dep.State)
-		
+
 		// Recursively show dependencies of this dependency
 		if err := showUpstreamChain(projectManager, dep.ID, depth+1); err != nil {
 			return err
@@ -112,7 +113,7 @@ func showDownstreamChain(projectManager manager.ProjectManager, taskID uuid.UUID
 			indent += "  "
 		}
 		fmt.Printf("%s  ├─ %s (ID: %s) - %s\n", indent, dep.Title, dep.ID, dep.State)
-		
+
 		// Recursively show dependents of this dependent
 		if err := showDownstreamChain(projectManager, dep.ID, depth+1); err != nil {
 			return err
@@ -123,7 +124,7 @@ func showDownstreamChain(projectManager manager.ProjectManager, taskID uuid.UUID
 }
 
 // cyclesAction detects circular dependencies in a project
-func cyclesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func cyclesAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -131,12 +132,12 @@ func cyclesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Detecting dependency cycles", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Detecting dependency cycles", zap.String("projectID", projectID.String()))
 
 		// Get all tasks in the project
-		tasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		tasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -162,7 +163,7 @@ func cyclesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 						break
 					}
 				}
-				
+
 				if task != nil {
 					fmt.Printf("  %d. %s (ID: %s)\n", j+1, task.Title, taskID)
 				} else {
@@ -234,7 +235,7 @@ func detectCycles(tasks []*types.Task) [][]uuid.UUID {
 }
 
 // validateAction validates all dependencies in a project
-func validateAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func validateAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -242,12 +243,12 @@ func validateAction(projectManager manager.ProjectManager, logger *zap.Logger) c
 			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		logger.Info("Validating dependencies", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Validating dependencies", zap.String("projectID", projectID.String()))
 
 		// Get all tasks in the project
-		tasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		tasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
-			logger.Error("Failed to get project tasks", zap.Error(err))
+			appCtx.Logger.Error("Failed to get project tasks", zap.Error(err))
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
 
@@ -268,7 +269,7 @@ func validateAction(projectManager manager.ProjectManager, logger *zap.Logger) c
 			for _, depID := range task.Dependencies {
 				totalDeps++
 				if _, exists := taskMap[depID]; !exists {
-					issues = append(issues, fmt.Sprintf("Task '%s' (ID: %s) depends on non-existent task %s", 
+					issues = append(issues, fmt.Sprintf("Task '%s' (ID: %s) depends on non-existent task %s",
 						task.Title, task.ID, depID))
 					orphanedDeps++
 				}

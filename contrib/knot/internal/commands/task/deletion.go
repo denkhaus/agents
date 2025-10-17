@@ -109,7 +109,7 @@ func deleteAction(appCtx *shared.AppContext) cli.ActionFunc {
 			}
 
 			// Perform deletion
-			err = appCtx.ProjectManager.DeleteTask(context.Background(), taskID)
+			err = appCtx.ProjectManager.DeleteTask(context.Background(), taskID, appCtx.Actor)
 			if err != nil {
 				return &errors.EnhancedError{
 					Operation:   "deleting task",
@@ -155,7 +155,7 @@ func deleteAction(appCtx *shared.AppContext) cli.ActionFunc {
 			}
 
 			// Mark task for deletion
-			_, err = appCtx.ProjectManager.UpdateTask(context.Background(), task.ID, task.Title, task.Description, task.Complexity, types.TaskStateDeletionPending)
+			_, err = appCtx.ProjectManager.UpdateTask(context.Background(), task.ID, task.Title, task.Description, task.Complexity, types.TaskStateDeletionPending, appCtx.Actor)
 			if err != nil {
 				return &errors.EnhancedError{
 					Operation:   "marking task for deletion",
@@ -235,7 +235,7 @@ func deleteSubtreeAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		// Perform deletion
-		err = appCtx.ProjectManager.DeleteTaskSubtree(context.Background(), taskID)
+		err = appCtx.ProjectManager.DeleteTaskSubtree(context.Background(), taskID, appCtx.Actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to delete task subtree", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "deleting task subtree")

@@ -35,6 +35,8 @@ type Task struct {
 	Dependents    []uuid.UUID `json:"dependents,omitempty"`     // Tasks that depend on this task
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`
+	CreatedBy     string      `json:"created_by,omitempty"`     // Actor who created the task
+	UpdatedBy     string      `json:"updated_by,omitempty"`     // Actor who last updated the task
 	CompletedAt   *time.Time  `json:"completed_at,omitempty"`
 }
 
@@ -56,6 +58,8 @@ type Project struct {
 	State       ProjectState `json:"state"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
+	CreatedBy   string       `json:"created_by,omitempty"` // Actor who created the project
+	UpdatedBy   string       `json:"updated_by,omitempty"` // Actor who last updated the project
 	// Progress metrics
 	TotalTasks     int     `json:"total_tasks"`
 	CompletedTasks int     `json:"completed_tasks"`

@@ -10,6 +10,7 @@ import (
 type AppContext struct {
 	ProjectManager manager.ProjectManager
 	Logger         *zap.Logger
+	Actor          string
 }
 
 // NewAppContext creates a new application context with all dependencies

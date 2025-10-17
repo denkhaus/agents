@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/denkhaus/knot/internal/manager"
+	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
 	internalValidation "github.com/denkhaus/knot/internal/validation"
 	"github.com/google/uuid"
@@ -14,12 +14,12 @@ import (
 )
 
 // Commands returns validation related CLI commands
-func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.Command {
+func Commands(appCtx *shared.AppContext) []*cli.Command {
 	return []*cli.Command{
 		{
 			Name:   "states",
 			Usage:  "Show valid task states and transitions",
-			Action: statesAction(projectManager, logger),
+			Action: statesAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "from",
@@ -35,7 +35,7 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 		{
 			Name:   "transition",
 			Usage:  "Validate a state transition without applying it",
-			Action: transitionAction(projectManager, logger),
+			Action: transitionAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "task-id",
@@ -57,7 +57,7 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 		{
 			Name:   "project",
 			Usage:  "Validate all task states in a project",
-			Action: projectAction(projectManager, logger),
+			Action: projectAction(appCtx),
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "project-id",
@@ -74,7 +74,7 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 	}
 }
 
-func statesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func statesAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		fromState := c.String("from")
 		showMatrix := c.Bool("matrix")
@@ -84,7 +84,7 @@ func statesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		if showMatrix {
 			fmt.Println("Task State Transition Matrix:\n")
 			matrix := validator.GetStateTransitionMatrix()
-			
+
 			for state, transitions := range matrix {
 				fmt.Printf("📋 %s:\n", strings.ToUpper(state))
 				if len(transitions) == 0 {
@@ -132,7 +132,7 @@ func statesAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 	}
 }
 
-func transitionAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func transitionAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		taskIDStr := c.String("task-id")
 		taskID, err := uuid.Parse(taskIDStr)
@@ -144,7 +144,7 @@ func transitionAction(projectManager manager.ProjectManager, logger *zap.Logger)
 		lenient := c.Bool("lenient")
 
 		// Get task
-		task, err := projectManager.GetTask(context.Background(), taskID)
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
 		if err != nil {
 			return fmt.Errorf("failed to get task: %w", err)
 		}
@@ -193,7 +193,7 @@ func transitionAction(projectManager manager.ProjectManager, logger *zap.Logger)
 	}
 }
 
-func projectAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.ActionFunc {
+func projectAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		projectIDStr := c.String("project-id")
 		projectID, err := uuid.Parse(projectIDStr)
@@ -203,10 +203,10 @@ func projectAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 
 		fix := c.Bool("fix")
 
-		logger.Info("Validating project task states", zap.String("projectID", projectID.String()))
+		appCtx.Logger.Info("Validating project task states", zap.String("projectID", projectID.String()))
 
 		// Get all tasks
-		tasks, err := projectManager.ListTasksForProject(context.Background(), projectID)
+		tasks, err := appCtx.ProjectManager.ListTasksForProject(context.Background(), projectID)
 		if err != nil {
 			return fmt.Errorf("failed to get project tasks: %w", err)
 		}
@@ -225,11 +225,11 @@ func projectAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 
 				if fix {
 					// Attempt to fix by setting to pending
-					logger.Info("Fixing invalid state", 
+					appCtx.Logger.Info("Fixing invalid state",
 						zap.String("taskID", task.ID.String()),
 						zap.String("invalidState", string(task.State)))
 
-					_, err := projectManager.UpdateTaskState(context.Background(), task.ID, types.TaskStatePending)
+					_, err := appCtx.ProjectManager.UpdateTaskState(context.Background(), task.ID, types.TaskStatePending, appCtx.Actor)
 					if err != nil {
 						fmt.Printf("❌ Failed to fix task %s: %v\n", task.ID, err)
 					} else {
@@ -252,7 +252,7 @@ func projectAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 		}
 
 		if len(issues) > 0 {
-			fmt.Printf("\n⚠️  Issues Found:\n")
+			fmt.Printf("\nIssues Found:\n")
 			for i, issue := range issues {
 				fmt.Printf("   %d. %s\n", i+1, issue)
 			}
@@ -261,7 +261,7 @@ func projectAction(projectManager manager.ProjectManager, logger *zap.Logger) cl
 				fmt.Printf("\nUse --fix to automatically repair invalid states\n")
 			}
 		} else {
-			fmt.Printf("\n✅ All task states are valid!\n")
+			fmt.Printf("\nAll task states are valid!\n")
 		}
 
 		return nil

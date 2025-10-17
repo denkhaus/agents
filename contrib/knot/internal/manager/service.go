@@ -36,7 +36,7 @@ var _ ProjectManager = (*service)(nil)
 
 // Project operations
 
-func (s *service) CreateProject(ctx context.Context, title, description string) (*types.Project, error) {
+func (s *service) CreateProject(ctx context.Context, title, description, actor string) (*types.Project, error) {
 	if err := s.validateProjectInput(title, description); err != nil {
 		return nil, err
 	}
@@ -45,6 +45,8 @@ func (s *service) CreateProject(ctx context.Context, title, description string) 
 		ID:          uuid.New(),
 		Title:       title,
 		Description: description,
+		CreatedBy:   actor,
+		UpdatedBy:   actor,
 	}
 
 	if err := s.repo.CreateProject(ctx, project); err != nil {
@@ -58,7 +60,7 @@ func (s *service) GetProject(ctx context.Context, projectID uuid.UUID) (*types.P
 	return s.repo.GetProject(ctx, projectID)
 }
 
-func (s *service) UpdateProject(ctx context.Context, projectID uuid.UUID, title, description string) (*types.Project, error) {
+func (s *service) UpdateProject(ctx context.Context, projectID uuid.UUID, title, description string, actor string) (*types.Project, error) {
 	if err := s.validateProjectInput(title, description); err != nil {
 		return nil, err
 	}
@@ -70,6 +72,7 @@ func (s *service) UpdateProject(ctx context.Context, projectID uuid.UUID, title,
 
 	project.Title = title
 	project.Description = description
+	project.UpdatedBy = actor
 
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return nil, fmt.Errorf("failed to update project: %w", err)
@@ -78,7 +81,7 @@ func (s *service) UpdateProject(ctx context.Context, projectID uuid.UUID, title,
 	return s.repo.GetProject(ctx, projectID)
 }
 
-func (s *service) UpdateProjectDescription(ctx context.Context, projectID uuid.UUID, description string) (*types.Project, error) {
+func (s *service) UpdateProjectDescription(ctx context.Context, projectID uuid.UUID, description string, actor string) (*types.Project, error) {
 	// Validate description length
 	if len(description) > s.config.MaxDescriptionLength {
 		return nil, fmt.Errorf("description cannot exceed %d characters", s.config.MaxDescriptionLength)
@@ -90,6 +93,7 @@ func (s *service) UpdateProjectDescription(ctx context.Context, projectID uuid.U
 	}
 
 	project.Description = description
+	project.UpdatedBy = actor
 
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return nil, fmt.Errorf("failed to update project description: %w", err)
@@ -98,13 +102,14 @@ func (s *service) UpdateProjectDescription(ctx context.Context, projectID uuid.U
 	return s.repo.GetProject(ctx, projectID)
 }
 
-func (s *service) UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState) (*types.Project, error) {
+func (s *service) UpdateProjectState(ctx context.Context, projectID uuid.UUID, state types.ProjectState, actor string) (*types.Project, error) {
 	project, err := s.repo.GetProject(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	project.State = state
+	project.UpdatedBy = actor
 
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return nil, fmt.Errorf("failed to update project state: %w", err)
@@ -123,7 +128,7 @@ func (s *service) ListProjects(ctx context.Context) ([]*types.Project, error) {
 
 // Task operations
 
-func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int) (*types.Task, error) {
+func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int, actor string) (*types.Task, error) {
 	if err := s.validateTaskInput(title, description, complexity); err != nil {
 		return nil, err
 	}
@@ -169,6 +174,8 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 		State:       types.TaskStatePending,
 		Complexity:  complexity,
 		Depth:       depth,
+		CreatedBy:   actor,
+		UpdatedBy:   actor,
 	}
 
 	if err := s.repo.CreateTask(ctx, task); err != nil {
@@ -191,13 +198,16 @@ func (s *service) GetTask(ctx context.Context, taskID uuid.UUID) (*types.Task, e
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) UpdateTaskState(ctx context.Context, taskID uuid.UUID, state types.TaskState) (*types.Task, error) {
+func (s *service) UpdateTaskState(ctx context.Context, taskID uuid.UUID, state types.TaskState, actor string) (*types.Task, error) {
 	task, err := s.repo.GetTask(ctx, taskID)
 	if err != nil {
 		return nil, err
 	}
 
 	task.State = state
+	task.UpdatedBy = actor
+	task.UpdatedAt = time.Now()
+
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task state: %w", err)
 	}
@@ -205,7 +215,7 @@ func (s *service) UpdateTaskState(ctx context.Context, taskID uuid.UUID, state t
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state types.TaskState) (*types.Task, error) {
+func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, description string, complexity int, state types.TaskState, actor string) (*types.Task, error) {
 	if err := s.validateTaskInput(title, description, complexity); err != nil {
 		return nil, err
 	}
@@ -219,6 +229,7 @@ func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, descr
 	task.Description = description
 	task.Complexity = complexity
 	task.State = state
+	task.UpdatedBy = actor
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task: %w", err)
@@ -227,7 +238,7 @@ func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, descr
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string) (*types.Task, error) {
+func (s *service) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, description string, actor string) (*types.Task, error) {
 	// Validate description length
 	if len(description) > s.config.MaxDescriptionLength {
 		return nil, fmt.Errorf("description cannot exceed %d characters", s.config.MaxDescriptionLength)
@@ -239,6 +250,7 @@ func (s *service) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, d
 	}
 
 	task.Description = description
+	task.UpdatedBy = actor
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task description: %w", err)
@@ -247,7 +259,7 @@ func (s *service) UpdateTaskDescription(ctx context.Context, taskID uuid.UUID, d
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string) (*types.Task, error) {
+func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title string, actor string) (*types.Task, error) {
 	// Validate title
 	if title == "" {
 		return nil, fmt.Errorf("title cannot be empty")
@@ -262,6 +274,7 @@ func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title s
 	}
 
 	task.Title = title
+	task.UpdatedBy = actor
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task title: %w", err)
@@ -270,11 +283,11 @@ func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title s
 	return s.repo.GetTask(ctx, taskID)
 }
 
-func (s *service) DeleteTask(ctx context.Context, taskID uuid.UUID) error {
+func (s *service) DeleteTask(ctx context.Context, taskID uuid.UUID, actor string) error {
 	return s.repo.DeleteTask(ctx, taskID)
 }
 
-func (s *service) DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID) error {
+func (s *service) DeleteTaskSubtree(ctx context.Context, taskID uuid.UUID, actor string) error {
 	return s.repo.DeleteTaskSubtree(ctx, taskID)
 }
 
@@ -734,12 +747,12 @@ func (s *service) SaveConfigToFile() error {
 }
 
 // AddTaskDependency adds a dependency between tasks
-func (s *service) AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*types.Task, error) {
+func (s *service) AddTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID, actor string) (*types.Task, error) {
 	return s.repo.AddTaskDependency(ctx, taskID, dependsOnTaskID)
 }
 
 // RemoveTaskDependency removes a dependency between tasks
-func (s *service) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID) (*types.Task, error) {
+func (s *service) RemoveTaskDependency(ctx context.Context, taskID uuid.UUID, dependsOnTaskID uuid.UUID, actor string) (*types.Task, error) {
 	return s.repo.RemoveTaskDependency(ctx, taskID, dependsOnTaskID)
 }
 
@@ -762,7 +775,7 @@ func getConfigPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
-	
+
 	knotDir := filepath.Join(cwd, ".knot")
 	configPath := filepath.Join(knotDir, "config.json")
 	return configPath, nil
@@ -808,7 +821,7 @@ func (s *service) autoReduceParentComplexity(ctx context.Context, parentID uuid.
 	// Logic: High complexity tasks become coordination tasks when broken down
 	var newComplexity int
 	childCount := len(children)
-	
+
 	switch {
 	case childCount == 1:
 		// First subtask: reduce by 2 (e.g., 9 -> 7)
@@ -835,8 +848,8 @@ func (s *service) autoReduceParentComplexity(ctx context.Context, parentID uuid.
 		if err := s.repo.UpdateTask(ctx, parentTask); err != nil {
 			return fmt.Errorf("failed to update parent task complexity: %w", err)
 		}
-		
-		fmt.Printf("Auto-reduced parent task complexity: %s (ID: %s) %d -> %d (based on %d subtasks)\n", 
+
+		fmt.Printf("Auto-reduced parent task complexity: %s (ID: %s) %d -> %d (based on %d subtasks)\n",
 			parentTask.Title, parentTask.ID, parentTask.Complexity+2, newComplexity, childCount)
 	}
 

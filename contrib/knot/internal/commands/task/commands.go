@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/denkhaus/knot/internal/shared"
 
@@ -52,6 +53,11 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Value:   5,
 					EnvVars: []string{"KNOT_DEFAULT_COMPLEXITY"},
 				},
+				&cli.StringFlag{
+					Name:    "actor",
+					Usage:   "Actor name for audit trail (default: $USER)",
+					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
+				},
 			},
 		},
 		{
@@ -88,6 +94,11 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Usage:    "New state (pending, in-progress, completed, blocked, cancelled)",
 					Required: true,
 				},
+				&cli.StringFlag{
+					Name:    "actor",
+					Usage:   "Actor name for audit trail (default: $USER)",
+					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
+				},
 			},
 		},
 		{
@@ -106,6 +117,11 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Usage:    "New task title",
 					Required: true,
 				},
+				&cli.StringFlag{
+					Name:    "actor",
+					Usage:   "Actor name for audit trail (default: $USER)",
+					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
+				},
 			},
 		},
 		{
@@ -123,6 +139,11 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Aliases:  []string{"d"},
 					Usage:    "New task description",
 					Required: true,
+				},
+				&cli.StringFlag{
+					Name:    "actor",
+					Usage:   "Actor name for audit trail (default: $USER)",
+					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
 				},
 			},
 		},
@@ -158,6 +179,15 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 		title := c.String("title")
 		description := c.String("description")
 		complexity := c.Int("complexity")
+		actor := c.String("actor")
+
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
 
 		// Validate complexity
 		if err := errors.ValidateComplexity(complexity); err != nil {
@@ -176,17 +206,19 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 		appCtx.Logger.Info("Creating task",
 			zap.String("title", title),
 			zap.String("projectID", projectID.String()),
-			zap.Int("complexity", complexity))
+			zap.Int("complexity", complexity),
+			zap.String("actor", actor))
 
-		task, err := appCtx.ProjectManager.CreateTask(context.Background(), projectID, parentID, title, description, complexity)
+		task, err := appCtx.ProjectManager.CreateTask(context.Background(), projectID, parentID, title, description, complexity, actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to create task", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "creating task")
 		}
 
-		appCtx.Logger.Info("Task created successfully", zap.String("taskID", task.ID.String()))
+		appCtx.Logger.Info("Task created successfully", zap.String("taskID", task.ID.String()), zap.String("actor", actor))
 
 		fmt.Printf("Created task: %s (ID: %s)\n", task.Title, task.ID)
+		fmt.Printf("  Created by: %s\n", actor)
 		if task.Description != "" {
 			fmt.Printf("  Description: %s\n", task.Description)
 		}
@@ -261,6 +293,15 @@ func updateStateAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		stateStr := c.String("state")
+		actor := c.String("actor")
+
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
 
 		// Basic state validation
 		if err := errors.ValidateTaskState(stateStr); err != nil {
@@ -271,7 +312,8 @@ func updateStateAction(appCtx *shared.AppContext) cli.ActionFunc {
 
 		appCtx.Logger.Info("Updating task state",
 			zap.String("taskID", taskID.String()),
-			zap.String("newState", stateStr))
+			zap.String("newState", stateStr),
+			zap.String("actor", actor))
 
 		// Get current task to preserve other fields
 		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
@@ -289,14 +331,15 @@ func updateStateAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		// Update task state
-		updatedTask, err := appCtx.ProjectManager.UpdateTaskState(context.Background(), taskID, newState)
+		updatedTask, err := appCtx.ProjectManager.UpdateTaskState(context.Background(), taskID, newState, actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to update task state", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "updating task state")
 		}
 
-		appCtx.Logger.Info("Task state updated successfully")
+		appCtx.Logger.Info("Task state updated successfully", zap.String("actor", actor))
 		fmt.Printf("Updated task state: %s -> %s\n", task.State, updatedTask.State)
+		fmt.Printf("  Updated by: %s\n", actor)
 		return nil
 	}
 }
@@ -330,13 +373,23 @@ func updateTitleAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		newTitle := c.String("title")
+		actor := c.String("actor")
 		if newTitle == "" {
 			return fmt.Errorf("title cannot be empty")
 		}
 
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
+
 		appCtx.Logger.Info("Updating task title",
 			zap.String("taskID", taskID.String()),
-			zap.String("newTitle", newTitle))
+			zap.String("newTitle", newTitle),
+			zap.String("actor", actor))
 
 		// Get current task to check if it exists and get old title
 		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
@@ -348,14 +401,15 @@ func updateTitleAction(appCtx *shared.AppContext) cli.ActionFunc {
 		oldTitle := task.Title
 
 		// Update task title
-		updatedTask, err := appCtx.ProjectManager.UpdateTaskTitle(context.Background(), taskID, newTitle)
+		updatedTask, err := appCtx.ProjectManager.UpdateTaskTitle(context.Background(), taskID, newTitle, actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to update task title", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "updating task title")
 		}
 
-		appCtx.Logger.Info("Task title updated successfully")
+		appCtx.Logger.Info("Task title updated successfully", zap.String("actor", actor))
 		fmt.Printf("Updated task title: \"%s\" -> \"%s\"\n", oldTitle, updatedTask.Title)
+		fmt.Printf("  Updated by: %s\n", actor)
 		return nil
 	}
 }
@@ -369,10 +423,20 @@ func updateDescriptionAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		newDescription := c.String("description")
+		actor := c.String("actor")
+
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
 
 		appCtx.Logger.Info("Updating task description",
 			zap.String("taskID", taskID.String()),
-			zap.String("newDescription", newDescription))
+			zap.String("newDescription", newDescription),
+			zap.String("actor", actor))
 
 		// Get current task to check if it exists and get old description
 		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
@@ -384,18 +448,19 @@ func updateDescriptionAction(appCtx *shared.AppContext) cli.ActionFunc {
 		oldDescription := task.Description
 
 		// Update task description
-		updatedTask, err := appCtx.ProjectManager.UpdateTaskDescription(context.Background(), taskID, newDescription)
+		updatedTask, err := appCtx.ProjectManager.UpdateTaskDescription(context.Background(), taskID, newDescription, actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to update task description", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "updating task description")
 		}
 
-		appCtx.Logger.Info("Task description updated successfully")
+		appCtx.Logger.Info("Task description updated successfully", zap.String("actor", actor))
 		if oldDescription == "" {
 			fmt.Printf("Updated task description: (empty) -> \"%s\"\n", updatedTask.Description)
 		} else {
 			fmt.Printf("Updated task description: \"%s\" -> \"%s\"\n", oldDescription, updatedTask.Description)
 		}
+		fmt.Printf("  Updated by: %s\n", actor)
 		return nil
 	}
 }
