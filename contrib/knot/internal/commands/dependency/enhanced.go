@@ -59,25 +59,11 @@ func EnhancedCommands(appCtx *shared.AppContext) []*cli.Command {
 			Name:   "cycles",
 			Usage:  "Detect circular dependencies in project",
 			Action: cyclesAction(appCtx),
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Usage:    "Project ID",
-					Required: true,
-				},
-			},
 		},
 		{
 			Name:   "validate",
 			Usage:  "Validate all dependencies in project",
 			Action: validateAction(appCtx),
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Usage:    "Project ID",
-					Required: true,
-				},
-			},
 		},
 	}
 }

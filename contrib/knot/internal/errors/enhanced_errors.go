@@ -120,13 +120,30 @@ func DatabaseConnectionError(operation string, cause error) *EnhancedError {
 // MissingRequiredFlagError creates an enhanced error for missing CLI flags
 func MissingRequiredFlagError(flagName, commandContext string) *EnhancedError {
 	var example string
+	var helpCommand string
+	
+	if commandContext == "" {
+		commandContext = "command"
+	}
+	
 	switch flagName {
 	case "project-id":
 		example = "knot " + commandContext + " --project-id $(knot project list | head -1 | cut -d' ' -f6 | tr -d '()')"
+		helpCommand = "knot project list  # to see available projects"
 	case "task-id":
 		example = "knot " + commandContext + " --task-id $(knot task list --project-id <project-id> | head -1 | cut -d' ' -f6 | tr -d '()')"
+		helpCommand = "knot task list --project-id <project-id>  # to see available tasks"
 	default:
 		example = "knot " + commandContext + " --" + flagName + " <value>"
+		helpCommand = "knot --help"
+	}
+	
+	// Safe help command generation
+	if commandContext != "" && commandContext != "command" {
+		fields := strings.Fields(commandContext)
+		if len(fields) > 0 {
+			helpCommand = "knot " + fields[0] + " --help"
+		}
 	}
 	
 	return &EnhancedError{
@@ -134,7 +151,7 @@ func MissingRequiredFlagError(flagName, commandContext string) *EnhancedError {
 		Cause:       fmt.Errorf("required flag --%s not provided", flagName),
 		Suggestion:  fmt.Sprintf("Add the --%s flag with a valid value", flagName),
 		Example:     example,
-		HelpCommand: "knot " + strings.Fields(commandContext)[0] + " --help",
+		HelpCommand: helpCommand,
 	}
 }
 
@@ -157,6 +174,17 @@ func TooManyTasksError(currentCount, maxAllowed int, depth int) *EnhancedError {
 		Suggestion:  "Break down existing complex tasks into subtasks, or increase the limit via environment variable",
 		Example:     "export KNOT_MAX_TASKS_PER_DEPTH=200  # increase limit",
 		HelpCommand: "knot breakdown --project-id <project-id>  # find tasks to break down",
+	}
+}
+
+// NewValidationError creates an enhanced error for validation failures
+func NewValidationError(message string, cause error) *EnhancedError {
+	return &EnhancedError{
+		Operation:   "input validation",
+		Cause:       cause,
+		Suggestion:  "Check your input and try again with valid values",
+		Example:     "Ensure titles are under 200 characters and descriptions under 2000 characters",
+		HelpCommand: "knot --help",
 	}
 }
 

@@ -50,11 +50,6 @@ func HierarchyCommands(appCtx *shared.AppContext) []*cli.Command {
 			Usage:  "Get root tasks of a project",
 			Action: RootsAction(appCtx),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Usage:    "Project ID",
-					Required: true,
-				},
 				&cli.IntFlag{
 					Name:  "limit",
 					Usage: "Maximum number of root tasks to show",
@@ -67,11 +62,6 @@ func HierarchyCommands(appCtx *shared.AppContext) []*cli.Command {
 			Usage:  "Show task hierarchy as a tree",
 			Action: TreeAction(appCtx),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Usage:    "Project ID",
-					Required: true,
-				},
 				&cli.IntFlag{
 					Name:  "max-depth",
 					Usage: "Maximum depth to show (0 = no limit)",

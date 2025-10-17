@@ -217,11 +217,18 @@ func (sv *StateValidator) ValidateTransitionLenient(from, to types.TaskState, ta
 func (sv *StateValidator) createInvalidTransitionError(from, to types.TaskState, task *types.Task) error {
 	validTransitions := sv.getValidTransitionsFrom(from)
 	
+	var example string
+	if len(validTransitions) > 0 {
+		example = fmt.Sprintf("knot task update-state --id %s --state %s", task.ID.String(), validTransitions[0])
+	} else {
+		example = fmt.Sprintf("knot task delete --id %s  # only deletion allowed", task.ID.String())
+	}
+	
 	return &errors.EnhancedError{
 		Operation:   "validating state transition",
 		Cause:       fmt.Errorf("invalid state transition from '%s' to '%s'", from, to),
 		Suggestion:  fmt.Sprintf("Valid transitions from '%s': %v", from, validTransitions),
-		Example:     fmt.Sprintf("knot task update-state --id %s --state %s", task.ID.String(), validTransitions[0]),
+		Example:     example,
 		HelpCommand: "knot task update-state --help",
 	}
 }

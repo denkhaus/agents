@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/denkhaus/knot/internal/shared"
 
@@ -16,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// validateProjectID validates and returns the project ID from the CLI context
+
 // Commands returns all task-related CLI commands
 func Commands(appCtx *shared.AppContext) []*cli.Command {
 	// Basic task commands
@@ -25,12 +29,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 			Usage:  "Create a new task",
 			Action: createAction(appCtx),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Aliases:  []string{"p"},
-					Usage:    "Project ID",
-					Required: true,
-				},
 				&cli.StringFlag{
 					Name:     "title",
 					Aliases:  []string{"t"},
@@ -53,28 +51,57 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Value:   5,
 					EnvVars: []string{"KNOT_DEFAULT_COMPLEXITY"},
 				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
-				},
 			},
 		},
 		{
 			Name:   "list",
-			Usage:  "List tasks",
+			Usage:  "List tasks with advanced filtering options",
 			Action: listAction(appCtx),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Aliases:  []string{"p"},
-					Usage:    "Project ID",
-					Required: true,
-				},
 				&cli.BoolFlag{
 					Name:    "json",
 					Aliases: []string{"j"},
 					Usage:   "Output in JSON format",
+				},
+				&cli.StringFlag{
+					Name:    "state",
+					Aliases: []string{"s"},
+					Usage:   "Filter by task state (pending, in-progress, completed, blocked, cancelled)",
+				},
+				&cli.IntFlag{
+					Name:  "complexity-min",
+					Usage: "Filter by minimum complexity (1-10)",
+				},
+				&cli.IntFlag{
+					Name:  "complexity-max",
+					Usage: "Filter by maximum complexity (1-10)",
+				},
+				&cli.IntFlag{
+					Name:  "complexity",
+					Usage: "Filter by exact complexity (1-10)",
+				},
+				&cli.StringFlag{
+					Name:    "search",
+					Aliases: []string{"q"},
+					Usage:   "Search in task titles and descriptions",
+				},
+				&cli.IntFlag{
+					Name:  "depth-max",
+					Usage: "Filter by maximum depth in hierarchy",
+				},
+				&cli.IntFlag{
+					Name:    "limit",
+					Aliases: []string{"l"},
+					Usage:   "Maximum number of tasks to show",
+				},
+				&cli.StringFlag{
+					Name:  "sort",
+					Usage: "Sort by field (title, complexity, state, created, depth)",
+					Value: "created",
+				},
+				&cli.BoolFlag{
+					Name:  "reverse",
+					Usage: "Reverse sort order",
 				},
 			},
 		},
@@ -94,11 +121,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Usage:    "New state (pending, in-progress, completed, blocked, cancelled)",
 					Required: true,
 				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
-				},
 			},
 		},
 		{
@@ -117,11 +139,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Usage:    "New task title",
 					Required: true,
 				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
-				},
 			},
 		},
 		{
@@ -139,11 +156,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Aliases:  []string{"d"},
 					Usage:    "New task description",
 					Required: true,
-				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
 				},
 			},
 		},
@@ -170,16 +182,31 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 
 func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		projectIDStr := c.String("project-id")
-		projectID, err := uuid.Parse(projectIDStr)
+		projectID, err := shared.ValidateProjectID(c)
 		if err != nil {
-			return fmt.Errorf("invalid project ID: %w", err)
+			return err
 		}
 
 		title := c.String("title")
 		description := c.String("description")
 		complexity := c.Int("complexity")
 		actor := c.String("actor")
+
+		// Create input validator
+		validator := validation.NewInputValidator()
+
+		// Validate inputs
+		if err := validator.ValidateTaskTitle(title); err != nil {
+			return errors.NewValidationError("invalid task title", err)
+		}
+
+		if err := validator.ValidateTaskDescription(description); err != nil {
+			return errors.NewValidationError("invalid task description", err)
+		}
+
+		if err := validator.ValidateComplexity(complexity); err != nil {
+			return errors.NewValidationError("invalid complexity", err)
+		}
 
 		// Default to $USER if actor is not provided
 		if actor == "" {
@@ -228,6 +255,10 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 			fmt.Printf("  Parent: %s\n", *parentID)
 		}
 
+		// Show workflow reminder for task state management
+		fmt.Printf("\nReminder: Set this task to 'in-progress' before starting work:\n")
+		fmt.Printf("  knot --project-id %s task update-state --id %s --state in-progress\n", projectID, task.ID)
+
 		// Show breakdown suggestion for high complexity tasks
 		if complexity >= 8 {
 			fmt.Printf("\nNote: This task has high complexity (%d >= 8 threshold).\n", complexity)
@@ -242,10 +273,9 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 
 func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		projectIDStr := c.String("project-id")
-		projectID, err := uuid.Parse(projectIDStr)
+		projectID, err := shared.ValidateProjectID(c)
 		if err != nil {
-			return fmt.Errorf("invalid project ID: %w", err)
+			return err
 		}
 
 		appCtx.Logger.Info("Listing tasks", zap.String("projectID", projectID.String()))
@@ -256,19 +286,37 @@ func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 			return errors.WrapWithSuggestion(err, "listing tasks")
 		}
 
-		appCtx.Logger.Info("Tasks retrieved", zap.Int("count", len(tasks)))
+		// Apply filters
+		filteredTasks := applyTaskFilters(tasks, c)
 
-		if len(tasks) == 0 {
-			return errors.EmptyResultError("list tasks", fmt.Sprintf("project %s", projectID))
+		// Apply sorting
+		sortedTasks := applyTaskSorting(filteredTasks, c)
+
+		// Apply limit
+		finalTasks := applyTaskLimit(sortedTasks, c)
+
+		appCtx.Logger.Info("Tasks filtered and sorted",
+			zap.Int("originalCount", len(tasks)),
+			zap.Int("filteredCount", len(finalTasks)))
+
+		if len(finalTasks) == 0 {
+			fmt.Printf("No tasks found matching the specified criteria.\n")
+			return nil
 		}
 
 		// Check if JSON output is requested
 		if c.Bool("json") {
-			return outputTasksAsJSON(tasks)
+			return outputTasksAsJSON(finalTasks)
 		}
 
-		fmt.Printf("Found %d task(s):\n\n", len(tasks))
-		for _, task := range tasks {
+		// Show filter summary if filters were applied
+		if hasFiltersApplied(c) {
+			fmt.Printf("Found %d task(s) matching criteria (out of %d total):\n\n", len(finalTasks), len(tasks))
+		} else {
+			fmt.Printf("Found %d task(s):\n\n", len(finalTasks))
+		}
+
+		for _, task := range finalTasks {
 			indent := ""
 			for i := 0; i < task.Depth; i++ {
 				indent += "  "
@@ -277,7 +325,7 @@ func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 			if task.Description != "" {
 				fmt.Printf("%s  %s\n", indent, task.Description)
 			}
-			fmt.Printf("%s  State: %s | Complexity: %d\n", indent, task.State, task.Complexity)
+			fmt.Printf("%s  State: %s | Complexity: %d | Depth: %d\n", indent, task.State, task.Complexity, task.Depth)
 			fmt.Println()
 		}
 		return nil
@@ -463,4 +511,118 @@ func updateDescriptionAction(appCtx *shared.AppContext) cli.ActionFunc {
 		fmt.Printf("  Updated by: %s\n", actor)
 		return nil
 	}
+}
+
+// Helper functions for task filtering, sorting, and limiting
+
+// applyTaskFilters applies all specified filters to the task list
+func applyTaskFilters(tasks []*types.Task, c *cli.Context) []*types.Task {
+	var filtered []*types.Task
+
+	for _, task := range tasks {
+		// State filter
+		if state := c.String("state"); state != "" {
+			if string(task.State) != state {
+				continue
+			}
+		}
+
+		// Complexity filters
+		if complexity := c.Int("complexity"); complexity > 0 {
+			if task.Complexity != complexity {
+				continue
+			}
+		}
+		if complexityMin := c.Int("complexity-min"); complexityMin > 0 {
+			if task.Complexity < complexityMin {
+				continue
+			}
+		}
+		if complexityMax := c.Int("complexity-max"); complexityMax > 0 {
+			if task.Complexity > complexityMax {
+				continue
+			}
+		}
+
+		// Depth filter
+		if depthMax := c.Int("depth-max"); depthMax >= 0 {
+			if task.Depth > depthMax {
+				continue
+			}
+		}
+
+		// Search filter (case-insensitive search in title and description)
+		if search := c.String("search"); search != "" {
+			searchLower := strings.ToLower(search)
+			titleMatch := strings.Contains(strings.ToLower(task.Title), searchLower)
+			descMatch := strings.Contains(strings.ToLower(task.Description), searchLower)
+			if !titleMatch && !descMatch {
+				continue
+			}
+		}
+
+		// If we get here, the task passed all filters
+		filtered = append(filtered, task)
+	}
+
+	return filtered
+}
+
+// applyTaskSorting sorts the task list based on the specified criteria
+func applyTaskSorting(tasks []*types.Task, c *cli.Context) []*types.Task {
+	sortField := c.String("sort")
+	reverse := c.Bool("reverse")
+
+	// Make a copy to avoid modifying the original slice
+	sorted := make([]*types.Task, len(tasks))
+	copy(sorted, tasks)
+
+	sort.Slice(sorted, func(i, j int) bool {
+		var less bool
+
+		switch sortField {
+		case "title":
+			less = strings.ToLower(sorted[i].Title) < strings.ToLower(sorted[j].Title)
+		case "complexity":
+			less = sorted[i].Complexity < sorted[j].Complexity
+		case "state":
+			less = string(sorted[i].State) < string(sorted[j].State)
+		case "depth":
+			less = sorted[i].Depth < sorted[j].Depth
+		case "created":
+			fallthrough
+		default:
+			// Default sort by creation time (using ID as proxy since tasks are created sequentially)
+			less = sorted[i].ID.String() < sorted[j].ID.String()
+		}
+
+		if reverse {
+			return !less
+		}
+		return less
+	})
+
+	return sorted
+}
+
+// applyTaskLimit applies the limit to the task list
+func applyTaskLimit(tasks []*types.Task, c *cli.Context) []*types.Task {
+	limit := c.Int("limit")
+	if limit <= 0 || limit >= len(tasks) {
+		return tasks
+	}
+	return tasks[:limit]
+}
+
+// hasFiltersApplied checks if any filters were applied
+func hasFiltersApplied(c *cli.Context) bool {
+	return c.String("state") != "" ||
+		c.Int("complexity") > 0 ||
+		c.Int("complexity-min") > 0 ||
+		c.Int("complexity-max") > 0 ||
+		c.Int("depth-max") >= 0 ||
+		c.String("search") != "" ||
+		c.Int("limit") > 0 ||
+		c.String("sort") != "created" ||
+		c.Bool("reverse")
 }

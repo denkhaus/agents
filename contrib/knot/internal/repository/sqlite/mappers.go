@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"github.com/denkhaus/knot/internal/repository/sqlite/ent"
+	"github.com/denkhaus/knot/internal/repository/sqlite/ent/project"
 	"github.com/denkhaus/knot/internal/repository/sqlite/ent/task"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ func entProjectToProject(ep *ent.Project) *types.Project {
 		ID:             ep.ID,
 		Title:          ep.Title,
 		Description:    ep.Description,
+		State:          entStateToProjectState(string(ep.State)),
 		CreatedAt:      ep.CreatedAt,
 		UpdatedAt:      ep.UpdatedAt,
 		TotalTasks:     ep.TotalTasks,
@@ -27,7 +29,8 @@ func entProjectToProject(ep *ent.Project) *types.Project {
 func projectToEntProjectCreate(p *types.Project, client *ent.Client) *ent.ProjectCreate {
 	create := client.Project.Create().
 		SetTitle(p.Title).
-		SetDescription(p.Description)
+		SetDescription(p.Description).
+		SetState(projectStateToEntState(p.State))
 
 	if p.ID != uuid.Nil {
 		create.SetID(p.ID)
@@ -224,4 +227,38 @@ func filterMatchesTaskFilter(task *ent.Task, filter types.TaskFilter) bool {
 		return false
 	}
 	return true
+}
+
+// Project state conversion functions
+
+// projectStateToEntState converts domain ProjectState to ent project state
+func projectStateToEntState(state types.ProjectState) project.State {
+	switch state {
+	case types.ProjectStateActive:
+		return project.StateActive
+	case types.ProjectStateCompleted:
+		return project.StateCompleted
+	case types.ProjectStateArchived:
+		return project.StateArchived
+	case types.ProjectStateDeletionPending:
+		return project.StateDeletionPending
+	default:
+		return project.StateActive // Default to active for empty/unknown states
+	}
+}
+
+// entStateToProjectState converts ent project state to domain ProjectState
+func entStateToProjectState(state string) types.ProjectState {
+	switch state {
+	case "active":
+		return types.ProjectStateActive
+	case "completed":
+		return types.ProjectStateCompleted
+	case "archived":
+		return types.ProjectStateArchived
+	case "deletion-pending":
+		return types.ProjectStateDeletionPending
+	default:
+		return types.ProjectStateActive // Default to active for unknown states
+	}
 }

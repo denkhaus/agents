@@ -8,10 +8,24 @@ import (
 	"github.com/denkhaus/knot/internal/errors"
 	"github.com/denkhaus/knot/internal/shared"
 	"github.com/denkhaus/knot/internal/types"
+	"github.com/denkhaus/knot/internal/validation"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
+
+// validateProjectID validates and returns the project ID from the CLI context
+func validateProjectID(c *cli.Context) (uuid.UUID, error) {
+	projectIDStr := c.String("project-id")
+	if projectIDStr == "" {
+		return uuid.Nil, errors.MissingRequiredFlagError("project-id", c.Command.FullName())
+	}
+	projectID, err := uuid.Parse(projectIDStr)
+	if err != nil {
+		return uuid.Nil, errors.InvalidUUIDError("project-id", projectIDStr)
+	}
+	return projectID, nil
+}
 
 // Commands returns all project-related CLI commands
 func Commands(appCtx *shared.AppContext) []*cli.Command {
@@ -31,11 +45,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Name:    "description",
 					Aliases: []string{"d"},
 					Usage:   "Project description",
-				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
 				},
 			},
 		},
@@ -82,6 +91,18 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 		description := c.String("description")
 		actor := c.String("actor")
 
+		// Create input validator
+		validator := validation.NewInputValidator()
+
+		// Validate inputs
+		if err := validator.ValidateProjectTitle(title); err != nil {
+			return errors.NewValidationError("invalid project title", err)
+		}
+
+		if err := validator.ValidateProjectDescription(description); err != nil {
+			return errors.NewValidationError("invalid project description", err)
+		}
+
 		// Default to $USER if actor is not provided
 		if actor == "" {
 			actor = os.Getenv("USER")
@@ -95,7 +116,7 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 		project, err := appCtx.ProjectManager.CreateProject(context.Background(), title, description, actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to create project", zap.Error(err))
-			return fmt.Errorf("failed to create project: %w", err)
+			return errors.WrapWithSuggestion(err, "creating project")
 		}
 
 		appCtx.Logger.Info("Project created successfully", zap.String("projectID", project.ID.String()), zap.String("title", project.Title), zap.String("actor", actor))
@@ -115,14 +136,13 @@ func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 		projects, err := appCtx.ProjectManager.ListProjects(context.Background())
 		if err != nil {
 			appCtx.Logger.Error("Failed to list projects", zap.Error(err))
-			return fmt.Errorf("failed to list projects: %w", err)
+			return errors.WrapWithSuggestion(err, "listing projects")
 		}
 
 		appCtx.Logger.Info("Projects retrieved", zap.Int("count", len(projects)))
 
 		if len(projects) == 0 {
-			fmt.Println("No projects found.")
-			return nil
+			return errors.EmptyResultError("list projects", "current workspace")
 		}
 
 		fmt.Printf("Found %d project(s):\n\n", len(projects))

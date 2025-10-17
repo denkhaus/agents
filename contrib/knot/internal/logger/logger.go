@@ -1,8 +1,6 @@
 package logger
 
 import (
-	"os"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -10,51 +8,56 @@ import (
 var Log *zap.Logger
 
 func init() {
-	var err error
-	
-	// Get log level from environment variable
-	logLevel := os.Getenv("PM_LOG_LEVEL")
-	if logLevel == "" {
-		logLevel = "error" // Default to error level for clean CLI output
-	}
+	// Initialize with no-op logger by default
+	// Will be configured later via SetLogLevel when CLI flags are parsed
+	Log = zap.NewNop()
+}
 
-	// Only enable logging in debug mode for CLI usage
-	if logLevel == "debug" {
+// GetLogger returns the global logger instance
+func GetLogger() *zap.Logger {
+	return Log
+}
+
+// SetLogLevel configures the global logger with the specified log level
+func SetLogLevel(logLevel string) {
+	var err error
+
+	switch logLevel {
+	case "debug":
 		// Development logger for debug mode
 		Log, err = zap.NewDevelopment()
 		if err != nil {
 			Log = zap.NewNop()
 		}
-	} else {
-		// For CLI usage, we want human-readable console output by default
-		// This avoids JSON logging unless explicitly needed
+	case "info", "warn", "error":
+		// For CLI usage, we want human-readable console output
 		config := zap.NewDevelopmentConfig()
-		config.EncoderConfig.TimeKey = "" // Remove timestamp for cleaner CLI output
-		config.EncoderConfig.CallerKey = "" // Remove caller info for cleaner CLI output
+		config.EncoderConfig.TimeKey = ""     // Remove timestamp for cleaner CLI output
+		config.EncoderConfig.CallerKey = ""   // Remove caller info for cleaner CLI output
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder // Colored level names
 		config.OutputPaths = []string{"stderr"} // Send to stderr to not interfere with CLI output
-		
-		// Set log level if specified
+
+		// Set log level
 		switch logLevel {
+		case "info":
+			config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 		case "warn":
 			config.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
 		case "error":
 			config.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
-		case "off":
-			Log = zap.NewNop() // No logging at all
-			return
 		}
 
 		Log, err = config.Build()
 		if err != nil {
 			Log = zap.NewNop() // Fallback to no-op logger
 		}
+	case "off", "":
+		// No logging at all (default)
+		Log = zap.NewNop()
+	default:
+		// Invalid log level, use no-op logger
+		Log = zap.NewNop()
 	}
-}
-
-// GetLogger returns the global logger instance
-func GetLogger() *zap.Logger {
-	return Log
 }
 
 // Sync flushes any buffered log entries

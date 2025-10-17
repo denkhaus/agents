@@ -59,11 +59,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 			Usage:  "Validate all task states in a project",
 			Action: projectAction(appCtx),
 			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:     "project-id",
-					Usage:    "Project ID to validate",
-					Required: true,
-				},
 				&cli.BoolFlag{
 					Name:  "fix",
 					Usage: "Attempt to fix invalid states automatically",
@@ -82,11 +77,11 @@ func statesAction(appCtx *shared.AppContext) cli.ActionFunc {
 		validator := internalValidation.NewStateValidator()
 
 		if showMatrix {
-			fmt.Println("Task State Transition Matrix:\n")
+			fmt.Println("Task State Transition Matrix:")
 			matrix := validator.GetStateTransitionMatrix()
 
 			for state, transitions := range matrix {
-				fmt.Printf("📋 %s:\n", strings.ToUpper(state))
+				fmt.Printf("* %s:\n", strings.ToUpper(state))
 				if len(transitions) == 0 {
 					fmt.Printf("   (no valid transitions)\n")
 				} else {
@@ -119,10 +114,10 @@ func statesAction(appCtx *shared.AppContext) cli.ActionFunc {
 		}
 
 		// Show all valid states
-		fmt.Println("Valid Task States:\n")
+		fmt.Println("Valid Task States:")
 		states := validator.GetAllValidStates()
 		for _, state := range states {
-			fmt.Printf("   📋 %s\n", strings.ToUpper(string(state)))
+			fmt.Printf("   * %s\n", strings.ToUpper(string(state)))
 		}
 
 		fmt.Println("\nUse --matrix to see all valid transitions")
@@ -166,11 +161,11 @@ func transitionAction(appCtx *shared.AppContext) cli.ActionFunc {
 		if lenient {
 			err, warnings := validator.ValidateTransitionLenient(task.State, targetState, task)
 			if err != nil {
-				fmt.Printf("❌ Transition INVALID: %v\n", err)
+				fmt.Printf("Transition INVALID: %v\n", err)
 				return err
 			}
 
-			fmt.Printf("✅ Transition VALID\n")
+			fmt.Printf("Transition VALID\n")
 			if len(warnings) > 0 {
 				fmt.Printf("\nWarnings:\n")
 				for _, warning := range warnings {
@@ -180,10 +175,10 @@ func transitionAction(appCtx *shared.AppContext) cli.ActionFunc {
 		} else {
 			err := validator.ValidateTransition(task.State, targetState, task)
 			if err != nil {
-				fmt.Printf("❌ Transition INVALID: %v\n", err)
+				fmt.Printf("Transition INVALID: %v\n", err)
 				return err
 			}
-			fmt.Printf("✅ Transition VALID\n")
+			fmt.Printf("Transition VALID\n")
 		}
 
 		fmt.Printf("\nTo apply this transition:\n")
@@ -231,9 +226,9 @@ func projectAction(appCtx *shared.AppContext) cli.ActionFunc {
 
 					_, err := appCtx.ProjectManager.UpdateTaskState(context.Background(), task.ID, types.TaskStatePending, appCtx.Actor)
 					if err != nil {
-						fmt.Printf("❌ Failed to fix task %s: %v\n", task.ID, err)
+						fmt.Printf("Failed to fix task %s: %v\n", task.ID, err)
 					} else {
-						fmt.Printf("✅ Fixed task '%s': %s → pending\n", task.Title, task.State)
+						fmt.Printf("Fixed task '%s': %s → pending\n", task.Title, task.State)
 						fixedCount++
 					}
 				}

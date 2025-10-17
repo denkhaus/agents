@@ -20,3 +20,15 @@ func NewAppContext(projectManager manager.ProjectManager, logger *zap.Logger) *A
 		Logger:         logger,
 	}
 }
+
+func (p *AppContext) SetActor(actor string) {
+	p.Actor = actor
+}
+
+// GetActor returns the current actor
+func (p *AppContext) GetActor() string {
+	if p.Actor == "" {
+		return "unknown"
+	}
+	return p.Actor
+}

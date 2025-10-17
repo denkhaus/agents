@@ -45,8 +45,11 @@ func (s *service) CreateProject(ctx context.Context, title, description, actor s
 		ID:          uuid.New(),
 		Title:       title,
 		Description: description,
+		State:       types.ProjectStateActive, // Set initial state to active
 		CreatedBy:   actor,
 		UpdatedBy:   actor,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.repo.CreateProject(ctx, project); err != nil {
@@ -108,8 +111,14 @@ func (s *service) UpdateProjectState(ctx context.Context, projectID uuid.UUID, s
 		return nil, err
 	}
 
+	// Validate state transition
+	if !isValidProjectStateTransition(project.State, state) {
+		return nil, fmt.Errorf("invalid project state transition from '%s' to '%s'", project.State, state)
+	}
+
 	project.State = state
 	project.UpdatedBy = actor
+	project.UpdatedAt = time.Now()
 
 	if err := s.repo.UpdateProject(ctx, project); err != nil {
 		return nil, fmt.Errorf("failed to update project state: %w", err)
@@ -176,6 +185,8 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 		Depth:       depth,
 		CreatedBy:   actor,
 		UpdatedBy:   actor,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.repo.CreateTask(ctx, task); err != nil {
@@ -204,9 +215,23 @@ func (s *service) UpdateTaskState(ctx context.Context, taskID uuid.UUID, state t
 		return nil, err
 	}
 
+	// Validate state transition
+	if !isValidTaskStateTransition(task.State, state) {
+		return nil, fmt.Errorf("invalid state transition from '%s' to '%s'", task.State, state)
+	}
+
 	task.State = state
 	task.UpdatedBy = actor
 	task.UpdatedAt = time.Now()
+
+	// Set completion timestamp if transitioning to completed
+	if state == types.TaskStateCompleted && task.CompletedAt == nil {
+		now := time.Now()
+		task.CompletedAt = &now
+	} else if state != types.TaskStateCompleted && task.CompletedAt != nil {
+		// Clear completion timestamp if moving away from completed
+		task.CompletedAt = nil
+	}
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task state: %w", err)
@@ -854,4 +879,114 @@ func (s *service) autoReduceParentComplexity(ctx context.Context, parentID uuid.
 	}
 
 	return nil
+}
+
+// State validation functions
+
+// isValidTaskStateTransition checks if a task state transition is valid
+func isValidTaskStateTransition(from, to types.TaskState) bool {
+	// Define valid transitions
+	validTransitions := map[types.TaskState][]types.TaskState{
+		types.TaskStatePending: {
+			types.TaskStateInProgress,
+			types.TaskStateBlocked,
+			types.TaskStateCancelled,
+			types.TaskStateDeletionPending,
+		},
+		types.TaskStateInProgress: {
+			types.TaskStateCompleted,
+			types.TaskStateBlocked,
+			types.TaskStateCancelled,
+			types.TaskStateDeletionPending,
+		},
+		types.TaskStateBlocked: {
+			types.TaskStatePending,
+			types.TaskStateInProgress,
+			types.TaskStateCancelled,
+			types.TaskStateDeletionPending,
+		},
+		types.TaskStateCompleted: {
+			types.TaskStateDeletionPending,
+			// Generally, completed tasks shouldn't transition back, but allow for corrections
+		},
+		types.TaskStateCancelled: {
+			types.TaskStatePending,
+			types.TaskStateDeletionPending,
+		},
+		types.TaskStateDeletionPending: {
+			// No transitions allowed from deletion pending
+		},
+	}
+
+	// Allow staying in the same state
+	if from == to {
+		return true
+	}
+
+	// Check if transition is in the valid list
+	allowedStates, exists := validTransitions[from]
+	if !exists {
+		return false
+	}
+
+	for _, allowedState := range allowedStates {
+		if to == allowedState {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isValidProjectStateTransition checks if a project state transition is valid
+func isValidProjectStateTransition(from, to types.ProjectState) bool {
+	// Define valid transitions
+	validTransitions := map[types.ProjectState][]types.ProjectState{
+		types.ProjectStateActive: {
+			types.ProjectStateCompleted,
+			types.ProjectStateArchived,
+			types.ProjectStateDeletionPending,
+		},
+		types.ProjectStateCompleted: {
+			types.ProjectStateArchived,
+			types.ProjectStateDeletionPending,
+			types.ProjectStateActive, // Allow reopening completed projects
+		},
+		types.ProjectStateArchived: {
+			types.ProjectStateActive, // Allow unarchiving
+			types.ProjectStateDeletionPending,
+		},
+		types.ProjectStateDeletionPending: {
+			// No transitions allowed from deletion pending
+		},
+	}
+
+	// Allow staying in the same state
+	if from == to {
+		return true
+	}
+
+	// Handle empty/initial state - allow transition to active or completed
+	if from == "" && (to == types.ProjectStateActive || to == types.ProjectStateCompleted) {
+		return true
+	}
+
+	// Check if transition is in the valid list
+	allowedStates, exists := validTransitions[from]
+	if !exists {
+		return false
+	}
+
+	for _, allowedState := range allowedStates {
+		if to == allowedState {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetCurrentTime returns the current time
+func (s *service) GetCurrentTime() time.Time {
+	return time.Now()
 }

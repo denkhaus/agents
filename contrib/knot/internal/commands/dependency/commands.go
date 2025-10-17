@@ -30,11 +30,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Usage:    "Task ID that this task depends on",
 					Required: true,
 				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
-				},
 			},
 		},
 		{
@@ -51,11 +46,6 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Name:     "depends-on",
 					Usage:    "Task ID to remove dependency from",
 					Required: true,
-				},
-				&cli.StringFlag{
-					Name:    "actor",
-					Usage:   "Actor name for audit trail (default: $USER)",
-					EnvVars: []string{"KNOT_ACTOR", "USER", "BD_ACTOR"},
 				},
 			},
 		},

@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"time"
 
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
@@ -58,6 +59,9 @@ type ProjectManager interface {
 	UpdateConfig(config *Config)
 	LoadConfigFromFile() error
 	SaveConfigToFile() error
+
+	// Utility methods
+	GetCurrentTime() time.Time
 }
 
 // ToolSetProvider defines the interface for creating project task tool sets (not used in CLI)

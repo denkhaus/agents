@@ -39,6 +39,7 @@ func (r *sqliteRepository) UpdateProject(ctx context.Context, project *types.Pro
 	err := r.client.Project.UpdateOneID(project.ID).
 		SetTitle(project.Title).
 		SetDescription(project.Description).
+		SetState(projectStateToEntState(project.State)).
 		SetUpdatedAt(project.UpdatedAt).
 		SetTotalTasks(project.TotalTasks).
 		SetCompletedTasks(project.CompletedTasks).
