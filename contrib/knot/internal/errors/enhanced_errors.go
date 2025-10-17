@@ -28,17 +28,17 @@ func (e *EnhancedError) Error() string {
 	
 	// Add suggestion if available
 	if e.Suggestion != "" {
-		parts = append(parts, fmt.Sprintf("💡 Suggestion: %s", e.Suggestion))
+		parts = append(parts, fmt.Sprintf("Suggestion: %s", e.Suggestion))
 	}
 	
 	// Add example if available
 	if e.Example != "" {
-		parts = append(parts, fmt.Sprintf("📝 Example: %s", e.Example))
+		parts = append(parts, fmt.Sprintf("Example: %s", e.Example))
 	}
 	
 	// Add help command if available
 	if e.HelpCommand != "" {
-		parts = append(parts, fmt.Sprintf("ℹ️  For more help: %s", e.HelpCommand))
+		parts = append(parts, fmt.Sprintf("For more help: %s", e.HelpCommand))
 	}
 	
 	return strings.Join(parts, "\n")

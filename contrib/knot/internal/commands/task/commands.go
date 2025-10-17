@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/denkhaus/knot/internal/errors"
@@ -62,6 +63,11 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 					Aliases:  []string{"p"},
 					Usage:    "Project ID",
 					Required: true,
+				},
+				&cli.BoolFlag{
+					Name:    "json",
+					Aliases: []string{"j"},
+					Usage:   "Output in JSON format",
 				},
 			},
 		},
@@ -148,6 +154,15 @@ func createAction(projectManager manager.ProjectManager, logger *zap.Logger) cli
 		if parentID != nil {
 			fmt.Printf("  Parent: %s\n", *parentID)
 		}
+
+		// Show breakdown suggestion for high complexity tasks
+		if complexity >= 8 {
+			fmt.Printf("\nNote: This task has high complexity (%d >= 8 threshold).\n", complexity)
+			fmt.Printf("Consider breaking it down into smaller subtasks:\n")
+			fmt.Printf("  knot task create --project-id %s --parent-id %s --title \"Subtask 1\"\n", projectID, task.ID)
+			fmt.Printf("  knot breakdown --project-id %s  # to see all tasks needing breakdown\n", projectID)
+		}
+
 		return nil
 	}
 }
@@ -174,13 +189,18 @@ func listAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 			return errors.EmptyResultError("list tasks", fmt.Sprintf("project %s", projectID))
 		}
 
+		// Check if JSON output is requested
+		if c.Bool("json") {
+			return outputTasksAsJSON(tasks)
+		}
+
 		fmt.Printf("Found %d task(s):\n\n", len(tasks))
 		for _, task := range tasks {
 			indent := ""
 			for i := 0; i < task.Depth; i++ {
 				indent += "  "
 			}
-			fmt.Printf("%s• %s (ID: %s)\n", indent, task.Title, task.ID)
+			fmt.Printf("%s* %s (ID: %s)\n", indent, task.Title, task.ID)
 			if task.Description != "" {
 				fmt.Printf("%s  %s\n", indent, task.Description)
 			}
@@ -240,5 +260,25 @@ func updateStateAction(projectManager manager.ProjectManager, logger *zap.Logger
 		fmt.Printf("Updated task state: %s -> %s\n", task.State, updatedTask.State)
 		return nil
 	}
+}
+
+// outputTasksAsJSON outputs tasks in JSON format
+func outputTasksAsJSON(tasks []*types.Task) error {
+	jsonData, err := json.MarshalIndent(tasks, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal tasks to JSON: %w", err)
+	}
+	fmt.Println(string(jsonData))
+	return nil
+}
+
+// outputSingleTaskAsJSON outputs a single task in JSON format
+func outputSingleTaskAsJSON(task *types.Task) error {
+	jsonData, err := json.MarshalIndent(task, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal task to JSON: %w", err)
+	}
+	fmt.Println(string(jsonData))
+	return nil
 }
 

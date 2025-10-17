@@ -24,7 +24,7 @@ func Commands(projectManager manager.ProjectManager, logger *zap.Logger) []*cli.
 				&cli.StringFlag{
 					Name:     "key",
 					Aliases:  []string{"k"},
-					Usage:    "Configuration key (complexity-threshold, max-depth, max-tasks-per-depth, max-description-length)",
+					Usage:    "Configuration key (complexity-threshold, max-depth, max-tasks-per-depth, max-description-length, auto-reduce-complexity)",
 					Required: true,
 				},
 				&cli.IntFlag{
@@ -54,6 +54,7 @@ func ShowAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.A
 		fmt.Printf("  Max Depth:               %d (maximum hierarchy levels)\n", config.MaxDepth)
 		fmt.Printf("  Max Tasks Per Depth:     %d (maximum tasks per level)\n", config.MaxTasksPerDepth)
 		fmt.Printf("  Max Description Length:  %d (maximum characters)\n", config.MaxDescriptionLength)
+		fmt.Printf("  Auto Reduce Complexity:  %t (automatically reduce parent complexity when subtasks added)\n", config.AutoReduceComplexity)
 		fmt.Println()
 		
 		// Show config file location - TODO: implement GetConfigPath method
@@ -98,8 +99,14 @@ func SetAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.Ac
 				return fmt.Errorf("max-description-length must be at least 1, got %d", value)
 			}
 			newConfig.MaxDescriptionLength = value
+		case "auto-reduce-complexity":
+			// Convert int to bool: 0 = false, 1 = true
+			if value != 0 && value != 1 {
+				return fmt.Errorf("auto-reduce-complexity must be 0 (false) or 1 (true), got %d", value)
+			}
+			newConfig.AutoReduceComplexity = value == 1
 		default:
-			return fmt.Errorf("unknown configuration key: %s. Valid keys: complexity-threshold, max-depth, max-tasks-per-depth, max-description-length", key)
+			return fmt.Errorf("unknown configuration key: %s. Valid keys: complexity-threshold, max-depth, max-tasks-per-depth, max-description-length, auto-reduce-complexity", key)
 		}
 		
 		// Update and save config
@@ -130,6 +137,7 @@ func ResetAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 		fmt.Printf("  Max Depth:               %d\n", defaultConfig.MaxDepth)
 		fmt.Printf("  Max Tasks Per Depth:     %d\n", defaultConfig.MaxTasksPerDepth)
 		fmt.Printf("  Max Description Length:  %d\n", defaultConfig.MaxDescriptionLength)
+		fmt.Printf("  Auto Reduce Complexity:  %t\n", defaultConfig.AutoReduceComplexity)
 		
 		return nil
 	}

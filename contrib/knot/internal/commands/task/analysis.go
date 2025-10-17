@@ -163,6 +163,10 @@ func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 		logger.Info("Ready tasks found", zap.Int("count", len(readyTasks)))
 
 		if len(readyTasks) == 0 {
+			if c.Bool("json") {
+				fmt.Println("[]")
+				return nil
+			}
 			fmt.Println("No ready tasks found. All tasks are either completed, blocked, or cancelled.")
 			return nil
 		}
@@ -170,8 +174,16 @@ func ReadyAction(projectManager manager.ProjectManager, logger *zap.Logger) cli.
 		// Apply limit if specified
 		limit := c.Int("limit")
 		if limit > 0 && len(readyTasks) > limit {
-			fmt.Printf("Ready work (showing %d of %d tasks with no blockers):\n\n", limit, len(readyTasks))
 			readyTasks = readyTasks[:limit]
+		}
+
+		// Check if JSON output is requested
+		if c.Bool("json") {
+			return outputTasksAsJSON(readyTasks)
+		}
+
+		if limit > 0 && len(readyTasks) == limit {
+			fmt.Printf("Ready work (showing %d of %d tasks with no blockers):\n\n", limit, len(readyTasks))
 		} else {
 			fmt.Printf("Ready work (%d tasks with no blockers):\n\n", len(readyTasks))
 		}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	knoterrors "github.com/denkhaus/knot/internal/errors"
 	"github.com/denkhaus/knot/internal/types"
 	"github.com/google/uuid"
 )
@@ -141,7 +142,7 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 		return nil, fmt.Errorf("failed to check task count constraints: %w", err)
 	}
 	if counts[depth] >= s.config.MaxTasksPerDepth {
-		return nil, fmt.Errorf("maximum tasks per depth (%d) exceeded for depth %d", s.config.MaxTasksPerDepth, depth)
+		return nil, knoterrors.TooManyTasksError(counts[depth], s.config.MaxTasksPerDepth, depth)
 	}
 
 	task := &types.Task{
@@ -157,6 +158,15 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 
 	if err := s.repo.CreateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	// Auto-reduce parent complexity if enabled and this is a subtask
+	if s.config.AutoReduceComplexity && parentID != nil {
+		if err := s.autoReduceParentComplexity(ctx, *parentID); err != nil {
+			// Log error but don't fail the task creation
+			// The task was successfully created, complexity reduction is a bonus feature
+			fmt.Printf("Warning: Failed to auto-reduce parent complexity: %v\n", err)
+		}
 	}
 
 	return s.repo.GetTask(ctx, task.ID)
@@ -734,5 +744,63 @@ func validateConfig(c *Config) error {
 	if c.MaxDescriptionLength < 1 {
 		return fmt.Errorf("max_description_length must be at least 1, got %d", c.MaxDescriptionLength)
 	}
+	return nil
+}
+
+// autoReduceParentComplexity reduces parent task complexity when subtasks are added
+func (s *service) autoReduceParentComplexity(ctx context.Context, parentID uuid.UUID) error {
+	// Get parent task
+	parentTask, err := s.repo.GetTask(ctx, parentID)
+	if err != nil {
+		return fmt.Errorf("failed to get parent task: %w", err)
+	}
+
+	// Only reduce if parent complexity is above threshold
+	if parentTask.Complexity < s.config.ComplexityThreshold {
+		return nil // No need to reduce
+	}
+
+	// Get all children to determine new complexity
+	children, err := s.repo.GetTasksByParent(ctx, parentID)
+	if err != nil {
+		return fmt.Errorf("failed to get child tasks: %w", err)
+	}
+
+	// Calculate new complexity based on number of children
+	// Logic: High complexity tasks become coordination tasks when broken down
+	var newComplexity int
+	childCount := len(children)
+	
+	switch {
+	case childCount == 1:
+		// First subtask: reduce by 2 (e.g., 9 -> 7)
+		newComplexity = parentTask.Complexity - 2
+	case childCount <= 3:
+		// 2-3 subtasks: reduce to coordination level (complexity 4-5)
+		newComplexity = 4
+	case childCount <= 5:
+		// 4-5 subtasks: well-broken down, reduce to oversight level (complexity 3)
+		newComplexity = 3
+	default:
+		// Many subtasks: very well broken down, minimal coordination (complexity 2)
+		newComplexity = 2
+	}
+
+	// Ensure complexity doesn't go below 1
+	if newComplexity < 1 {
+		newComplexity = 1
+	}
+
+	// Only update if complexity actually changed
+	if newComplexity != parentTask.Complexity {
+		parentTask.Complexity = newComplexity
+		if err := s.repo.UpdateTask(ctx, parentTask); err != nil {
+			return fmt.Errorf("failed to update parent task complexity: %w", err)
+		}
+		
+		fmt.Printf("Auto-reduced parent task complexity: %s (ID: %s) %d -> %d (based on %d subtasks)\n", 
+			parentTask.Title, parentTask.ID, parentTask.Complexity+2, newComplexity, childCount)
+	}
+
 	return nil
 }

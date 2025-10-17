@@ -65,18 +65,20 @@ type ProjectManager interface {
 
 // Config holds configuration for the task management system
 type Config struct {
-	MaxTasksPerDepth     int // Maximum tasks allowed per depth level (applies to all depths)
-	ComplexityThreshold  int // Threshold for task breakdown suggestions
-	MaxDepth             int // Maximum allowed depth
-	MaxDescriptionLength int // Maximum length for descriptions
+	MaxTasksPerDepth     int  // Maximum tasks allowed per depth level (applies to all depths)
+	ComplexityThreshold  int  // Threshold for task breakdown suggestions
+	MaxDepth             int  // Maximum allowed depth
+	MaxDescriptionLength int  // Maximum length for descriptions
+	AutoReduceComplexity bool // Automatically reduce parent task complexity when subtasks are added
 }
 
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		MaxTasksPerDepth:     100, // Increased from 20 to 100 for better scalability
+		MaxTasksPerDepth:     100,  // Increased from 20 to 100 for better scalability
 		ComplexityThreshold:  8,
 		MaxDepth:             5,
 		MaxDescriptionLength: 2000, // Default maximum description length
+		AutoReduceComplexity: true, // Enable auto-reduce by default
 	}
 }

@@ -117,6 +117,11 @@ func New() (*App, error) {
 						Value:   10,
 						EnvVars: []string{"KNOT_TASK_LIMIT"},
 					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output in JSON format",
+					},
 				},
 			},
 			{
@@ -137,6 +142,11 @@ func New() (*App, error) {
 						Value:   10,
 						EnvVars: []string{"KNOT_TASK_LIMIT"},
 					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output in JSON format",
+					},
 				},
 			},
 			{
@@ -149,6 +159,11 @@ func New() (*App, error) {
 						Aliases:  []string{"p"},
 						Usage:    "Project ID",
 						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output in JSON format",
 					},
 				},
 			},
@@ -176,6 +191,11 @@ func New() (*App, error) {
 						Usage:   "Maximum number of tasks to show (default: 10)",
 						Value:   10,
 						EnvVars: []string{"KNOT_TASK_LIMIT"},
+					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output in JSON format",
 					},
 				},
 			},
