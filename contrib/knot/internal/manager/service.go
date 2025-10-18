@@ -137,7 +137,7 @@ func (s *service) ListProjects(ctx context.Context) ([]*types.Project, error) {
 
 // Task operations
 
-func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int, actor string) (*types.Task, error) {
+func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID *uuid.UUID, title, description string, complexity int, priority types.TaskPriority, actor string) (*types.Task, error) {
 	if err := s.validateTaskInput(title, description, complexity); err != nil {
 		return nil, err
 	}
@@ -181,6 +181,7 @@ func (s *service) CreateTask(ctx context.Context, projectID uuid.UUID, parentID 
 		Title:       title,
 		Description: description,
 		State:       types.TaskStatePending,
+		Priority:    priority,
 		Complexity:  complexity,
 		Depth:       depth,
 		CreatedBy:   actor,
@@ -255,6 +256,7 @@ func (s *service) UpdateTask(ctx context.Context, taskID uuid.UUID, title, descr
 	task.Complexity = complexity
 	task.State = state
 	task.UpdatedBy = actor
+	task.UpdatedAt = time.Now()
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task: %w", err)
@@ -303,6 +305,23 @@ func (s *service) UpdateTaskTitle(ctx context.Context, taskID uuid.UUID, title s
 
 	if err := s.repo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task title: %w", err)
+	}
+
+	return s.repo.GetTask(ctx, taskID)
+}
+
+func (s *service) UpdateTaskPriority(ctx context.Context, taskID uuid.UUID, priority types.TaskPriority, actor string) (*types.Task, error) {
+	task, err := s.repo.GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	task.Priority = priority
+	task.UpdatedBy = actor
+	task.UpdatedAt = time.Now()
+
+	if err := s.repo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to update task priority: %w", err)
 	}
 
 	return s.repo.GetTask(ctx, taskID)

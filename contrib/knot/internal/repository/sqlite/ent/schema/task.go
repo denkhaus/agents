@@ -34,6 +34,9 @@ func (Task) Fields() []ent.Field {
 		field.Enum("state").
 			Values("pending", "in-progress", "completed", "blocked", "cancelled", "deletion-pending").
 			Default("pending"),
+		field.Enum("priority").
+			Values("low", "medium", "high").
+			Default("medium"),
 		field.Int("complexity").
 			Min(1).
 			Max(10),
@@ -84,6 +87,7 @@ func (Task) Indexes() []ent.Index {
 		index.Fields("project_id"),
 		index.Fields("parent_id"),
 		index.Fields("state"),
+		index.Fields("priority"),
 		index.Fields("assigned_agent"),
 		index.Fields("complexity"),
 		index.Fields("depth"),
@@ -91,9 +95,12 @@ func (Task) Indexes() []ent.Index {
 		
 		// Composite indexes for common query patterns
 		index.Fields("project_id", "state"),
+		index.Fields("project_id", "priority"),
 		index.Fields("project_id", "assigned_agent"),
 		index.Fields("project_id", "parent_id"),
 		index.Fields("project_id", "depth"),
 		index.Fields("state", "complexity"),
+		index.Fields("priority", "state"),
+		index.Fields("priority", "complexity"),
 	}
 }

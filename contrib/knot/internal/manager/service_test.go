@@ -110,7 +110,7 @@ func TestTaskManagement(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Create task", func(t *testing.T) {
-		task, err := service.CreateTask(ctx, project.ID, nil, "Test Task", "A test task", 5, "test-user")
+		task, err := service.CreateTask(ctx, project.ID, nil, "Test Task", "A test task", 5, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 		assert.NotEqual(t, uuid.Nil, task.ID)
 		assert.Equal(t, project.ID, task.ProjectID)
@@ -126,11 +126,11 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Create subtask", func(t *testing.T) {
 		// Create parent task
-		parent, err := service.CreateTask(ctx, project.ID, nil, "Parent Task", "Parent task", 3, "test-user")
+		parent, err := service.CreateTask(ctx, project.ID, nil, "Parent Task", "Parent task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Create subtask
-		subtask, err := service.CreateTask(ctx, project.ID, &parent.ID, "Subtask", "A subtask", 2, "test-user")
+		subtask, err := service.CreateTask(ctx, project.ID, &parent.ID, "Subtask", "A subtask", 2, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 		assert.Equal(t, &parent.ID, subtask.ParentID)
 		assert.Equal(t, 1, subtask.Depth) // Should be one level deeper
@@ -138,7 +138,7 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Get task", func(t *testing.T) {
 		// Create a task
-		created, err := service.CreateTask(ctx, project.ID, nil, "Get Test Task", "Get test", 4, "test-user")
+		created, err := service.CreateTask(ctx, project.ID, nil, "Get Test Task", "Get test", 4, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Get the task
@@ -151,9 +151,9 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("List tasks for project", func(t *testing.T) {
 		// Create multiple tasks
-		_, err := service.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 3, "user1")
+		_, err := service.CreateTask(ctx, project.ID, nil, "Task 1", "First task", 3, types.TaskPriorityMedium, "user1")
 		require.NoError(t, err)
-		_, err = service.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 4, "user2")
+		_, err = service.CreateTask(ctx, project.ID, nil, "Task 2", "Second task", 4, types.TaskPriorityMedium, "user2")
 		require.NoError(t, err)
 
 		// List tasks
@@ -164,7 +164,7 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Update task state", func(t *testing.T) {
 		// Create a task
-		task, err := service.CreateTask(ctx, project.ID, nil, "State Test", "State test task", 3, "test-user")
+		task, err := service.CreateTask(ctx, project.ID, nil, "State Test", "State test task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 		assert.Equal(t, types.TaskStatePending, task.State)
 
@@ -185,7 +185,7 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Update task title", func(t *testing.T) {
 		// Create a task
-		task, err := service.CreateTask(ctx, project.ID, nil, "Original Title", "Original task", 3, "test-user")
+		task, err := service.CreateTask(ctx, project.ID, nil, "Original Title", "Original task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Update title
@@ -197,7 +197,7 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Update task description", func(t *testing.T) {
 		// Create a task
-		task, err := service.CreateTask(ctx, project.ID, nil, "Description Test", "Original description", 3, "test-user")
+		task, err := service.CreateTask(ctx, project.ID, nil, "Description Test", "Original description", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Update description
@@ -209,7 +209,7 @@ func TestTaskManagement(t *testing.T) {
 
 	t.Run("Delete task", func(t *testing.T) {
 		// Create a task
-		task, err := service.CreateTask(ctx, project.ID, nil, "To Delete", "Will be deleted", 3, "test-user")
+		task, err := service.CreateTask(ctx, project.ID, nil, "To Delete", "Will be deleted", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Delete the task
@@ -235,9 +235,9 @@ func TestTaskDependencies(t *testing.T) {
 
 	t.Run("Add task dependency", func(t *testing.T) {
 		// Create two tasks
-		taskA, err := service.CreateTask(ctx, project.ID, nil, "Task A", "First task", 3, "test-user")
+		taskA, err := service.CreateTask(ctx, project.ID, nil, "Task A", "First task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
-		taskB, err := service.CreateTask(ctx, project.ID, nil, "Task B", "Second task", 4, "test-user")
+		taskB, err := service.CreateTask(ctx, project.ID, nil, "Task B", "Second task", 4, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Add dependency: B depends on A
@@ -254,9 +254,9 @@ func TestTaskDependencies(t *testing.T) {
 
 	t.Run("Remove task dependency", func(t *testing.T) {
 		// Create two tasks
-		taskC, err := service.CreateTask(ctx, project.ID, nil, "Task C", "Third task", 3, "test-user")
+		taskC, err := service.CreateTask(ctx, project.ID, nil, "Task C", "Third task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
-		taskD, err := service.CreateTask(ctx, project.ID, nil, "Task D", "Fourth task", 4, "test-user")
+		taskD, err := service.CreateTask(ctx, project.ID, nil, "Task D", "Fourth task", 4, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Add dependency
@@ -276,9 +276,9 @@ func TestTaskDependencies(t *testing.T) {
 
 	t.Run("Prevent circular dependencies", func(t *testing.T) {
 		// Create two tasks
-		taskE, err := service.CreateTask(ctx, project.ID, nil, "Task E", "Fifth task", 3, "test-user")
+		taskE, err := service.CreateTask(ctx, project.ID, nil, "Task E", "Fifth task", 3, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
-		taskF, err := service.CreateTask(ctx, project.ID, nil, "Task F", "Sixth task", 4, "test-user")
+		taskF, err := service.CreateTask(ctx, project.ID, nil, "Task F", "Sixth task", 4, types.TaskPriorityMedium, "test-user")
 		require.NoError(t, err)
 
 		// Add dependency: F depends on E
@@ -306,7 +306,7 @@ func TestValidationRules(t *testing.T) {
 
 	t.Run("Title validation", func(t *testing.T) {
 		// Test empty title
-		_, err := service.CreateTask(ctx, project.ID, nil, "", "Empty title task", 3, "test-user")
+		_, err := service.CreateTask(ctx, project.ID, nil, "", "Empty title task", 3, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should reject empty title")
 
 		// Test title too long (assuming there's a limit)
@@ -314,20 +314,20 @@ func TestValidationRules(t *testing.T) {
 		for i := range longTitle {
 			longTitle = longTitle[:i] + "a" + longTitle[i+1:]
 		}
-		_, err = service.CreateTask(ctx, project.ID, nil, longTitle, "Long title task", 3, "test-user")
+		_, err = service.CreateTask(ctx, project.ID, nil, longTitle, "Long title task", 3, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should reject overly long title")
 	})
 
 	t.Run("Complexity validation", func(t *testing.T) {
 		// Test invalid complexity values
-		_, err := service.CreateTask(ctx, project.ID, nil, "Invalid Complexity Low", "Low complexity", 0, "test-user")
+		_, err := service.CreateTask(ctx, project.ID, nil, "Invalid Complexity Low", "Low complexity", 0, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should reject complexity 0")
 
-		_, err = service.CreateTask(ctx, project.ID, nil, "Invalid Complexity High", "High complexity", 11, "test-user")
+		_, err = service.CreateTask(ctx, project.ID, nil, "Invalid Complexity High", "High complexity", 11, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should reject complexity > 10")
 
 		// Test valid complexity
-		_, err = service.CreateTask(ctx, project.ID, nil, "Valid Complexity", "Valid complexity", 5, "test-user")
+		_, err = service.CreateTask(ctx, project.ID, nil, "Valid Complexity", "Valid complexity", 5, types.TaskPriorityMedium, "test-user")
 		assert.NoError(t, err, "Should accept valid complexity")
 	})
 
@@ -338,7 +338,7 @@ func TestValidationRules(t *testing.T) {
 			longDesc = longDesc[:i] + "a" + longDesc[i+1:]
 		}
 		
-		_, err := service.CreateTask(ctx, project.ID, nil, "Long Desc Task", longDesc, 3, "test-user")
+		_, err := service.CreateTask(ctx, project.ID, nil, "Long Desc Task", longDesc, 3, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should reject overly long description")
 	})
 }
@@ -364,7 +364,7 @@ func TestErrorHandling(t *testing.T) {
 
 	t.Run("Create task in non-existent project", func(t *testing.T) {
 		nonExistentProjectID := uuid.New()
-		_, err := service.CreateTask(ctx, nonExistentProjectID, nil, "Orphan Task", "Task without project", 3, "test-user")
+		_, err := service.CreateTask(ctx, nonExistentProjectID, nil, "Orphan Task", "Task without project", 3, types.TaskPriorityMedium, "test-user")
 		assert.Error(t, err, "Should return error for non-existent project")
 	})
 
@@ -403,7 +403,7 @@ func TestConcurrency(t *testing.T) {
 				_, err := service.CreateTask(ctx, project.ID, nil, 
 					fmt.Sprintf("Concurrent Task %d", index), 
 					fmt.Sprintf("Task created concurrently %d", index), 
-					3, "test-user")
+					3, types.TaskPriorityMedium, "test-user")
 				results <- err
 			}(i)
 		}

@@ -267,6 +267,7 @@ func BulkCreateAction(appCtx *shared.AppContext) cli.ActionFunc {
 				input.Title,
 				input.Description,
 				input.Complexity,
+				types.TaskPriorityMedium,
 				actor,
 			)
 			if err != nil {

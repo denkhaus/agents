@@ -1,0 +1,9 @@
+[2025-10-18 22:11:17] Daemon started (interval: 30s, auto-commit: true, auto-push: false)
+[2025-10-18 22:11:17] Using database: /home/denkhaus/dev/gomodules/agents/.beads/agents.db
+[2025-10-18 22:11:17] Database opened: /home/denkhaus/dev/gomodules/agents/.beads/agents.db
+[2025-10-18 22:11:17] Starting RPC server: /home/denkhaus/dev/gomodules/agents/.beads/bd.sock
+[2025-10-18 22:11:19] RPC server started
+[2025-10-18 22:11:19] Starting sync cycle...
+[2025-10-18 22:11:19] Error: JSONL path not found
+[2025-10-18 22:11:50] Starting sync cycle...
+[2025-10-18 22:11:50] Error: JSONL path not found

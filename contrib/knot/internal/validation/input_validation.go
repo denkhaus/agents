@@ -176,6 +176,17 @@ func (v *InputValidator) ValidateComplexity(complexity int) error {
 	return nil
 }
 
+// ValidateTaskPriority validates task priority value
+func (v *InputValidator) ValidateTaskPriority(priority string) error {
+	validPriorities := []string{"low", "medium", "high"}
+	for _, valid := range validPriorities {
+		if priority == valid {
+			return nil
+		}
+	}
+	return fmt.Errorf("priority must be one of: %s, got %q", strings.Join(validPriorities, ", "), priority)
+}
+
 // ValidateActor validates actor name
 func (v *InputValidator) ValidateActor(actor string) error {
 	if actor == "" {

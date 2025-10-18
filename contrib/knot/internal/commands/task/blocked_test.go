@@ -28,13 +28,15 @@ func TestBlockedCommandWithDependencies(t *testing.T) {
 
 	// Create test tasks with dependencies
 	// Task A (completed) - no dependencies
-	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A - Foundation", "Completed foundation task", 3, "TestUser")
+	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A - Foundation", "Completed foundation task", 3, types.TaskPriorityMedium, "TestUser")
+	require.NoError(t, err)
+	_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateInProgress, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateCompleted, "TestUser")
 	require.NoError(t, err)
 
 	// Task B (in-progress) - depends on A (should not be blocked)
-	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B - Build on A", "Task that builds on A", 4, "TestUser")
+	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B - Build on A", "Task that builds on A", 4, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskB.ID, taskA.ID, "TestUser")
 	require.NoError(t, err)
@@ -42,13 +44,13 @@ func TestBlockedCommandWithDependencies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Task C (pending) - depends on B (should be blocked)
-	taskC, err := projectManager.CreateTask(ctx, project.ID, nil, "Task C - Depends on B", "Task blocked by B", 5, "TestUser")
+	taskC, err := projectManager.CreateTask(ctx, project.ID, nil, "Task C - Depends on B", "Task blocked by B", 5, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskC.ID, taskB.ID, "TestUser")
 	require.NoError(t, err)
 
 	// Task D (pending) - depends on B and A (should be blocked because B is not completed)
-	taskD, err := projectManager.CreateTask(ctx, project.ID, nil, "Task D - Multiple Dependencies", "Task with multiple dependencies", 6, "TestUser")
+	taskD, err := projectManager.CreateTask(ctx, project.ID, nil, "Task D - Multiple Dependencies", "Task with multiple dependencies", 6, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskD.ID, taskA.ID, "TestUser")
 	require.NoError(t, err)
@@ -56,7 +58,7 @@ func TestBlockedCommandWithDependencies(t *testing.T) {
 	require.NoError(t, err)
 
 	// Task E (pending) - no dependencies (should not be blocked)
-	taskE, err := projectManager.CreateTask(ctx, project.ID, nil, "Task E - Independent", "Independent task", 2, "TestUser")
+	taskE, err := projectManager.CreateTask(ctx, project.ID, nil, "Task E - Independent", "Independent task", 2, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 
 	// Get all tasks to create task map
@@ -176,10 +178,10 @@ func TestBlockedCommandEdgeCases(t *testing.T) {
 	})
 
 	// Create some test tasks for further edge case testing
-	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A", "Test task A", 3, "TestUser")
+	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A", "Test task A", 3, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 
-	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B", "Test task B", 4, "TestUser")
+	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B", "Test task B", 4, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 
 	t.Run("Task with missing dependency", func(t *testing.T) {
@@ -228,6 +230,8 @@ func TestBlockedCommandEdgeCases(t *testing.T) {
 
 	t.Run("Completed tasks should not be considered blocked", func(t *testing.T) {
 		// Complete task A
+		_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateInProgress, "TestUser")
+		require.NoError(t, err)
 		_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateCompleted, "TestUser")
 		require.NoError(t, err)
 
@@ -236,6 +240,8 @@ func TestBlockedCommandEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		// Complete task B as well
+		_, err = projectManager.UpdateTaskState(ctx, taskB.ID, types.TaskStateInProgress, "TestUser")
+		require.NoError(t, err)
 		_, err = projectManager.UpdateTaskState(ctx, taskB.ID, types.TaskStateCompleted, "TestUser")
 		require.NoError(t, err)
 
@@ -278,24 +284,26 @@ func TestBlockedCommandDependencyChains(t *testing.T) {
 
 	// Create a chain: A -> B -> C -> D
 	// Where A is completed, B is in-progress, C and D are pending
-	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A - Root", "Root task", 2, "TestUser")
+	taskA, err := projectManager.CreateTask(ctx, project.ID, nil, "Task A - Root", "Root task", 2, types.TaskPriorityMedium, "TestUser")
+	require.NoError(t, err)
+	_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateInProgress, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.UpdateTaskState(ctx, taskA.ID, types.TaskStateCompleted, "TestUser")
 	require.NoError(t, err)
 
-	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B - Level 1", "Depends on A", 3, "TestUser")
+	taskB, err := projectManager.CreateTask(ctx, project.ID, nil, "Task B - Level 1", "Depends on A", 3, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskB.ID, taskA.ID, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.UpdateTaskState(ctx, taskB.ID, types.TaskStateInProgress, "TestUser")
 	require.NoError(t, err)
 
-	taskC, err := projectManager.CreateTask(ctx, project.ID, nil, "Task C - Level 2", "Depends on B", 4, "TestUser")
+	taskC, err := projectManager.CreateTask(ctx, project.ID, nil, "Task C - Level 2", "Depends on B", 4, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskC.ID, taskB.ID, "TestUser")
 	require.NoError(t, err)
 
-	taskD, err := projectManager.CreateTask(ctx, project.ID, nil, "Task D - Level 3", "Depends on C", 5, "TestUser")
+	taskD, err := projectManager.CreateTask(ctx, project.ID, nil, "Task D - Level 3", "Depends on C", 5, types.TaskPriorityMedium, "TestUser")
 	require.NoError(t, err)
 	_, err = projectManager.AddTaskDependency(ctx, taskD.ID, taskC.ID, "TestUser")
 	require.NoError(t, err)
@@ -325,6 +333,8 @@ func TestBlockedCommandDependencyChains(t *testing.T) {
 
 	t.Run("Test chain unblocking", func(t *testing.T) {
 		// Complete task B
+		_, err = projectManager.UpdateTaskState(ctx, taskB.ID, types.TaskStateInProgress, "TestUser")
+		require.NoError(t, err)
 		_, err = projectManager.UpdateTaskState(ctx, taskB.ID, types.TaskStateCompleted, "TestUser")
 		require.NoError(t, err)
 
@@ -342,6 +352,8 @@ func TestBlockedCommandDependencyChains(t *testing.T) {
 		assert.False(t, isTaskReady(taskMap[taskD.ID], taskMap), "Task D should still be blocked")
 
 		// Complete task C
+		_, err = projectManager.UpdateTaskState(ctx, taskC.ID, types.TaskStateInProgress, "TestUser")
+		require.NoError(t, err)
 		_, err = projectManager.UpdateTaskState(ctx, taskC.ID, types.TaskStateCompleted, "TestUser")
 		require.NoError(t, err)
 

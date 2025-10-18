@@ -19,25 +19,35 @@ const (
 	TaskStateDeletionPending TaskState = "deletion-pending"
 )
 
+// TaskPriority represents the priority level of a task
+type TaskPriority string
+
+const (
+	TaskPriorityLow    TaskPriority = "low"
+	TaskPriorityMedium TaskPriority = "medium"
+	TaskPriorityHigh   TaskPriority = "high"
+)
+
 // Task represents a single task in the project hierarchy
 type Task struct {
-	ID            uuid.UUID   `json:"id"`
-	ProjectID     uuid.UUID   `json:"project_id"`
-	ParentID      *uuid.UUID  `json:"parent_id,omitempty"` // nil for root tasks
-	Title         string      `json:"title"`
-	Description   string      `json:"description"`
-	State         TaskState   `json:"state"`
-	Complexity    int         `json:"complexity"`               // Used for breakdown decisions
-	Depth         int         `json:"depth"`                    // 0 for root tasks
-	Estimate      *int64      `json:"estimate,omitempty"`       // Time estimate in minutes
-	AssignedAgent *uuid.UUID  `json:"assigned_agent,omitempty"` // Agent assigned to this task
-	Dependencies  []uuid.UUID `json:"dependencies,omitempty"`   // Tasks this task depends on
-	Dependents    []uuid.UUID `json:"dependents,omitempty"`     // Tasks that depend on this task
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	CreatedBy     string      `json:"created_by,omitempty"`     // Actor who created the task
-	UpdatedBy     string      `json:"updated_by,omitempty"`     // Actor who last updated the task
-	CompletedAt   *time.Time  `json:"completed_at,omitempty"`
+	ID            uuid.UUID    `json:"id"`
+	ProjectID     uuid.UUID    `json:"project_id"`
+	ParentID      *uuid.UUID   `json:"parent_id,omitempty"` // nil for root tasks
+	Title         string       `json:"title"`
+	Description   string       `json:"description"`
+	State         TaskState    `json:"state"`
+	Priority      TaskPriority `json:"priority"`                 // Task priority level
+	Complexity    int          `json:"complexity"`               // Used for breakdown decisions
+	Depth         int          `json:"depth"`                    // 0 for root tasks
+	Estimate      *int64       `json:"estimate,omitempty"`       // Time estimate in minutes
+	AssignedAgent *uuid.UUID   `json:"assigned_agent,omitempty"` // Agent assigned to this task
+	Dependencies  []uuid.UUID  `json:"dependencies,omitempty"`   // Tasks this task depends on
+	Dependents    []uuid.UUID  `json:"dependents,omitempty"`     // Tasks that depend on this task
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+	CreatedBy     string       `json:"created_by,omitempty"`     // Actor who created the task
+	UpdatedBy     string       `json:"updated_by,omitempty"`     // Actor who last updated the task
+	CompletedAt   *time.Time   `json:"completed_at,omitempty"`
 }
 
 // ProjectState represents the current state of a project
@@ -81,19 +91,21 @@ type ProjectProgress struct {
 
 // TaskFilter represents filtering options for task queries
 type TaskFilter struct {
-	ProjectID     *uuid.UUID `json:"project_id,omitempty"`
-	ParentID      *uuid.UUID `json:"parent_id,omitempty"`
-	State         *TaskState `json:"state,omitempty"`
-	MinDepth      *int       `json:"min_depth,omitempty"`
-	MaxDepth      *int       `json:"max_depth,omitempty"`
-	MinComplexity *int       `json:"min_complexity,omitempty"`
-	MaxComplexity *int       `json:"max_complexity,omitempty"`
+	ProjectID     *uuid.UUID    `json:"project_id,omitempty"`
+	ParentID      *uuid.UUID    `json:"parent_id,omitempty"`
+	State         *TaskState    `json:"state,omitempty"`
+	Priority      *TaskPriority `json:"priority,omitempty"`
+	MinDepth      *int          `json:"min_depth,omitempty"`
+	MaxDepth      *int          `json:"max_depth,omitempty"`
+	MinComplexity *int          `json:"min_complexity,omitempty"`
+	MaxComplexity *int          `json:"max_complexity,omitempty"`
 }
 
 // TaskUpdates represents the fields that can be updated in bulk
 type TaskUpdates struct {
-	State      *TaskState `json:"state,omitempty"`
-	Complexity *int       `json:"complexity,omitempty"`
+	State      *TaskState    `json:"state,omitempty"`
+	Priority   *TaskPriority `json:"priority,omitempty"`
+	Complexity *int          `json:"complexity,omitempty"`
 }
 
 // Repository defines the interface for task and project persistence

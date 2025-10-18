@@ -26,6 +26,8 @@ const (
 	FieldDescription = "description"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
+	// FieldPriority holds the string denoting the priority field in the database.
+	FieldPriority = "priority"
 	// FieldComplexity holds the string denoting the complexity field in the database.
 	FieldComplexity = "complexity"
 	// FieldDepth holds the string denoting the depth field in the database.
@@ -73,6 +75,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldDescription,
 	FieldState,
+	FieldPriority,
 	FieldComplexity,
 	FieldDepth,
 	FieldEstimate,
@@ -141,6 +144,33 @@ func StateValidator(s State) error {
 	}
 }
 
+// Priority defines the type for the "priority" enum field.
+type Priority string
+
+// PriorityMedium is the default value of the Priority enum.
+const DefaultPriority = PriorityMedium
+
+// Priority values.
+const (
+	PriorityLow    Priority = "low"
+	PriorityMedium Priority = "medium"
+	PriorityHigh   Priority = "high"
+)
+
+func (pr Priority) String() string {
+	return string(pr)
+}
+
+// PriorityValidator is a validator for the "priority" field enum values. It is called by the builders before save.
+func PriorityValidator(pr Priority) error {
+	switch pr {
+	case PriorityLow, PriorityMedium, PriorityHigh:
+		return nil
+	default:
+		return fmt.Errorf("task: invalid enum value for priority field: %q", pr)
+	}
+}
+
 // OrderOption defines the ordering options for the Task queries.
 type OrderOption func(*sql.Selector)
 
@@ -172,6 +202,11 @@ func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 // ByState orders the results by the state field.
 func ByState(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldState, opts...).ToFunc()
+}
+
+// ByPriority orders the results by the priority field.
+func ByPriority(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPriority, opts...).ToFunc()
 }
 
 // ByComplexity orders the results by the complexity field.

@@ -76,6 +76,20 @@ func (_c *TaskCreate) SetNillableState(v *task.State) *TaskCreate {
 	return _c
 }
 
+// SetPriority sets the "priority" field.
+func (_c *TaskCreate) SetPriority(v task.Priority) *TaskCreate {
+	_c.mutation.SetPriority(v)
+	return _c
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_c *TaskCreate) SetNillablePriority(v *task.Priority) *TaskCreate {
+	if v != nil {
+		_c.SetPriority(*v)
+	}
+	return _c
+}
+
 // SetComplexity sets the "complexity" field.
 func (_c *TaskCreate) SetComplexity(v int) *TaskCreate {
 	_c.mutation.SetComplexity(v)
@@ -244,6 +258,10 @@ func (_c *TaskCreate) defaults() {
 		v := task.DefaultState
 		_c.mutation.SetState(v)
 	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		v := task.DefaultPriority
+		_c.mutation.SetPriority(v)
+	}
 	if _, ok := _c.mutation.Depth(); !ok {
 		v := task.DefaultDepth
 		_c.mutation.SetDepth(v)
@@ -281,6 +299,14 @@ func (_c *TaskCreate) check() error {
 	if v, ok := _c.mutation.State(); ok {
 		if err := task.StateValidator(v); err != nil {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Task.state": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		return &ValidationError{Name: "priority", err: errors.New(`ent: missing required field "Task.priority"`)}
+	}
+	if v, ok := _c.mutation.Priority(); ok {
+		if err := task.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Task.priority": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Complexity(); !ok {
@@ -354,6 +380,10 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.State(); ok {
 		_spec.SetField(task.FieldState, field.TypeEnum, value)
 		_node.State = value
+	}
+	if value, ok := _c.mutation.Priority(); ok {
+		_spec.SetField(task.FieldPriority, field.TypeEnum, value)
+		_node.Priority = value
 	}
 	if value, ok := _c.mutation.Complexity(); ok {
 		_spec.SetField(task.FieldComplexity, field.TypeInt, value)

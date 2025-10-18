@@ -51,6 +51,12 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Value:   5,
 					EnvVars: []string{"KNOT_DEFAULT_COMPLEXITY"},
 				},
+				&cli.StringFlag{
+					Name:    "priority",
+					Aliases: []string{"p"},
+					Usage:   "Task priority (low, medium, high)",
+					Value:   "medium",
+				},
 			},
 		},
 		{
@@ -67,6 +73,11 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 					Name:    "state",
 					Aliases: []string{"s"},
 					Usage:   "Filter by task state (pending, in-progress, completed, blocked, cancelled)",
+				},
+				&cli.StringFlag{
+					Name:    "priority",
+					Aliases: []string{"p"},
+					Usage:   "Filter by task priority (low, medium, high)",
 				},
 				&cli.IntFlag{
 					Name:  "complexity-min",
@@ -96,7 +107,7 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 				},
 				&cli.StringFlag{
 					Name:  "sort",
-					Usage: "Sort by field (title, complexity, state, created, depth)",
+					Usage: "Sort by field (title, complexity, state, priority, created, depth)",
 					Value: "created",
 				},
 				&cli.BoolFlag{
@@ -159,6 +170,24 @@ func Commands(appCtx *shared.AppContext) []*cli.Command {
 				},
 			},
 		},
+		{
+			Name:   "update-priority",
+			Usage:  "Update task priority",
+			Action: updatePriorityAction(appCtx),
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:     "id",
+					Usage:    "Task ID",
+					Required: true,
+				},
+				&cli.StringFlag{
+					Name:     "priority",
+					Aliases:  []string{"p"},
+					Usage:    "New task priority (low, medium, high)",
+					Required: true,
+				},
+			},
+		},
 	}
 
 	// Hierarchy navigation commands
@@ -190,6 +219,7 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 		title := c.String("title")
 		description := c.String("description")
 		complexity := c.Int("complexity")
+		priority := c.String("priority")
 		actor := c.String("actor")
 
 		// Create input validator
@@ -206,6 +236,11 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 
 		if err := validator.ValidateComplexity(complexity); err != nil {
 			return errors.NewValidationError("invalid complexity", err)
+		}
+
+		// Validate priority
+		if err := validator.ValidateTaskPriority(priority); err != nil {
+			return errors.NewValidationError("invalid priority", err)
 		}
 
 		// Default to $USER if actor is not provided
@@ -234,9 +269,10 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 			zap.String("title", title),
 			zap.String("projectID", projectID.String()),
 			zap.Int("complexity", complexity),
+			zap.String("priority", priority),
 			zap.String("actor", actor))
 
-		task, err := appCtx.ProjectManager.CreateTask(context.Background(), projectID, parentID, title, description, complexity, actor)
+		task, err := appCtx.ProjectManager.CreateTask(context.Background(), projectID, parentID, title, description, complexity, types.TaskPriority(priority), actor)
 		if err != nil {
 			appCtx.Logger.Error("Failed to create task", zap.Error(err))
 			return errors.WrapWithSuggestion(err, "creating task")
@@ -250,6 +286,7 @@ func createAction(appCtx *shared.AppContext) cli.ActionFunc {
 			fmt.Printf("  Description: %s\n", task.Description)
 		}
 		fmt.Printf("  Complexity: %d\n", task.Complexity)
+		fmt.Printf("  Priority: %s\n", task.Priority)
 		fmt.Printf("  State: %s\n", task.State)
 		if parentID != nil {
 			fmt.Printf("  Parent: %s\n", *parentID)
@@ -325,7 +362,7 @@ func listAction(appCtx *shared.AppContext) cli.ActionFunc {
 			if task.Description != "" {
 				fmt.Printf("%s  %s\n", indent, task.Description)
 			}
-			fmt.Printf("%s  State: %s | Complexity: %d | Depth: %d\n", indent, task.State, task.Complexity, task.Depth)
+			fmt.Printf("%s  State: %s | Priority: %s | Complexity: %d | Depth: %d\n", indent, task.State, task.Priority, task.Complexity, task.Depth)
 			fmt.Println()
 		}
 		return nil
@@ -513,6 +550,59 @@ func updateDescriptionAction(appCtx *shared.AppContext) cli.ActionFunc {
 	}
 }
 
+func updatePriorityAction(appCtx *shared.AppContext) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		taskIDStr := c.String("id")
+		taskID, err := uuid.Parse(taskIDStr)
+		if err != nil {
+			return errors.InvalidUUIDError("task-id", taskIDStr)
+		}
+
+		priority := c.String("priority")
+		actor := c.String("actor")
+
+		// Default to $USER if actor is not provided
+		if actor == "" {
+			actor = os.Getenv("USER")
+			if actor == "" {
+				actor = "unknown"
+			}
+		}
+
+		// Validate priority
+		validator := validation.NewInputValidator()
+		if err := validator.ValidateTaskPriority(priority); err != nil {
+			return errors.NewValidationError("invalid priority", err)
+		}
+
+		appCtx.Logger.Info("Updating task priority",
+			zap.String("taskID", taskID.String()),
+			zap.String("newPriority", priority),
+			zap.String("actor", actor))
+
+		// Get current task to check if it exists and get old priority
+		task, err := appCtx.ProjectManager.GetTask(context.Background(), taskID)
+		if err != nil {
+			appCtx.Logger.Error("Failed to get task", zap.Error(err))
+			return errors.TaskNotFoundError(taskID)
+		}
+
+		oldPriority := task.Priority
+
+		// Update task priority using the service method
+		updatedTask, err := appCtx.ProjectManager.UpdateTaskPriority(context.Background(), taskID, types.TaskPriority(priority), actor)
+		if err != nil {
+			appCtx.Logger.Error("Failed to update task priority", zap.Error(err))
+			return errors.WrapWithSuggestion(err, "updating task priority")
+		}
+
+		appCtx.Logger.Info("Task priority updated successfully", zap.String("actor", actor))
+		fmt.Printf("Updated task priority: \"%s\" -> \"%s\"\n", oldPriority, updatedTask.Priority)
+		fmt.Printf("  Updated by: %s\n", actor)
+		return nil
+	}
+}
+
 // Helper functions for task filtering, sorting, and limiting
 
 // applyTaskFilters applies all specified filters to the task list
@@ -523,6 +613,13 @@ func applyTaskFilters(tasks []*types.Task, c *cli.Context) []*types.Task {
 		// State filter
 		if state := c.String("state"); state != "" {
 			if string(task.State) != state {
+				continue
+			}
+		}
+
+		// Priority filter
+		if priority := c.String("priority"); priority != "" {
+			if string(task.Priority) != priority {
 				continue
 			}
 		}
@@ -587,6 +684,10 @@ func applyTaskSorting(tasks []*types.Task, c *cli.Context) []*types.Task {
 			less = sorted[i].Complexity < sorted[j].Complexity
 		case "state":
 			less = string(sorted[i].State) < string(sorted[j].State)
+		case "priority":
+			// Sort by priority: high -> medium -> low
+			priorityOrder := map[string]int{"high": 0, "medium": 1, "low": 2}
+			less = priorityOrder[string(sorted[i].Priority)] < priorityOrder[string(sorted[j].Priority)]
 		case "depth":
 			less = sorted[i].Depth < sorted[j].Depth
 		case "created":
@@ -617,6 +718,7 @@ func applyTaskLimit(tasks []*types.Task, c *cli.Context) []*types.Task {
 // hasFiltersApplied checks if any filters were applied
 func hasFiltersApplied(c *cli.Context) bool {
 	return c.String("state") != "" ||
+		c.String("priority") != "" ||
 		c.Int("complexity") > 0 ||
 		c.Int("complexity-min") > 0 ||
 		c.Int("complexity-max") > 0 ||

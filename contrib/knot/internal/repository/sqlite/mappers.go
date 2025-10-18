@@ -64,6 +64,7 @@ func entTaskToTask(et *ent.Task) *types.Task {
 		Title:       et.Title,
 		Description: et.Description,
 		State:       types.TaskState(et.State),
+		Priority:    types.TaskPriority(et.Priority),
 		Complexity:  et.Complexity,
 		Depth:       et.Depth,
 		CreatedAt:   et.CreatedAt,
@@ -98,6 +99,7 @@ func taskToEntTaskCreate(t *types.Task, client *ent.Client) *ent.TaskCreate {
 		SetTitle(t.Title).
 		SetDescription(t.Description).
 		SetState(task.State(t.State)).
+		SetPriority(task.Priority(t.Priority)).
 		SetComplexity(t.Complexity).
 		SetDepth(t.Depth)
 
@@ -132,6 +134,7 @@ func taskToEntTaskUpdate(t *types.Task, update *ent.TaskUpdateOne) *ent.TaskUpda
 		SetTitle(t.Title).
 		SetDescription(t.Description).
 		SetState(task.State(t.State)).
+		SetPriority(task.Priority(t.Priority)).
 		SetComplexity(t.Complexity).
 		SetUpdatedAt(t.UpdatedAt)
 
@@ -212,6 +215,9 @@ func filterMatchesTaskFilter(task *ent.Task, filter types.TaskFilter) bool {
 		}
 	}
 	if filter.State != nil && types.TaskState(task.State) != *filter.State {
+		return false
+	}
+	if filter.Priority != nil && types.TaskPriority(task.Priority) != *filter.Priority {
 		return false
 	}
 	if filter.MinDepth != nil && task.Depth < *filter.MinDepth {

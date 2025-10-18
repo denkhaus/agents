@@ -968,6 +968,7 @@ type TaskMutation struct {
 	title           *string
 	description     *string
 	state           *task.State
+	priority        *task.Priority
 	complexity      *int
 	addcomplexity   *int
 	depth           *int
@@ -1299,6 +1300,42 @@ func (m *TaskMutation) OldState(ctx context.Context) (v task.State, err error) {
 // ResetState resets all changes to the "state" field.
 func (m *TaskMutation) ResetState() {
 	m.state = nil
+}
+
+// SetPriority sets the "priority" field.
+func (m *TaskMutation) SetPriority(t task.Priority) {
+	m.priority = &t
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *TaskMutation) Priority() (r task.Priority, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPriority returns the old "priority" field's value of the Task entity.
+// If the Task object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TaskMutation) OldPriority(ctx context.Context) (v task.Priority, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPriority is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPriority requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPriority: %w", err)
+	}
+	return oldValue.Priority, nil
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *TaskMutation) ResetPriority() {
+	m.priority = nil
 }
 
 // SetComplexity sets the "complexity" field.
@@ -1795,7 +1832,7 @@ func (m *TaskMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TaskMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.project != nil {
 		fields = append(fields, task.FieldProjectID)
 	}
@@ -1810,6 +1847,9 @@ func (m *TaskMutation) Fields() []string {
 	}
 	if m.state != nil {
 		fields = append(fields, task.FieldState)
+	}
+	if m.priority != nil {
+		fields = append(fields, task.FieldPriority)
 	}
 	if m.complexity != nil {
 		fields = append(fields, task.FieldComplexity)
@@ -1850,6 +1890,8 @@ func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case task.FieldState:
 		return m.State()
+	case task.FieldPriority:
+		return m.Priority()
 	case task.FieldComplexity:
 		return m.Complexity()
 	case task.FieldDepth:
@@ -1883,6 +1925,8 @@ func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldDescription(ctx)
 	case task.FieldState:
 		return m.OldState(ctx)
+	case task.FieldPriority:
+		return m.OldPriority(ctx)
 	case task.FieldComplexity:
 		return m.OldComplexity(ctx)
 	case task.FieldDepth:
@@ -1940,6 +1984,13 @@ func (m *TaskMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetState(v)
+		return nil
+	case task.FieldPriority:
+		v, ok := value.(task.Priority)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
 		return nil
 	case task.FieldComplexity:
 		v, ok := value.(int)
@@ -2125,6 +2176,9 @@ func (m *TaskMutation) ResetField(name string) error {
 		return nil
 	case task.FieldState:
 		m.ResetState()
+		return nil
+	case task.FieldPriority:
+		m.ResetPriority()
 		return nil
 	case task.FieldComplexity:
 		m.ResetComplexity()

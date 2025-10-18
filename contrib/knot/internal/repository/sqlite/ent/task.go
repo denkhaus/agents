@@ -29,6 +29,8 @@ type Task struct {
 	Description string `json:"description,omitempty"`
 	// State holds the value of the "state" field.
 	State task.State `json:"state,omitempty"`
+	// Priority holds the value of the "priority" field.
+	Priority task.Priority `json:"priority,omitempty"`
 	// Complexity holds the value of the "complexity" field.
 	Complexity int `json:"complexity,omitempty"`
 	// Depth holds the value of the "depth" field.
@@ -102,7 +104,7 @@ func (*Task) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case task.FieldComplexity, task.FieldDepth, task.FieldEstimate:
 			values[i] = new(sql.NullInt64)
-		case task.FieldTitle, task.FieldDescription, task.FieldState:
+		case task.FieldTitle, task.FieldDescription, task.FieldState, task.FieldPriority:
 			values[i] = new(sql.NullString)
 		case task.FieldCreatedAt, task.FieldUpdatedAt, task.FieldCompletedAt:
 			values[i] = new(sql.NullTime)
@@ -159,6 +161,12 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field state", values[i])
 			} else if value.Valid {
 				_m.State = task.State(value.String)
+			}
+		case task.FieldPriority:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field priority", values[i])
+			} else if value.Valid {
+				_m.Priority = task.Priority(value.String)
 			}
 		case task.FieldComplexity:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -272,6 +280,9 @@ func (_m *Task) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("state=")
 	builder.WriteString(fmt.Sprintf("%v", _m.State))
+	builder.WriteString(", ")
+	builder.WriteString("priority=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Priority))
 	builder.WriteString(", ")
 	builder.WriteString("complexity=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Complexity))

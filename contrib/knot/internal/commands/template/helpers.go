@@ -275,6 +275,7 @@ func applyTemplate(appCtx *shared.AppContext, template *types.TaskTemplate, proj
 				task.Title,
 				task.Description,
 				task.Complexity,
+				types.TaskPriorityMedium,
 				actor,
 			)
 			if err != nil {

@@ -54,6 +54,7 @@ var (
 		{Name: "title", Type: field.TypeString, Size: 200},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "state", Type: field.TypeEnum, Enums: []string{"pending", "in-progress", "completed", "blocked", "cancelled", "deletion-pending"}, Default: "pending"},
+		{Name: "priority", Type: field.TypeEnum, Enums: []string{"low", "medium", "high"}, Default: "medium"},
 		{Name: "complexity", Type: field.TypeInt},
 		{Name: "depth", Type: field.TypeInt, Default: 0},
 		{Name: "estimate", Type: field.TypeInt64, Nullable: true},
@@ -72,13 +73,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "tasks_projects_tasks",
-				Columns:    []*schema.Column{TasksColumns[11]},
+				Columns:    []*schema.Column{TasksColumns[12]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "tasks_tasks_children",
-				Columns:    []*schema.Column{TasksColumns[12]},
+				Columns:    []*schema.Column{TasksColumns[13]},
 				RefColumns: []*schema.Column{TasksColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -87,12 +88,12 @@ var (
 			{
 				Name:    "task_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[11]},
+				Columns: []*schema.Column{TasksColumns[12]},
 			},
 			{
 				Name:    "task_parent_id",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[12]},
+				Columns: []*schema.Column{TasksColumns[13]},
 			},
 			{
 				Name:    "task_state",
@@ -100,49 +101,69 @@ var (
 				Columns: []*schema.Column{TasksColumns[3]},
 			},
 			{
-				Name:    "task_assigned_agent",
-				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[7]},
-			},
-			{
-				Name:    "task_complexity",
+				Name:    "task_priority",
 				Unique:  false,
 				Columns: []*schema.Column{TasksColumns[4]},
 			},
 			{
-				Name:    "task_depth",
-				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[5]},
-			},
-			{
-				Name:    "task_created_at",
+				Name:    "task_assigned_agent",
 				Unique:  false,
 				Columns: []*schema.Column{TasksColumns[8]},
 			},
 			{
+				Name:    "task_complexity",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[5]},
+			},
+			{
+				Name:    "task_depth",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[6]},
+			},
+			{
+				Name:    "task_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[9]},
+			},
+			{
 				Name:    "task_project_id_state",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[11], TasksColumns[3]},
+				Columns: []*schema.Column{TasksColumns[12], TasksColumns[3]},
+			},
+			{
+				Name:    "task_project_id_priority",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[12], TasksColumns[4]},
 			},
 			{
 				Name:    "task_project_id_assigned_agent",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[11], TasksColumns[7]},
+				Columns: []*schema.Column{TasksColumns[12], TasksColumns[8]},
 			},
 			{
 				Name:    "task_project_id_parent_id",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[11], TasksColumns[12]},
+				Columns: []*schema.Column{TasksColumns[12], TasksColumns[13]},
 			},
 			{
 				Name:    "task_project_id_depth",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[11], TasksColumns[5]},
+				Columns: []*schema.Column{TasksColumns[12], TasksColumns[6]},
 			},
 			{
 				Name:    "task_state_complexity",
 				Unique:  false,
-				Columns: []*schema.Column{TasksColumns[3], TasksColumns[4]},
+				Columns: []*schema.Column{TasksColumns[3], TasksColumns[5]},
+			},
+			{
+				Name:    "task_priority_state",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[4], TasksColumns[3]},
+			},
+			{
+				Name:    "task_priority_complexity",
+				Unique:  false,
+				Columns: []*schema.Column{TasksColumns[4], TasksColumns[5]},
 			},
 		},
 	}

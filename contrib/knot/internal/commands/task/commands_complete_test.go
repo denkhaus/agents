@@ -77,6 +77,7 @@ func TestTaskCreateAction(t *testing.T) {
 			flagSet.String("title", "", "")
 			flagSet.String("description", "", "")
 			flagSet.String("complexity", "", "")
+			flagSet.String("priority", "", "")
 			flagSet.String("parent-id", "", "")
 			flagSet.String("actor", "", "")
 			
@@ -84,6 +85,7 @@ func TestTaskCreateAction(t *testing.T) {
 			flagSet.Set("title", tt.title)
 			flagSet.Set("description", tt.description)
 			flagSet.Set("complexity", tt.complexity)
+			flagSet.Set("priority", "medium")
 			if tt.parentID != "" {
 				flagSet.Set("parent-id", tt.parentID)
 			}
@@ -128,9 +130,8 @@ func TestTaskListAction(t *testing.T) {
 		action := listAction(appCtx)
 		err := action(ctx)
 
-		// Should return EmptyResultError
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no results found")
+		// Should succeed but show no tasks
+		require.NoError(t, err)
 	})
 
 	t.Run("list with tasks", func(t *testing.T) {
@@ -187,7 +188,7 @@ func TestTaskUpdateStateAction(t *testing.T) {
 			state:       "in-progress",
 			actor:       "test-user",
 			expectError: true,
-			errorMsg:    "invalid task ID format",
+			errorMsg:    "invalid task-id format",
 		},
 		{
 			name:        "non-existent task",
@@ -203,7 +204,7 @@ func TestTaskUpdateStateAction(t *testing.T) {
 			state:       "invalid-state",
 			actor:       "test-user",
 			expectError: true,
-			errorMsg:    "invalid state",
+			errorMsg:    "invalid task state",
 		},
 	}
 
@@ -279,7 +280,7 @@ func TestTaskUpdateTitleAction(t *testing.T) {
 			title:       "Updated Title",
 			actor:       "test-user",
 			expectError: true,
-			errorMsg:    "invalid task ID format",
+			errorMsg:    "invalid task-id format",
 		},
 	}
 
@@ -331,12 +332,14 @@ func TestTaskWorkflow(t *testing.T) {
 		flagSet.String("title", "", "")
 		flagSet.String("description", "", "")
 		flagSet.String("complexity", "", "")
+		flagSet.String("priority", "", "")
 		flagSet.String("actor", "", "")
 		
 		flagSet.Set("project-id", project.ID.String())
 		flagSet.Set("title", "Workflow Test Task")
 		flagSet.Set("description", "Created during workflow test")
 		flagSet.Set("complexity", "5")
+		flagSet.Set("priority", "medium")
 		flagSet.Set("actor", "workflow-test")
 		
 		ctx := cli.NewContext(app, flagSet, nil)

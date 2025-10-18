@@ -106,7 +106,7 @@ func CreateTestProject(t *testing.T, mgr manager.ProjectManager) *types.Project 
 func CreateTestTask(t *testing.T, mgr manager.ProjectManager, projectID uuid.UUID) *types.Task {
 	ctx := context.Background()
 	
-	task, err := mgr.CreateTask(ctx, projectID, nil, "Test Task", "Test Description", 5, "test-user")
+	task, err := mgr.CreateTask(ctx, projectID, nil, "Test Task", "Test Description", 5, types.TaskPriorityMedium, "test-user")
 	require.NoError(t, err)
 	require.NotNil(t, task)
 	
@@ -117,7 +117,7 @@ func CreateTestTask(t *testing.T, mgr manager.ProjectManager, projectID uuid.UUI
 func CreateTestTaskWithParent(t *testing.T, mgr manager.ProjectManager, projectID, parentID uuid.UUID) *types.Task {
 	ctx := context.Background()
 	
-	task, err := mgr.CreateTask(ctx, projectID, &parentID, "Test Subtask", "Test Subtask Description", 3, "test-user")
+	task, err := mgr.CreateTask(ctx, projectID, &parentID, "Test Subtask", "Test Subtask Description", 3, types.TaskPriorityMedium, "test-user")
 	require.NoError(t, err)
 	require.NotNil(t, task)
 	

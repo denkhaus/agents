@@ -2,6 +2,7 @@ package task
 
 import (
 	"flag"
+	"strconv"
 	"testing"
 
 	"github.com/denkhaus/knot/internal/shared"
@@ -83,12 +84,14 @@ func TestCreateActionValidation(t *testing.T) {
 			flagSet.String("title", "", "")
 			flagSet.String("description", "", "")
 			flagSet.String("complexity", "", "")
+			flagSet.String("priority", "", "")
 			flagSet.String("actor", "", "")
 
 			flagSet.Set("project-id", project.ID.String())
 			flagSet.Set("title", tt.title)
 			flagSet.Set("description", tt.description)
-			flagSet.Set("complexity", string(rune(tt.complexity)))
+			flagSet.Set("complexity", strconv.Itoa(tt.complexity))
+			flagSet.Set("priority", "medium")
 			flagSet.Set("actor", "test-user")
 
 			ctx := cli.NewContext(app, flagSet, nil)
@@ -129,31 +132,34 @@ func TestValidateProjectID(t *testing.T) {
 			name:        "empty project ID",
 			projectID:   "",
 			expectError: true,
-			errorMsg:    "project-id is required",
+			errorMsg:    "required flag --project-id not provided",
 		},
 		{
 			name:        "invalid UUID format",
 			projectID:   "invalid-uuid",
 			expectError: true,
-			errorMsg:    "invalid project ID format",
+			errorMsg:    "invalid project-id format",
 		},
 		{
 			name:        "partial UUID",
 			projectID:   "123e4567-e89b-12d3",
 			expectError: true,
-			errorMsg:    "invalid project ID format",
+			errorMsg:    "invalid project-id format",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock CLI context
+			// Create a proper CLI context with flag set
 			app := &cli.App{}
-			ctx := cli.NewContext(app, nil, nil)
+			flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+			flagSet.String("project-id", "", "")
 
 			if tt.projectID != "" {
-				ctx.Set("project-id", tt.projectID)
+				flagSet.Set("project-id", tt.projectID)
 			}
+
+			ctx := cli.NewContext(app, flagSet, nil)
 
 			// Test the validation function
 			_, err := shared.ValidateProjectID(ctx)
@@ -178,13 +184,22 @@ func TestInputValidationIntegration(t *testing.T) {
 
 	// Test that validation errors are properly wrapped as EnhancedErrors
 	app := &cli.App{}
-	ctx := cli.NewContext(app, nil, nil)
+	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+	flagSet.String("project-id", "", "")
+	flagSet.String("title", "", "")
+	flagSet.String("description", "", "")
+	flagSet.String("complexity", "", "")
+	flagSet.String("priority", "", "")
+	flagSet.String("actor", "", "")
 
-	ctx.Set("project-id", project.ID.String())
-	ctx.Set("title", "<script>alert('xss')</script>") // Should trigger validation error
-	ctx.Set("description", "Valid description")
-	ctx.Set("complexity", "5")
-	ctx.Set("actor", "test-user")
+	flagSet.Set("project-id", project.ID.String())
+	flagSet.Set("title", "<script>alert('xss')</script>") // Should trigger validation error
+	flagSet.Set("description", "Valid description")
+	flagSet.Set("complexity", "5")
+	flagSet.Set("priority", "medium")
+	flagSet.Set("actor", "test-user")
+
+	ctx := cli.NewContext(app, flagSet, nil)
 
 	appCtx := &shared.AppContext{
 		ProjectManager: mgr,
@@ -196,6 +211,6 @@ func TestInputValidationIntegration(t *testing.T) {
 	require.Error(t, err)
 
 	// Check that it's wrapped as a validation error
-	assert.Contains(t, err.Error(), "input validation")
-	assert.Contains(t, err.Error(), "contains HTML tags")
+	assert.Contains(t, err.Error(), "title contains HTML tags")
+	assert.Contains(t, err.Error(), "not allowed")
 }

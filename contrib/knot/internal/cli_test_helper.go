@@ -135,11 +135,11 @@ func (h *CLITestHelper) CreateTestProject(title, description string) string {
 
 // CreateTestTask creates a test task and returns its ID
 func (h *CLITestHelper) CreateTestTask(projectID, title, description string, complexity int) string {
-	stdout, _ := h.RunCommandExpectSuccess("task", "create", 
-		"--project-id", projectID,
+	stdout, _ := h.RunCommandExpectSuccess("--project-id", projectID, "task", "create", 
 		"--title", title,
 		"--description", description,
-		"--complexity", strconv.Itoa(complexity))
+		"--complexity", strconv.Itoa(complexity),
+		"--priority", "medium")
 	taskID := h.ExtractTaskID(stdout)
 	require.NotEmpty(h.t, taskID, "Should extract task ID from output")
 	return taskID

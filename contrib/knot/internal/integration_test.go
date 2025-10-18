@@ -67,20 +67,20 @@ func TestCompleteProjectWorkflow(t *testing.T) {
 		assert.Equal(t, "A project for testing complete workflows", retrievedProject.Description)
 		
 		// Step 3: Create root tasks
-		rootTask1, err := mgr.CreateTask(ctx, projectID, nil, "Root Task 1: Setup", "Initial setup task", 3, actor)
+		rootTask1, err := mgr.CreateTask(ctx, projectID, nil, "Root Task 1: Setup", "Initial setup task", 3, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		rootTask1ID := rootTask1.ID
 		
-		rootTask2, err := mgr.CreateTask(ctx, projectID, nil, "Root Task 2: Implementation", "Main implementation task", 5, actor)
+		rootTask2, err := mgr.CreateTask(ctx, projectID, nil, "Root Task 2: Implementation", "Main implementation task", 5, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		rootTask2ID := rootTask2.ID
 		
 		// Step 4: Create subtasks
-		subtask1, err := mgr.CreateTask(ctx, projectID, &rootTask1ID, "Subtask 1.1: Configuration", "Configure the system", 2, actor)
+		subtask1, err := mgr.CreateTask(ctx, projectID, &rootTask1ID, "Subtask 1.1: Configuration", "Configure the system", 2, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		subtask1ID := subtask1.ID
 		
-		subtask2, err := mgr.CreateTask(ctx, projectID, &rootTask2ID, "Subtask 2.1: Core Logic", "Implement core business logic", 4, actor)
+		subtask2, err := mgr.CreateTask(ctx, projectID, &rootTask2ID, "Subtask 2.1: Core Logic", "Implement core business logic", 4, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		subtask2ID := subtask2.ID
 		
@@ -164,15 +164,15 @@ func TestDependencyWorkflow(t *testing.T) {
 		projectID := project.ID
 		
 		// Create tasks: A -> B -> C (linear dependency chain)
-		taskA, err := mgr.CreateTask(ctx, projectID, nil, "Task A: Foundation", "Foundation task", 2, actor)
+		taskA, err := mgr.CreateTask(ctx, projectID, nil, "Task A: Foundation", "Foundation task", 2, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		taskAID := taskA.ID
 		
-		taskB, err := mgr.CreateTask(ctx, projectID, nil, "Task B: Building", "Building on foundation", 3, actor)
+		taskB, err := mgr.CreateTask(ctx, projectID, nil, "Task B: Building", "Building on foundation", 3, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		taskBID := taskB.ID
 		
-		taskC, err := mgr.CreateTask(ctx, projectID, nil, "Task C: Completion", "Final completion task", 2, actor)
+		taskC, err := mgr.CreateTask(ctx, projectID, nil, "Task C: Completion", "Final completion task", 2, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		taskCID := taskC.ID
 		
@@ -240,7 +240,7 @@ func TestErrorScenarios(t *testing.T) {
 	t.Run("error handling scenarios", func(t *testing.T) {
 		// Test creating task with non-existent project
 		nonExistentProjectID := uuid.New()
-		_, err := mgr.CreateTask(ctx, nonExistentProjectID, nil, "Invalid Task", "Task with non-existent project", 1, actor)
+		_, err := mgr.CreateTask(ctx, nonExistentProjectID, nil, "Invalid Task", "Task with non-existent project", 1, types.TaskPriorityMedium, actor)
 		assert.Error(t, err, "Should fail to create task with non-existent project")
 		
 		// Create valid project and task for further tests
@@ -248,7 +248,7 @@ func TestErrorScenarios(t *testing.T) {
 		require.NoError(t, err)
 		projectID := project.ID
 		
-		task, err := mgr.CreateTask(ctx, projectID, nil, "Valid Task", "A valid task for testing", 2, actor)
+		task, err := mgr.CreateTask(ctx, projectID, nil, "Valid Task", "A valid task for testing", 2, types.TaskPriorityMedium, actor)
 		require.NoError(t, err)
 		taskID := task.ID
 		
@@ -290,7 +290,7 @@ func TestConcurrentOperations(t *testing.T) {
 		
 		for i := 0; i < numTasks; i++ {
 			go func(index int) {
-				_, err := mgr.CreateTask(ctx, projectID, nil, fmt.Sprintf("Concurrent Task %d", index), fmt.Sprintf("Task created concurrently %d", index), 1, actor)
+				_, err := mgr.CreateTask(ctx, projectID, nil, fmt.Sprintf("Concurrent Task %d", index), fmt.Sprintf("Task created concurrently %d", index), 1, types.TaskPriorityMedium, actor)
 				errChan <- err
 			}(i)
 		}

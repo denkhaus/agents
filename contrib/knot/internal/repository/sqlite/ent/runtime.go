@@ -103,7 +103,7 @@ func init() {
 		}
 	}()
 	// taskDescComplexity is the schema descriptor for complexity field.
-	taskDescComplexity := taskFields[6].Descriptor()
+	taskDescComplexity := taskFields[7].Descriptor()
 	// task.ComplexityValidator is a validator for the "complexity" field. It is called by the builders before save.
 	task.ComplexityValidator = func() func(int) error {
 		validators := taskDescComplexity.Validators
@@ -121,17 +121,17 @@ func init() {
 		}
 	}()
 	// taskDescDepth is the schema descriptor for depth field.
-	taskDescDepth := taskFields[7].Descriptor()
+	taskDescDepth := taskFields[8].Descriptor()
 	// task.DefaultDepth holds the default value on creation for the depth field.
 	task.DefaultDepth = taskDescDepth.Default.(int)
 	// task.DepthValidator is a validator for the "depth" field. It is called by the builders before save.
 	task.DepthValidator = taskDescDepth.Validators[0].(func(int) error)
 	// taskDescCreatedAt is the schema descriptor for created_at field.
-	taskDescCreatedAt := taskFields[10].Descriptor()
+	taskDescCreatedAt := taskFields[11].Descriptor()
 	// task.DefaultCreatedAt holds the default value on creation for the created_at field.
 	task.DefaultCreatedAt = taskDescCreatedAt.Default.(func() time.Time)
 	// taskDescUpdatedAt is the schema descriptor for updated_at field.
-	taskDescUpdatedAt := taskFields[11].Descriptor()
+	taskDescUpdatedAt := taskFields[12].Descriptor()
 	// task.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	task.DefaultUpdatedAt = taskDescUpdatedAt.Default.(func() time.Time)
 	// task.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

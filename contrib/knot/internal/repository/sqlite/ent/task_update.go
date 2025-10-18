@@ -112,6 +112,20 @@ func (_u *TaskUpdate) SetNillableState(v *task.State) *TaskUpdate {
 	return _u
 }
 
+// SetPriority sets the "priority" field.
+func (_u *TaskUpdate) SetPriority(v task.Priority) *TaskUpdate {
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillablePriority(v *task.Priority) *TaskUpdate {
+	if v != nil {
+		_u.SetPriority(*v)
+	}
+	return _u
+}
+
 // SetComplexity sets the "complexity" field.
 func (_u *TaskUpdate) SetComplexity(v int) *TaskUpdate {
 	_u.mutation.ResetComplexity()
@@ -338,6 +352,11 @@ func (_u *TaskUpdate) check() error {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Task.state": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Priority(); ok {
+		if err := task.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Task.priority": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Complexity(); ok {
 		if err := task.ComplexityValidator(v); err != nil {
 			return &ValidationError{Name: "complexity", err: fmt.Errorf(`ent: validator failed for field "Task.complexity": %w`, err)}
@@ -377,6 +396,9 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(task.FieldState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(task.FieldPriority, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Complexity(); ok {
 		_spec.SetField(task.FieldComplexity, field.TypeInt, value)
@@ -615,6 +637,20 @@ func (_u *TaskUpdateOne) SetState(v task.State) *TaskUpdateOne {
 func (_u *TaskUpdateOne) SetNillableState(v *task.State) *TaskUpdateOne {
 	if v != nil {
 		_u.SetState(*v)
+	}
+	return _u
+}
+
+// SetPriority sets the "priority" field.
+func (_u *TaskUpdateOne) SetPriority(v task.Priority) *TaskUpdateOne {
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillablePriority(v *task.Priority) *TaskUpdateOne {
+	if v != nil {
+		_u.SetPriority(*v)
 	}
 	return _u
 }
@@ -858,6 +894,11 @@ func (_u *TaskUpdateOne) check() error {
 			return &ValidationError{Name: "state", err: fmt.Errorf(`ent: validator failed for field "Task.state": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Priority(); ok {
+		if err := task.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Task.priority": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Complexity(); ok {
 		if err := task.ComplexityValidator(v); err != nil {
 			return &ValidationError{Name: "complexity", err: fmt.Errorf(`ent: validator failed for field "Task.complexity": %w`, err)}
@@ -914,6 +955,9 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	}
 	if value, ok := _u.mutation.State(); ok {
 		_spec.SetField(task.FieldState, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(task.FieldPriority, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Complexity(); ok {
 		_spec.SetField(task.FieldComplexity, field.TypeInt, value)
